@@ -103,17 +103,37 @@ function Write-Launchers {
   $cliPath = Join-Path $ProjectDir "packages\cli\dist\index.js"
   $cmdPath = Join-Path $BinDir "hallow.cmd"
   $ps1Path = Join-Path $BinDir "hallow.ps1"
+  $terminalCmdPath = Join-Path $BinDir "hallow-terminal.cmd"
 
   @(
     "@echo off",
+    "setlocal EnableExtensions",
+    "title Hallow Agent OS 001",
+    "color 0F",
     "if ""%HALLOW_HOME%""=="""" set ""HALLOW_HOME=$HomeDir""",
-    "node ""$cliPath"" %*"
+    "set ""HALLOW_CLI=$cliPath""",
+    "if ""%~1""=="""" (",
+    "  cls",
+    "  node ""%HALLOW_CLI%"" terminal",
+    "  exit /b %ERRORLEVEL%",
+    ")",
+    "node ""%HALLOW_CLI%"" %*",
+    "exit /b %ERRORLEVEL%"
   ) -join "`r`n" | Set-Content -Encoding ASCII $cmdPath
 
   @(
+    "@echo off",
+    "title Hallow Agent OS 001",
+    "color 0F",
+    "call ""$cmdPath"" terminal"
+  ) -join "`r`n" | Set-Content -Encoding ASCII $terminalCmdPath
+
+  @(
     '$ErrorActionPreference = "Stop"',
+    '$Host.UI.RawUI.WindowTitle = "Hallow Agent OS 001"',
+    'try { $Host.UI.RawUI.BackgroundColor = "Black"; $Host.UI.RawUI.ForegroundColor = "White"; Clear-Host } catch {}',
     "if (-not `$env:HALLOW_HOME) { `$env:HALLOW_HOME = '$($HomeDir.Replace("'", "''"))' }",
-    "& node '$($cliPath.Replace("'", "''"))' @args"
+    "if (`$args.Count -eq 0) { & node '$($cliPath.Replace("'", "''"))' terminal } else { & node '$($cliPath.Replace("'", "''"))' @args }"
   ) -join "`r`n" | Set-Content -Encoding ASCII $ps1Path
 }
 
@@ -235,10 +255,10 @@ Write-Host "Command: hallow"
 Write-Host "Direct:  $binDir\hallow.cmd"
 Write-Host ""
 Write-Host "Run now:"
-Write-Host "  `"$binDir\hallow.cmd`" version"
+Write-Host "  `"$binDir\hallow.cmd`""
 Write-Host "  `"$binDir\hallow.cmd`" start"
 Write-Host ""
 Write-Host "After opening a new terminal:"
-Write-Host "  hallow version"
+Write-Host "  hallow"
 Write-Host "  hallow start"
 Write-Host ""

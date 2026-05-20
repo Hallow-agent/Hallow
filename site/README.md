@@ -22,7 +22,7 @@ powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent
 Configure after install:
 
 ```bash
-hallow version
+hallow
 hallow start
 ```
 

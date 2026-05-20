@@ -65,7 +65,7 @@ The Windows installer writes launchers to:
 Open a new terminal after install, then run:
 
 ```powershell
-hallow version
+hallow
 hallow doctor
 hallow start
 ```
@@ -112,7 +112,7 @@ export PATH="$HOME/.local/bin:$PATH"
 Configure or refresh the local runtime:
 
 ```bash
-hallow version
+hallow
 hallow doctor
 hallow start
 ```

@@ -34,7 +34,7 @@ Hallow tries to make those lanes feel like one installable agent OS. The platfor
 ## First Run
 
 ```bash
-hallow version
+hallow
 hallow doctor
 hallow start
 ```
@@ -45,10 +45,11 @@ Then open:
 http://127.0.0.1:4767/desktop
 ```
 
-The operator terminal is optional when you want the full runtime surface:
+`hallow` without arguments opens the branded Hallow operator terminal. Direct commands still work:
 
 ```bash
-hallow terminal
+hallow version
+hallow start
 ```
 
 ![Hallow terminal preview](./docs/assets/hallow-terminal-preview.svg)
@@ -92,7 +93,7 @@ corepack pnpm hallow --home .hallow-dev start
 ## Core Commands
 
 ```bash
-hallow version
+hallow
 hallow doctor
 hallow readiness
 hallow start

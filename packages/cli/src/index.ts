@@ -150,7 +150,12 @@ async function dispatch(context: CommandContext): Promise<void> {
   const [command, subcommand, ...rest] = context.args;
 
   if (!command || command === "help" || command === "--help" || command === "-h") {
-    printHelp();
+    if (!command) {
+      await context.runtime.init();
+      await printTerminalWelcome(context, { mode: "welcome" });
+    } else {
+      printHelp();
+    }
     return;
   }
 
@@ -4208,7 +4213,7 @@ function terminalNextRows(context: CommandContext, options: TerminalWelcomeOptio
   return [
     formatMetric("install", "curl -fsSL https://hallow-agent.xyz/install.sh | bash"),
     formatMetric("windows", 'powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"'),
-    formatMetric("check", "hallow version"),
+    formatMetric("open", "hallow"),
     formatMetric("start", startCommand),
     formatMetric("doctor", "hallow doctor")
   ];
@@ -4451,7 +4456,7 @@ Usage:
   hallow usage list [--limit 20]
 
 Examples:
-  hallow version
+  hallow
   hallow agent run hallow "turn my weekly repo review into a reusable workflow"
   hallow model add ollama
   hallow start

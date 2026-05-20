@@ -19,17 +19,17 @@ if exist "%HALLOW_CMD%" (
   echo Hallow is installed.
   echo.
   echo Run now:
-  echo   "%HALLOW_CMD%" version
+  echo   "%HALLOW_CMD%"
   echo   "%HALLOW_CMD%" start
   echo.
   echo After opening a new terminal:
-  echo   hallow version
+  echo   hallow
   echo   hallow start
 ) else (
   echo Hallow installer finished, but the launcher was not found at:
   echo   "%HALLOW_CMD%"
   echo Open a new terminal and try:
-  echo   hallow version
+  echo   hallow
 )
 
 exit /b 0

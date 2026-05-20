@@ -16051,8 +16051,8 @@ function renderDesktopShellHtmlGradient(manifest: DesktopShellManifest): string 
           </div>
           <div class="cmd">
             <strong>Check</strong>
-            <code>hallow version</code>
-            <button class="copy-btn" data-copy="hallow version">Copy</button>
+            <code>hallow</code>
+            <button class="copy-btn" data-copy="hallow">Copy</button>
           </div>
           <div class="cmd">
             <strong>Start</strong>
@@ -16091,7 +16091,7 @@ function renderDesktopShellHtmlGradient(manifest: DesktopShellManifest): string 
       <div class="demo">
         <div class="terminal" data-terminal="runtime" aria-label="Animated Hallow terminal"></div>
         <div class="steps">
-          <div class="step"><strong>1. Check</strong><code>hallow version</code></div>
+          <div class="step"><strong>1. Open</strong><code>hallow</code></div>
           <div class="step"><strong>2. Start</strong><code>hallow start</code></div>
           <div class="step"><strong>3. Create Agent</strong><code>hallow agent create research</code></div>
         </div>
@@ -16114,8 +16114,8 @@ function renderDesktopShellHtmlGradient(manifest: DesktopShellManifest): string 
   <script>
     const terminalScripts = {
       runtime: [
-        { text: "> hallow version", type: true },
-        { text: "Hallow 001 (0.0.1)", status: "ok" },
+        { text: "> hallow", type: true },
+        { text: "Hallow Agent OS 001", status: "ok" },
         { pause: true },
         { text: "> hallow start", type: true },
         { text: "runtime initialized", status: "ok" },

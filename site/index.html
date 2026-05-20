@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f7f4">
+  <meta name="description" content="Hallow is a local-first agent OS for autonomous agents, private memory, tools, skills, and self-healing loops.">
+  <meta property="og:title" content="Hallow Agent OS">
+  <meta property="og:description" content="A local runtime for agents that run where you do.">
+  <title>Hallow Agent OS</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --white: #f7f7f4;
+      --paper: #ffffff;
+      --ink: #050505;
+      --ink-2: #1f1f1f;
+      --muted: #6d6d68;
+      --line: rgba(0, 0, 0, 0.16);
+      --line-dark: rgba(255, 255, 255, 0.18);
+      --soft: rgba(0, 0, 0, 0.055);
+      --mono: "SFMono-Regular", "Cascadia Mono", "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: var(--white); scroll-behavior: smooth; }
+    body {
+      min-height: 100%;
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(120deg, rgba(255,255,255,0) 0 54%, rgba(0,0,0,0.08) 54.1%, rgba(0,0,0,0.92) 82%, #000 100%),
+        radial-gradient(circle at 14% 18%, rgba(0,0,0,0.08), transparent 28%),
+        var(--white);
+      font: 15px/1.55 var(--mono);
+      overflow-x: hidden;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.42;
+      background-image:
+        linear-gradient(rgba(0,0,0,0.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.045) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: linear-gradient(90deg, black, black 58%, transparent 84%);
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      top: -20%;
+      right: -18%;
+      width: 68vw;
+      height: 140vh;
+      pointer-events: none;
+      background: linear-gradient(100deg, transparent, rgba(255,255,255,0.18), transparent);
+      transform: rotate(12deg);
+      animation: sweep 9s ease-in-out infinite;
+      opacity: 0.55;
+    }
+    a { color: inherit; text-decoration: none; }
+    h1, h2, h3, p, pre { margin: 0; }
+    code, button { font-family: var(--mono); }
+    button { color: inherit; cursor: pointer; }
+
+    .shell {
+      position: relative;
+      z-index: 1;
+      width: min(1220px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 22px 0 56px;
+    }
+    .nav {
+      min-height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(18px);
+      padding: 10px;
+      box-shadow: 0 22px 70px rgba(0,0,0,0.08);
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 850;
+      letter-spacing: 0;
+    }
+    .brand img {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      object-fit: cover;
+      background: #000;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.20);
+    }
+    .brand small {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+    .links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .link, .button {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.48);
+      padding: 8px 14px;
+      color: var(--ink-2);
+      font-size: 13px;
+      font-weight: 700;
+      transition: transform 160ms ease, background 160ms ease, color 160ms ease, border-color 160ms ease;
+    }
+    .link:hover {
+      transform: translateY(-1px);
+      background: #000;
+      color: #fff;
+      border-color: #000;
+    }
+    .button {
+      background: rgba(255,255,255,0.82);
+      color: #050505;
+      border-color: rgba(0,0,0,0.34);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.72);
+    }
+    .button:hover {
+      transform: translateY(-1px);
+      background: #050505;
+      color: #fff;
+      border-color: #050505;
+    }
+
+    .hero {
+      min-height: 720px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(360px, 0.76fr);
+      align-items: center;
+      gap: 38px;
+      padding: 58px 0 44px;
+    }
+    .copy {
+      display: grid;
+      gap: 24px;
+      animation: rise 680ms ease both;
+    }
+    .kicker {
+      display: inline-flex;
+      width: fit-content;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.58);
+      padding: 8px 12px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 820px;
+      font-size: clamp(56px, 8vw, 118px);
+      line-height: 0.92;
+      letter-spacing: 0;
+      text-wrap: balance;
+    }
+    .lead {
+      max-width: 640px;
+      color: #2f2f2d;
+      font-size: clamp(18px, 1.8vw, 22px);
+    }
+    .commands {
+      width: min(660px, 100%);
+      display: grid;
+      gap: 10px;
+    }
+    .cmd {
+      min-height: 58px;
+      display: grid;
+      grid-template-columns: 108px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.72);
+      padding: 10px 12px;
+      box-shadow: 0 18px 44px rgba(0,0,0,0.07);
+    }
+    .cmd strong {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+    .cmd code {
+      overflow-wrap: anywhere;
+      color: #000;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .copy-btn {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      padding: 6px 10px;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+    .visual {
+      min-height: 520px;
+      position: relative;
+      display: grid;
+      place-items: center;
+      color: #fff;
+    }
+    .code-logo {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      color: #050505;
+      font: 800 clamp(15px, 1.6vw, 24px)/1.02 var(--mono);
+      letter-spacing: 0;
+      text-shadow: 0 18px 42px rgba(0,0,0,0.14);
+      animation: float 5.8s ease-in-out infinite;
+      user-select: none;
+      white-space: pre;
+    }
+    .code-logo::before {
+      content: "HALLOW.IDENTITY";
+      display: block;
+      margin-bottom: 18px;
+      color: rgba(0,0,0,0.46);
+      font-size: 12px;
+      letter-spacing: 0;
+    }
+    .code-logo::after {
+      content: "01001000 / LOCAL RUNTIME";
+      display: block;
+      margin-top: 18px;
+      color: rgba(0,0,0,0.46);
+      font-size: 12px;
+      letter-spacing: 0;
+    }
+    .ascii-char {
+      display: inline-block;
+      opacity: 0.22;
+      transform: translateY(6px) scale(0.9);
+      filter: blur(0.55px);
+      animation: asciiPulse 3s ease-in-out infinite;
+      animation-delay: calc(var(--d) * 28ms);
+    }
+    .ascii-space {
+      display: inline-block;
+      width: 0.58ch;
+    }
+
+    .strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      padding: 0 0 42px;
+    }
+    .stat {
+      min-height: 98px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.66);
+      padding: 16px;
+      display: grid;
+      align-content: space-between;
+    }
+    .stat strong {
+      font-size: 26px;
+      letter-spacing: 0;
+    }
+    .stat span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .section {
+      padding: 54px 0;
+      border-top: 1px solid var(--line);
+    }
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+    .section h2 {
+      max-width: 720px;
+      font-size: clamp(34px, 5vw, 70px);
+      line-height: 0.92;
+      letter-spacing: 0;
+    }
+    .section-head p {
+      max-width: 420px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .demo {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr);
+      gap: 12px;
+    }
+    .terminal {
+      min-height: 330px;
+      border-radius: 20px;
+      background: #050505;
+      color: #f7f7f4;
+      padding: 18px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.18);
+      overflow: hidden;
+      font: 13px/1.8 var(--mono);
+    }
+    .terminal::before {
+      content: "●  ●  ●   HALLOW";
+      display: block;
+      margin-bottom: 20px;
+      color: rgba(255,255,255,0.44);
+      font-size: 11px;
+    }
+    .term-line {
+      min-height: 23px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 18px;
+      white-space: pre-wrap;
+    }
+    .term-line.idle {
+      min-height: 14px;
+    }
+    .term-text {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .term-status {
+      flex: 0 0 auto;
+      color: #f7f7f4;
+    }
+    .cursor {
+      display: inline-block;
+      width: 8px;
+      height: 15px;
+      background: #fff;
+      transform: translateY(2px);
+      animation: blink 900ms steps(2, end) infinite;
+    }
+    .steps {
+      display: grid;
+      gap: 10px;
+    }
+    .step, .feature {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.66);
+      padding: 16px;
+    }
+    .step {
+      min-height: 100px;
+      display: grid;
+      align-content: space-between;
+      gap: 10px;
+    }
+    .step strong, .feature strong {
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+    .step code {
+      color: var(--muted);
+      overflow-wrap: anywhere;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .feature {
+      min-height: 152px;
+      display: grid;
+      align-content: space-between;
+      gap: 22px;
+    }
+    .feature span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    footer {
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      flex-wrap: wrap;
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes sweep {
+      0%, 35% { transform: translateX(-24%) rotate(12deg); opacity: 0; }
+      52% { opacity: 0.55; }
+      78%, 100% { transform: translateX(20%) rotate(12deg); opacity: 0; }
+    }
+    @keyframes scan {
+      0%, 28% { transform: translateX(-70%) rotate(18deg); opacity: 0; }
+      48% { opacity: 1; }
+      76%, 100% { transform: translateX(70%) rotate(18deg); opacity: 0; }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    @keyframes asciiPulse {
+      0%, 62%, 100% {
+        opacity: 0.22;
+        transform: translateY(6px) scale(0.9);
+        filter: blur(0.55px);
+      }
+      16%, 34% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+      }
+    }
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    @media (max-width: 980px) {
+      body {
+        background:
+          linear-gradient(180deg, var(--white) 0 68%, #0b0b0b 100%),
+          var(--white);
+      }
+      body::before { mask-image: linear-gradient(180deg, black, black 70%, transparent); }
+      .nav { align-items: flex-start; flex-direction: column; }
+      .links { justify-content: flex-start; }
+      .hero, .demo {
+        grid-template-columns: 1fr;
+      }
+      .visual {
+        min-height: 380px;
+      }
+      .code-logo {
+        color: #050505;
+        text-shadow: none;
+      }
+      .code-logo::before,
+      .code-logo::after {
+        color: var(--muted);
+      }
+      .strip, .features {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 560px) {
+      .shell { width: min(100vw - 20px, 1220px); padding-top: 10px; }
+      h1 { font-size: 50px; }
+      .cmd { grid-template-columns: 1fr; }
+      .copy-btn { justify-self: start; }
+      .strip, .features { grid-template-columns: 1fr; }
+      .section-head { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <nav class="nav" aria-label="Hallow navigation">
+      <a class="brand" href="#">
+        <img src="profile.jpg" alt="Hallow logo">
+        <span>Hallow<small>Agent OS</small></span>
+      </a>
+      <div class="links">
+        <a class="link" href="#install">Install</a>
+        <a class="link" href="/docs">Docs</a>
+        <a class="link" href="#features">Features</a>
+        <a class="button" href="/install.sh">Get Hallow</a>
+      </div>
+    </nav>
+
+    <section class="hero" id="install">
+      <div class="copy">
+        <p class="kicker">Local-first autonomous runtime</p>
+        <h1>Agents that run where you do.</h1>
+        <p class="lead">Hallow installs a private agent OS on your machine: memory, tools, skills, model routing, and self-healing loops without turning your project into a cloud dashboard.</p>
+        <div class="commands">
+          <div class="cmd">
+            <strong>Install</strong>
+            <code>curl -fsSL https://hallow-agent.xyz/install.sh | bash</code>
+            <button class="copy-btn" data-copy="curl -fsSL https://hallow-agent.xyz/install.sh | bash">Copy</button>
+          </div>
+          <div class="cmd">
+            <strong>Windows</strong>
+            <code>irm https://hallow-agent.xyz/install.ps1 | iex</code>
+            <button class="copy-btn" data-copy="irm https://hallow-agent.xyz/install.ps1 | iex">Copy</button>
+          </div>
+          <div class="cmd">
+            <strong>Setup</strong>
+            <code>hallow setup</code>
+            <button class="copy-btn" data-copy="hallow setup">Copy</button>
+          </div>
+          <div class="cmd">
+            <strong>Start</strong>
+            <code>hallow start</code>
+            <button class="copy-btn" data-copy="hallow start">Copy</button>
+          </div>
+        </div>
+      </div>
+      <aside class="visual" aria-label="Hallow identity">
+        <pre class="code-logo" aria-label="Hallow logo in ASCII code">        001111111100
+     011/          &#92;110
+   01/    111111    &#92;10
+  01|     11  11     |10
+  10|     11  11     |01
+  10|   00111100     |01
+  01|  00      00    |10
+   01&#92;  00111100  /10
+     01&#92;   11   /10
+       011&#92; 11 /110
+          00111100</pre>
+      </aside>
+    </section>
+
+    <section class="strip" aria-label="Hallow proof">
+      <div class="stat"><strong>local</strong><span>data boundary</span></div>
+      <div class="stat"><strong>MCP</strong><span>tool surface</span></div>
+      <div class="stat"><strong>skills</strong><span>self-repair loop</span></div>
+      <div class="stat"><strong>models</strong><span>provider freedom</span></div>
+    </section>
+
+    <section class="section" id="demo">
+      <div class="section-head">
+        <h2>Use it without a manual.</h2>
+        <p>Install, configure, run a health check, then create an agent. The public UI never exposes your machine path.</p>
+      </div>
+      <div class="demo">
+        <div class="terminal" data-terminal="site" aria-label="Animated Hallow terminal"></div>
+        <div class="steps">
+          <div class="step"><strong>1. Configure</strong><code>hallow setup</code></div>
+          <div class="step"><strong>2. Check</strong><code>hallow doctor</code></div>
+          <div class="step"><strong>3. Create Agent</strong><code>hallow agent create research</code></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="features">
+      <div class="section-head">
+        <h2>Small surface. Serious runtime.</h2>
+        <p>No bloated homepage. Just the pieces people need to understand what Hallow is and how to start.</p>
+      </div>
+      <div class="features">
+        <div class="feature"><strong>Private memory</strong><span>Memory and traces begin on the user's machine.</span></div>
+        <div class="feature"><strong>Tool standard</strong><span>MCP stdio and HTTP servers can be discovered and filtered.</span></div>
+        <div class="feature"><strong>Agent packages</strong><span>Agents and skills ship with metadata, permissions, and audits.</span></div>
+        <div class="feature"><strong>Self-healing</strong><span>Failed runs can become scored repair candidates.</span></div>
+        <div class="feature"><strong>Model routing</strong><span>OpenAI-compatible APIs, local models, and custom providers.</span></div>
+        <div class="feature"><strong>Gateway ready</strong><span>CLI, browser, chat, and paired device lanes can share one standard.</span></div>
+      </div>
+    </section>
+
+    <footer>
+      <span>Hallow Agent OS</span>
+      <span>local-first runtime · hallow-agent.xyz · 2026</span>
+    </footer>
+  </main>
+  <script>
+    const terminalScripts = {
+      site: [
+        { text: "$ curl -fsSL https://hallow-agent.xyz/install.sh | bash", type: true },
+        { text: "launcher installed", status: "ok" },
+        { text: "operator terminal ready", status: "ok" },
+        { pause: true },
+        { text: "> hallow setup", type: true },
+        { text: "runtime initialized", status: "ok" },
+        { text: "memory vault ready", status: "ok" },
+        { text: "mcp tools discovered", status: "ok" },
+        { pause: true },
+        { text: "> hallow agent create research", type: true },
+        { text: "agent manifest signed", status: "ok" },
+        { text: "desktop runtime online", cursor: true }
+      ]
+    };
+
+    function initAsciiLogo(element) {
+      const raw = element.textContent || "";
+      element.innerHTML = "";
+      let index = 0;
+      for (const ch of raw) {
+        if (ch === "\n") {
+          element.appendChild(document.createElement("br"));
+          continue;
+        }
+        if (ch === " ") {
+          const space = document.createElement("span");
+          space.className = "ascii-space";
+          space.innerHTML = "&nbsp;";
+          element.appendChild(space);
+          continue;
+        }
+        const span = document.createElement("span");
+        span.className = "ascii-char";
+        span.style.setProperty("--d", String(index));
+        span.textContent = ch;
+        element.appendChild(span);
+        index += 1;
+      }
+    }
+    document.querySelectorAll(".code-logo").forEach((element) => initAsciiLogo(element));
+
+    function appendTerminalLine(terminal, entry, done) {
+      const row = document.createElement("div");
+      row.className = entry.pause ? "term-line idle" : "term-line";
+      terminal.appendChild(row);
+
+      if (entry.pause) {
+        setTimeout(done, 260);
+        return;
+      }
+
+      const text = document.createElement("span");
+      text.className = "term-text";
+      row.appendChild(text);
+
+      if (entry.status) {
+        const status = document.createElement("span");
+        status.className = "term-status";
+        status.textContent = entry.status;
+        row.appendChild(status);
+      }
+
+      const finish = () => {
+        if (entry.cursor) {
+          const cursor = document.createElement("span");
+          cursor.className = "cursor";
+          text.appendChild(document.createTextNode(" "));
+          text.appendChild(cursor);
+        }
+        setTimeout(done, entry.type ? 420 : 300);
+      };
+
+      if (!entry.type) {
+        text.textContent = entry.text;
+        finish();
+        return;
+      }
+
+      let index = 0;
+      const tick = () => {
+        text.textContent = entry.text.slice(0, index);
+        index += 1;
+        if (index <= entry.text.length) {
+          setTimeout(tick, 24 + Math.random() * 18);
+        } else {
+          finish();
+        }
+      };
+      tick();
+    }
+
+    function runTerminal(terminal) {
+      const script = terminalScripts[terminal.dataset.terminal] || terminalScripts.site;
+      terminal.innerHTML = "";
+      let index = 0;
+      const next = () => {
+        if (index >= script.length) return;
+        appendTerminalLine(terminal, script[index], () => {
+          index += 1;
+          next();
+        });
+      };
+      next();
+    }
+
+    document.querySelectorAll("[data-terminal]").forEach((terminal) => {
+      runTerminal(terminal);
+    });
+
+    document.querySelectorAll("[data-copy]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(button.dataset.copy || "");
+        const current = button.textContent;
+        button.textContent = "Copied";
+        setTimeout(() => { button.textContent = current; }, 900);
+      });
+    });
+  </script>
+</body>
+</html>

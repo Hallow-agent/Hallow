@@ -1,0 +1,18 @@
+schema: hallow.package_signature/v1
+package_type: agent
+package_id: research-smoke
+standard_version: hallow.agent/v1
+source_path: Z:\kodingan\SOSMED AI\Hallow\examples\agents\research-smoke
+digest: sha256:e8351d169409f58a59632b2222508515c0d073fef6c37a97e76929e09a57036a
+signature_algorithm: ed25519
+signature: 6J4fXo3MpNpFeK9ckivzNuabRbuYpfn1MAapVQcIM7efZ95tnS7ciJzxaKXPD5IVyZYrwXtb1pgj1MlcfieMBA==
+public_key: |
+  -----BEGIN PUBLIC KEY-----
+  MCowBQYDK2VwAyEAUnv+TlP8LUnrWvXhZ/IExDz526aT4s4nNMA8vjUoIL8=
+  -----END PUBLIC KEY-----
+signed_at: 2026-05-19T20:14:28.820Z
+claims:
+  - manifest-verified
+  - local-first
+  - policy-gated
+  - agent-standard

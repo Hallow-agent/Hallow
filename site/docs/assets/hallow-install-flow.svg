@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 320" role="img" aria-labelledby="title desc">
+  <title id="title">Hallow install flow</title>
+  <desc id="desc">Four command steps: install, setup, doctor, start.</desc>
+  <rect width="920" height="320" rx="30" fill="#101010"/>
+  <g font-family="Consolas, monospace" font-weight="800">
+    <text x="50" y="58" fill="#f7f7f4" font-size="18">HALLOW BOOT SEQUENCE</text>
+    <g transform="translate(50 92)">
+      <rect width="180" height="138" rx="18" fill="#f7f7f4"/>
+      <text x="22" y="44" fill="#050505" font-size="16">01 install</text>
+      <text x="22" y="84" fill="#73736e" font-size="12">fetch scripts</text>
+    </g>
+    <g transform="translate(270 92)">
+      <rect width="180" height="138" rx="18" fill="#f7f7f4"/>
+      <text x="22" y="44" fill="#050505" font-size="16">02 setup</text>
+      <text x="22" y="84" fill="#73736e" font-size="12">generate home</text>
+    </g>
+    <g transform="translate(490 92)">
+      <rect width="180" height="138" rx="18" fill="#f7f7f4"/>
+      <text x="22" y="44" fill="#050505" font-size="16">03 doctor</text>
+      <text x="22" y="84" fill="#73736e" font-size="12">audit runtime</text>
+    </g>
+    <g transform="translate(710 92)">
+      <rect width="160" height="138" rx="18" fill="#f7f7f4"/>
+      <text x="22" y="44" fill="#050505" font-size="16">04 start</text>
+      <text x="22" y="84" fill="#73736e" font-size="12">open /desktop</text>
+    </g>
+  </g>
+  <g stroke="#f7f7f4" stroke-width="3" fill="none" opacity=".68">
+    <path d="M232 161h36M452 161h36M672 161h36"/>
+  </g>
+</svg>

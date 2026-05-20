@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111111">
+  <meta name="description" content="Hallow Agent documentation: quickstart, installation, runtime concepts, features, integrations, developer guide, and reference.">
+  <title>Hallow Agent Documentation</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f7f4;
+      --panel: rgba(255,255,255,0.76);
+      --panel-2: #101010;
+      --ink: #050505;
+      --muted: #5f5f5a;
+      --dim: #8d8d86;
+      --line: rgba(0,0,0,0.15);
+      --line-dark: rgba(255,255,255,0.14);
+      --accent: #050505;
+      --mono: "SFMono-Regular", "Cascadia Mono", "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: var(--bg); scroll-behavior: smooth; }
+    body {
+      min-height: 100%;
+      margin: 0;
+      background:
+        linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px),
+        linear-gradient(115deg, rgba(255,255,255,0) 0 64%, rgba(0,0,0,0.06) 64.2%, rgba(0,0,0,0.18) 100%),
+        var(--bg);
+      background-size: 42px 42px, 42px 42px, auto, auto;
+      color: var(--ink);
+      font: 15px/1.62 var(--mono);
+    }
+    a { color: inherit; text-decoration: none; }
+    h1, h2, h3, p, pre { margin: 0; }
+    code, pre { font-family: var(--mono); }
+
+    .top {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(247,247,244,0.92);
+      backdrop-filter: blur(18px);
+      padding: 8px 18px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 7px;
+      background: #000;
+      object-fit: cover;
+    }
+    .tabs {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      font-size: 14px;
+      font-weight: 850;
+    }
+    .tabs a.active { color: var(--ink); }
+
+    .layout {
+      min-height: calc(100vh - 58px);
+      display: grid;
+      grid-template-columns: 306px minmax(0, 1fr);
+    }
+    .sidebar {
+      position: sticky;
+      top: 58px;
+      height: calc(100vh - 58px);
+      overflow: auto;
+      border-right: 1px solid rgba(0,0,0,0.26);
+      background: rgba(16,16,16,0.98);
+      padding: 16px 10px 24px;
+    }
+    .side-title {
+      display: block;
+      padding: 0 10px 14px;
+      color: #f7f7f4;
+      font-size: 16px;
+      font-weight: 900;
+    }
+    details {
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 4px 0;
+    }
+    summary {
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 6px 10px;
+      color: #f7f7f4;
+      cursor: pointer;
+      font-weight: 850;
+      list-style: none;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: ">";
+      color: rgba(255,255,255,0.5);
+      transition: transform 150ms ease;
+    }
+    details[open] summary::after { transform: rotate(90deg); color: #fff; }
+    .side-link {
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      border-radius: 5px;
+      margin: 2px 0 2px 10px;
+      padding: 5px 10px;
+      color: rgba(255,255,255,0.72);
+      font-weight: 760;
+    }
+    .side-link:hover,
+    .side-link.active {
+      background: rgba(255,255,255,0.92);
+      color: #050505;
+    }
+
+    .content {
+      max-width: 1040px;
+      padding: 42px min(5vw, 64px) 80px;
+    }
+    .eyebrow {
+      display: inline-flex;
+      width: fit-content;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.72);
+      padding: 7px 10px;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 880px;
+      margin-top: 18px;
+      font-size: clamp(42px, 7vw, 92px);
+      line-height: 0.95;
+      letter-spacing: 0;
+    }
+    .lead {
+      max-width: 840px;
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 16px;
+    }
+    .hero-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(320px, 0.58fr);
+      gap: 22px;
+      align-items: center;
+    }
+    .hero-copy { min-width: 0; }
+    .visual-card {
+      margin: 0;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      overflow: hidden;
+      box-shadow: 0 26px 90px rgba(0,0,0,0.12);
+    }
+    .visual-card img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .visual-card figcaption {
+      border-top: 1px solid var(--line);
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .section-visual {
+      margin-top: 18px;
+    }
+    .hero-grid,
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 26px;
+    }
+    .card {
+      min-height: 148px;
+      display: grid;
+      align-content: space-between;
+      gap: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 16px;
+    }
+    .card strong {
+      color: var(--ink);
+      font-size: 17px;
+    }
+    .card p,
+    li {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    section {
+      padding-top: 54px;
+      border-top: 1px solid var(--line);
+      margin-top: 54px;
+    }
+    h2 {
+      font-size: clamp(28px, 4vw, 52px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin-top: 22px;
+      font-size: 18px;
+    }
+    .section-lead {
+      max-width: 760px;
+      margin-top: 12px;
+      color: var(--muted);
+    }
+    pre {
+      margin-top: 14px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #050505;
+      padding: 14px;
+      color: #f7f7f4;
+      font-size: 13px;
+    }
+    .steps {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr);
+      gap: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 14px;
+    }
+    .step span {
+      color: var(--ink);
+      font-weight: 900;
+    }
+    .note {
+      margin-top: 18px;
+      border-left: 3px solid var(--ink);
+      background: rgba(255,255,255,0.72);
+      padding: 12px 14px;
+      color: var(--muted);
+    }
+    .table {
+      display: grid;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 18px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 210px minmax(0, 1fr);
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+      padding: 12px 14px;
+    }
+    .row:last-child { border-bottom: 0; }
+    .row strong { color: var(--ink); }
+    .row p { color: var(--muted); }
+    footer {
+      margin-top: 70px;
+      border-top: 1px solid var(--line);
+      padding-top: 20px;
+      color: var(--dim);
+      font-size: 12px;
+    }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+      .content { padding: 30px 18px 70px; }
+      .hero-panel { grid-template-columns: 1fr; }
+      .hero-grid, .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 620px) {
+      .top { align-items: flex-start; flex-direction: column; gap: 8px; }
+      .layout { min-height: auto; }
+      .sidebar { top: 0; }
+      .hero-grid, .card-grid { grid-template-columns: 1fr; }
+      .row, .step { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/"><img src="/profile.jpg" alt="Hallow logo"><span>Hallow Agent</span></a>
+    <nav class="tabs" aria-label="Top navigation">
+      <a href="/">Home</a>
+      <a class="active" href="/docs">Docs</a>
+      <a href="#skills">Skills</a>
+    </nav>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <span class="side-title">Hallow Documentation</span>
+      <details open>
+        <summary>Getting Started</summary>
+        <a class="side-link active" href="#quickstart">Quickstart</a>
+        <a class="side-link" href="#installation">Installation</a>
+        <a class="side-link" href="#windows">Windows / WSL2</a>
+        <a class="side-link" href="#android">Android / Termux</a>
+        <a class="side-link" href="#updating">Updating & Uninstalling</a>
+        <a class="side-link" href="#learning-path">Learning Path</a>
+      </details>
+      <details open>
+        <summary>Using Hallow</summary>
+        <a class="side-link" href="#runtime">Runtime</a>
+        <a class="side-link" href="#agents">Agents</a>
+        <a class="side-link" href="#memory">Memory</a>
+        <a class="side-link" href="#models">Models</a>
+        <a class="side-link" href="#gateways">Gateway Lanes</a>
+      </details>
+      <details>
+        <summary>Features</summary>
+        <a class="side-link" href="#mcp">MCP Tools</a>
+        <a class="side-link" href="#skills">Skills</a>
+        <a class="side-link" href="#marketplace">Marketplace</a>
+        <a class="side-link" href="#autonomy">Self-Healing</a>
+        <a class="side-link" href="#security">Security</a>
+      </details>
+      <details>
+        <summary>Integrations</summary>
+        <a class="side-link" href="#providers">Model Providers</a>
+        <a class="side-link" href="#oauth">OAuth</a>
+        <a class="side-link" href="#browser">Browser</a>
+        <a class="side-link" href="#messaging">Messaging Platforms</a>
+      </details>
+      <details>
+        <summary>Guides & Tutorials</summary>
+        <a class="side-link" href="#first-agent">Create First Agent</a>
+        <a class="side-link" href="#first-skill">Package A Skill</a>
+        <a class="side-link" href="#connect-mcp">Connect MCP Server</a>
+        <a class="side-link" href="#gateway-guide">Pair A Gateway</a>
+      </details>
+      <details>
+        <summary>Developer Guide</summary>
+        <a class="side-link" href="#manifest">Manifest Standard</a>
+        <a class="side-link" href="#api">Runtime API</a>
+        <a class="side-link" href="#adapters">Adapter Contract</a>
+        <a class="side-link" href="#tracing">Tracing</a>
+      </details>
+      <details>
+        <summary>Reference</summary>
+        <a class="side-link" href="#cli">CLI Commands</a>
+        <a class="side-link" href="#files">Files & Folders</a>
+        <a class="side-link" href="#troubleshooting">Troubleshooting</a>
+      </details>
+    </aside>
+
+    <main class="content">
+      <div class="hero-panel">
+        <div class="hero-copy">
+          <p class="eyebrow">Local-first autonomous runtime</p>
+          <h1 id="quickstart">Hallow Agent Documentation.</h1>
+          <p class="lead">Hallow is an installable agent OS for builders who want autonomous agents to run locally, remember work privately, discover tools through standards, connect to models, and improve skills under policy. This is the docs surface: direct project documentation, not community claims.</p>
+        </div>
+        <figure class="visual-card">
+          <img src="/docs/assets/hallow-runtime-map.svg" alt="Diagram of the Hallow local runtime connected to memory, tools, models, gateways, skills, and audits.">
+          <figcaption>Local runtime map: memory, tools, models, gateways, signed skills, and audit checks around one Hallow process.</figcaption>
+        </figure>
+      </div>
+
+      <div class="hero-grid">
+        <article class="card"><strong>Local runtime</strong><p>One process serves the desktop shell, API, scheduler, memory, tool registry, and readiness checks.</p></article>
+        <article class="card"><strong>Private memory</strong><p>Agents store traces, decisions, vectors, corrections, and project context inside the local Hallow home.</p></article>
+        <article class="card"><strong>Standard agents</strong><p>Agents and skills ship with manifests, permissions, model needs, signatures, and audit metadata.</p></article>
+      </div>
+
+      <section id="installation">
+        <h2>Quickstart</h2>
+        <p class="section-lead">The public flow stays small: install, setup, doctor, start. Everything advanced lives behind those commands.</p>
+        <figure class="visual-card section-visual">
+          <img src="/docs/assets/hallow-install-flow.svg" alt="Four step Hallow boot sequence: install, setup, doctor, start.">
+          <figcaption>The first-run path stays simple before deeper runtime controls appear.</figcaption>
+        </figure>
+        <pre><code>curl -fsSL https://hallow-agent.xyz/install.sh | bash
+hallow terminal
+hallow setup
+hallow doctor
+hallow start</code></pre>
+        <div class="note">On Windows, use the PowerShell installer below. If you use WSL2, install inside the Linux environment for the cleanest local runtime.</div>
+      </section>
+
+      <section id="windows">
+        <h2>Installation</h2>
+        <div class="steps">
+          <article class="step"><span>01</span><div><strong>Windows</strong><pre><code>irm https://hallow-agent.xyz/install.ps1 | iex</code></pre></div></article>
+          <article class="step"><span>02</span><div><strong>macOS / Linux / WSL2</strong><pre><code>curl -fsSL https://hallow-agent.xyz/install.sh | bash</code></pre></div></article>
+          <article class="step" id="android"><span>03</span><div><strong>Android / Termux</strong><p>Use the Linux installer inside Termux after Node and Git are available. Mobile support is a runtime target, not the recommended first install path.</p></div></article>
+        </div>
+      </section>
+
+      <section id="updating">
+        <h2>Updating & Uninstalling</h2>
+        <div class="table">
+          <div class="row"><strong>Update</strong><p>Pull the newest project version, rebuild packages, then run <code>hallow setup</code> to regenerate desktop artifacts.</p></div>
+          <div class="row"><strong>Backup</strong><p>Keep a copy of the Hallow home folder before destructive changes. It contains memory, traces, config, packages, and audits.</p></div>
+          <div class="row"><strong>Uninstall</strong><p>Stop the runtime process, remove the installed command, then archive or delete the Hallow home folder.</p></div>
+        </div>
+      </section>
+
+      <section id="learning-path">
+        <h2>Learning Path</h2>
+        <div class="card-grid">
+          <article class="card"><strong>1. Run the runtime</strong><p>Open <code>/desktop</code>, check readiness, and understand the local boundary.</p></article>
+          <article class="card"><strong>2. Create an agent</strong><p>Generate a manifest, define capabilities, attach model profiles, and keep permissions explicit.</p></article>
+          <article class="card"><strong>3. Add tools</strong><p>Connect MCP, browser, OAuth, and gateway adapters only after policy checks pass.</p></article>
+          <article class="card"><strong>4. Package skills</strong><p>Turn repeated workflows into signed skills with tests and metadata.</p></article>
+          <article class="card"><strong>5. Enable autonomy</strong><p>Use scheduler, quality scoring, traces, and repair loops before unattended runs.</p></article>
+          <article class="card"><strong>6. Publish safely</strong><p>Export package metadata, audit security, and avoid shipping private local paths.</p></article>
+        </div>
+      </section>
+
+      <section id="runtime">
+        <h2>Using Hallow</h2>
+        <p class="section-lead">Hallow has three visible surfaces: CLI for builders, desktop shell for local operation, and HTTP APIs for automation.</p>
+        <figure class="visual-card section-visual">
+          <img src="/docs/assets/hallow-memory-vault.svg" alt="Local Hallow memory vault storing traces, decisions, and vector items.">
+          <figcaption>Memory stays inspectable inside the local Hallow home: traces, vectors, notes, and repair context.</figcaption>
+        </figure>
+        <div class="table">
+          <div class="row"><strong id="agents">Agents</strong><p>Autonomous workers described by manifests, memory policy, model profiles, tools, safety limits, and trace export rules.</p></div>
+          <div class="row"><strong id="memory">Memory</strong><p>Local vault for semantic memory, run traces, corrections, and future repair context.</p></div>
+          <div class="row"><strong id="models">Models</strong><p>OpenAI-compatible APIs, Claude/OpenRouter-style providers, local fallback, and cost-aware route profiles.</p></div>
+          <div class="row"><strong id="gateways">Gateway lanes</strong><p>CLI, browser shell, chat adapters, and device lanes with pairing and allowlist controls.</p></div>
+        </div>
+      </section>
+
+      <section id="mcp">
+        <h2>Features</h2>
+        <figure class="visual-card section-visual">
+          <img src="/docs/assets/hallow-package-standard.svg" alt="Signed Hallow package metadata with permissions, model needs, checksum, and audit status.">
+          <figcaption>Agents and skills are not loose prompt folders; they move through package metadata, signatures, and audit checks.</figcaption>
+        </figure>
+        <div class="card-grid">
+          <article class="card"><strong>MCP tools</strong><p>Register stdio or HTTP MCP servers and filter tools per server before an agent can call them.</p></article>
+          <article class="card" id="skills"><strong>Skills</strong><p>Reusable workflows with metadata, tests, permissions, checksums, and optional external skill directories.</p></article>
+          <article class="card" id="marketplace"><strong>Marketplace</strong><p>Signed packages for agents and skills, with trust metadata and install verification.</p></article>
+          <article class="card" id="autonomy"><strong>Self-healing</strong><p>Failed runs become traces, traces become repair candidates, and quality gates decide promotion.</p></article>
+          <article class="card" id="security"><strong>Security audit</strong><p>Checks exposed secrets, unsafe permissions, sandbox posture, package trust, and gateway policy.</p></article>
+          <article class="card"><strong>Desktop shell</strong><p>A clean local UI for install flow, readiness checks, and runtime status without leaking local paths.</p></article>
+        </div>
+      </section>
+
+      <section id="providers">
+        <h2>Integrations</h2>
+        <figure class="visual-card section-visual">
+          <img src="/docs/assets/hallow-gateway-lanes.svg" alt="Hallow gateway lanes connecting local agent to CLI, browser, Telegram, Discord, Slack, and devices.">
+          <figcaption>Gateway lanes let one local agent reach multiple channels while policy stays in front.</figcaption>
+        </figure>
+        <div class="table">
+          <div class="row"><strong>Model providers</strong><p>OpenAI-compatible APIs, OpenRouter, Anthropic-style routes, and local model profiles.</p></div>
+          <div class="row" id="oauth"><strong>OAuth</strong><p>Connector definitions and grants are separated from UI display so hidden tokens are not exposed.</p></div>
+          <div class="row" id="browser"><strong>Browser</strong><p>Live browser sessions can capture HTML, screenshots, and artifacts for traceable tasks.</p></div>
+          <div class="row" id="messaging"><strong>Messaging platforms</strong><p>Gateway adapters are the path for Telegram, Discord, Slack, WhatsApp-style channels, and custom devices.</p></div>
+        </div>
+      </section>
+
+      <section id="first-agent">
+        <h2>Guides & Tutorials</h2>
+        <h3>Create first agent</h3>
+        <pre><code>hallow agent create research
+hallow doctor
+hallow start</code></pre>
+        <h3 id="first-skill">Package a skill</h3>
+        <pre><code>hallow package sign ./skills/research-briefing
+hallow marketplace verify --path ./skills/research-briefing</code></pre>
+        <h3 id="connect-mcp">Connect MCP server</h3>
+        <pre><code>hallow mcp add filesystem --command npx --args -y,@modelcontextprotocol/server-filesystem,.
+hallow mcp probe --server filesystem</code></pre>
+        <h3 id="gateway-guide">Pair a gateway</h3>
+        <pre><code>hallow gateway pair telegram --allowlist team.yaml
+hallow gateway status</code></pre>
+      </section>
+
+      <section id="manifest">
+        <h2>Developer Guide</h2>
+        <div class="table">
+          <div class="row"><strong>Manifest standard</strong><p>Agents and skills declare identity, capabilities, permissions, model needs, memory policy, and trace export rules.</p></div>
+          <div class="row" id="api"><strong>Runtime API</strong><p>Local HTTP endpoints expose health, readiness, desktop status, tasks, memory, tools, marketplace, OAuth, and gateways.</p></div>
+          <div class="row" id="adapters"><strong>Adapter contract</strong><p>Gateway and tool adapters must declare transport, allowed actions, auth policy, and failure behavior.</p></div>
+          <div class="row" id="tracing"><strong>Tracing</strong><p>Every meaningful autonomous action should leave an artifact: task record, browser capture, tool event, memory item, or audit row.</p></div>
+        </div>
+      </section>
+
+      <section id="cli">
+        <h2>Reference</h2>
+        <div class="table">
+          <div class="row"><strong>Core commands</strong><p><code>hallow terminal</code>, <code>hallow setup</code>, <code>hallow doctor</code>, <code>hallow start</code>, <code>hallow agent create</code>, <code>hallow mcp add</code>.</p></div>
+          <div class="row" id="files"><strong>Files & folders</strong><p>Hallow home stores config, memory, traces, packages, marketplace indexes, desktop artifacts, audits, and browser sessions.</p></div>
+          <div class="row" id="troubleshooting"><strong>Troubleshooting</strong><p>If a route returns 404, rerun <code>hallow setup</code> and restart the runtime so generated desktop/docs artifacts are refreshed.</p></div>
+        </div>
+      </section>
+
+      <footer>Hallow Agent Docs / local-first runtime / no public user-story claims</footer>
+    </main>
+  </div>
+</body>
+</html>

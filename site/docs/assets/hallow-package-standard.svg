@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 420" role="img" aria-labelledby="title desc">
+  <title id="title">Hallow package standard</title>
+  <desc id="desc">Signed agent and skill package metadata visual.</desc>
+  <rect width="760" height="420" rx="30" fill="#f7f7f4"/>
+  <rect x="56" y="54" width="648" height="312" rx="28" fill="#050505"/>
+  <g font-family="Consolas, monospace" font-size="15" font-weight="700">
+    <text x="92" y="98" fill="#f7f7f4">hallow-package.signature.yaml</text>
+    <text x="92" y="142" fill="#a7a7a0">package_type:</text><text x="248" y="142" fill="#f7f7f4">skill</text>
+    <text x="92" y="176" fill="#a7a7a0">permissions:</text><text x="248" y="176" fill="#f7f7f4">mcp.call / memory.write</text>
+    <text x="92" y="210" fill="#a7a7a0">model_needs:</text><text x="248" y="210" fill="#f7f7f4">reasoning + cheap background</text>
+    <text x="92" y="244" fill="#a7a7a0">checksum:</text><text x="248" y="244" fill="#f7f7f4">sha256: verified</text>
+    <text x="92" y="278" fill="#a7a7a0">audit:</text><text x="248" y="278" fill="#f7f7f4">hardened / 0 finding(s)</text>
+  </g>
+  <g transform="translate(552 120)">
+    <circle cx="54" cy="54" r="52" fill="#f7f7f4"/>
+    <path d="M54 14c25 10 39 36 39 70-1 24-16 45-31 55H46C31 129 16 108 15 84c0-34 14-60 39-70z" fill="#050505"/>
+    <path d="M45 30v42c0 8 4 12 9 12s9-4 9-12V30zM43 97c8-4 14-4 22 0v34c0 9-4 14-11 14s-11-5-11-14zM18 88c15-2 23 2 28 8-12 5-22 3-28-8zM90 88c-15-2-23 2-28 8 12 5 22 3 28-8z" fill="#f7f7f4"/>
+  </g>
+  <path d="M92 320h500" stroke="#f7f7f4" stroke-width="2" stroke-dasharray="8 10" opacity=".45"/>
+</svg>

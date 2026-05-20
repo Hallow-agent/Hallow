@@ -1,0 +1,90 @@
+<svg width="1400" height="620" viewBox="0 0 1400 620" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Hallow Agent OS hero</title>
+  <desc id="desc">A monochrome hero image showing the Hallow mask, local runtime, memory, tools, models, gateways, and self-healing loops.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1400" y2="620" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="0.58" stop-color="#f4f4f4"/>
+      <stop offset="1" stop-color="#0b0b0b"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1050 280) rotate(90) scale(280 360)">
+      <stop stop-color="#ffffff" stop-opacity="0.88"/>
+      <stop offset="0.48" stop-color="#ffffff" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <style>
+      .mono { font-family: "SFMono-Regular", "Cascadia Mono", Consolas, monospace; }
+      .pulse { animation: pulse 3.8s ease-in-out infinite; transform-origin: center; }
+      .pulse2 { animation: pulse 4.6s ease-in-out infinite; transform-origin: center; animation-delay: .65s; }
+      .dash { stroke-dasharray: 9 14; animation: dash 20s linear infinite; }
+      .scan { animation: scan 5.6s ease-in-out infinite; }
+      @keyframes dash { to { stroke-dashoffset: -360; } }
+      @keyframes pulse { 0%,100% { opacity: .32; transform: scale(1); } 50% { opacity: 1; transform: scale(1.08); } }
+      @keyframes scan { 0%,100% { transform: translateY(-40px); opacity: .12; } 50% { transform: translateY(58px); opacity: .55; } }
+    </style>
+  </defs>
+  <rect width="1400" height="620" rx="34" fill="url(#bg)"/>
+  <path d="M0 470 C290 360 420 525 700 400 C950 288 1120 210 1400 250" stroke="#111" stroke-opacity=".08" stroke-width="160" filter="url(#soft)"/>
+  <g opacity=".28">
+    <path d="M0 88H1400M0 176H1400M0 264H1400M0 352H1400M0 440H1400M0 528H1400" stroke="#000"/>
+    <path d="M88 0V620M176 0V620M264 0V620M352 0V620M440 0V620M528 0V620M616 0V620M704 0V620M792 0V620M880 0V620M968 0V620M1056 0V620M1144 0V620M1232 0V620M1320 0V620" stroke="#000"/>
+  </g>
+  <g transform="translate(98 92)">
+    <text x="0" y="0" class="mono" fill="#111" font-size="18" font-weight="700" letter-spacing="2">LOCAL-FIRST AUTONOMOUS RUNTIME</text>
+    <text x="0" y="86" fill="#050505" font-family="Inter, Arial, sans-serif" font-size="86" font-weight="900">HALLOW</text>
+    <text x="0" y="154" fill="#050505" font-family="Inter, Arial, sans-serif" font-size="64" font-weight="850">Agent OS</text>
+    <text x="4" y="214" class="mono" fill="#222" font-size="21">memory + tools + models + gateways + signed skills</text>
+    <text x="4" y="250" class="mono" fill="#555" font-size="18">runs on the user's machine; cloud is optional</text>
+    <g transform="translate(0 304)">
+      <rect x="0" y="0" width="540" height="126" rx="20" fill="#050505"/>
+      <circle cx="26" cy="26" r="5" fill="#fff" opacity=".88"/>
+      <circle cx="45" cy="26" r="5" fill="#fff" opacity=".54"/>
+      <circle cx="64" cy="26" r="5" fill="#fff" opacity=".34"/>
+      <text x="24" y="70" class="mono" fill="#fff" font-size="18">$ curl -fsSL https://hallow-agent.xyz/install.sh | bash</text>
+      <text x="24" y="102" class="mono" fill="#aaa" font-size="16">runtime initialized / terminal ready / local vault online</text>
+    </g>
+  </g>
+  <g transform="translate(740 70)">
+    <circle cx="300" cy="245" r="250" fill="url(#halo)"/>
+    <path class="dash" d="M120 260 C178 110 380 72 494 202 C568 286 548 410 438 472 C310 544 150 458 120 260Z" stroke="#fff" stroke-width="2" opacity=".62"/>
+    <g class="scan">
+      <rect x="95" y="205" width="520" height="3" fill="#fff"/>
+    </g>
+    <g stroke="#fff" stroke-opacity=".6" stroke-width="1.4">
+      <path d="M184 396L300 472L418 394M182 206L300 122L420 207M188 398L185 208M420 394L420 208"/>
+      <path d="M300 122V222M300 472V360M232 246H368M230 326H370"/>
+    </g>
+    <g fill="#fff">
+      <path d="M300 108C229 120 176 178 166 254C160 299 178 344 214 376L240 400V340L213 318C198 296 196 268 208 244C226 208 266 194 300 194C334 194 374 208 392 244C404 268 402 296 387 318L360 340V400L386 376C422 344 440 299 434 254C424 178 371 120 300 108Z" opacity=".94"/>
+      <rect x="278" y="204" width="44" height="98" rx="14" fill="#050505"/>
+      <ellipse cx="250" cy="304" rx="28" ry="10" fill="#050505"/>
+      <ellipse cx="350" cy="304" rx="28" ry="10" fill="#050505"/>
+      <rect x="276" y="330" width="48" height="112" rx="18" fill="#050505"/>
+    </g>
+    <g class="mono" font-size="14" font-weight="700">
+      <g class="pulse">
+        <circle cx="124" cy="260" r="8" fill="#fff"/>
+        <text x="68" y="250" fill="#fff">MCP</text>
+      </g>
+      <g class="pulse2">
+        <circle cx="500" cy="206" r="8" fill="#fff"/>
+        <text x="516" y="211" fill="#fff">MODELS</text>
+      </g>
+      <g class="pulse">
+        <circle cx="438" cy="472" r="8" fill="#fff"/>
+        <text x="454" y="478" fill="#fff">SKILLS</text>
+      </g>
+      <g class="pulse2">
+        <circle cx="184" cy="396" r="8" fill="#fff"/>
+        <text x="72" y="410" fill="#fff">MEMORY</text>
+      </g>
+      <g class="pulse">
+        <circle cx="300" cy="122" r="8" fill="#fff"/>
+        <text x="246" y="86" fill="#fff">GATEWAYS</text>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,23 @@
+schema: hallow.skill/v1
+id: marketplace-smoke
+name: Marketplace Smoke
+version: 0.1.0
+author: hallow-local
+license: MIT
+entry: SKILL.md
+required_tools:
+  - memory.read
+  - memory.write
+permissions:
+  internet: false
+  filesystem_write: scoped
+  external_send: false
+  terminal: false
+models:
+  recommended:
+    planning: route:smart
+    execution: route:balanced
+    reflection: route:private
+promotion:
+  min_quality_score: 0.85
+  min_successful_runs: 3

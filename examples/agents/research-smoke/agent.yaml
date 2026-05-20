@@ -1,0 +1,73 @@
+schema: hallow.agent/v1
+id: research-smoke
+name: Research Smoke
+description: Research Smoke is a packaged Hallow agent used to verify agent marketplace alpha standards.
+personality:
+  soul: ./SOUL.md
+  tone: precise
+  autonomy_style: cautious
+model_policy:
+  planning: route:smart
+  execution: route:balanced
+  summarization: route:cheap
+  reflection: route:private
+memory:
+  scope: agent
+  read:
+    - ./memory
+  write:
+    - ./memory
+  auto_update: true
+skills:
+  enabled:
+    - marketplace-smoke
+  allow_auto_skill_creation: true
+  allow_auto_skill_update: true
+tools:
+  web.search:
+    enabled: true
+    approval: auto
+  web.fetch:
+    enabled: true
+    approval: auto
+  filesystem.read:
+    enabled: true
+    approval: auto
+  filesystem.write:
+    enabled: true
+    approval: ask
+  terminal.run:
+    enabled: false
+    approval: ask
+  memory.read:
+    enabled: true
+    approval: auto
+  memory.write:
+    enabled: true
+    approval: auto
+autonomy:
+  level: A2
+  schedule_enabled: true
+  max_background_tasks_per_day: 8
+  can_start_tasks_without_user: true
+  can_message_user: true
+  can_message_external_people: false
+learning:
+  enabled: true
+  reflect_after_task: true
+  extract_reusable_workflows: true
+  min_quality_score_for_memory: 0.78
+  min_quality_score_for_skill_update: 0.85
+  require_eval_before_activation: true
+safety:
+  approval_required:
+    - file_delete
+    - external_post
+    - external_message
+    - package_install
+    - terminal_command
+    - money_spend
+  deny:
+    - credential_exfiltration
+    - hidden_external_send
+    - destructive_file_operation

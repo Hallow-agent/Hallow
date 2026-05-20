@@ -1,0 +1,94 @@
+<svg width="1400" height="760" viewBox="0 0 1400 760" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Hallow neural runtime map</title>
+  <desc id="desc">Animated neuron-like runtime map showing how Hallow connects local memory, model routing, MCP tools, gateway lanes, signed skills, sandbox, traces, and self-healing.</desc>
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="1400" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0a0a0a"/>
+      <stop offset="0.58" stop-color="#141414"/>
+      <stop offset="1" stop-color="#f7f7f7"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="9" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.9  0 1 0 0 0.9  0 0 1 0 0.9  0 0 0 .7 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+    <style>
+      .mono { font-family: "SFMono-Regular", "Cascadia Mono", Consolas, monospace; }
+      .wire { stroke-dasharray: 12 18; animation: move 18s linear infinite; }
+      .wire2 { stroke-dasharray: 4 15; animation: move 12s linear infinite reverse; }
+      .node { animation: breathe 3.2s ease-in-out infinite; transform-origin: center; }
+      .node2 { animation: breathe 4.4s ease-in-out infinite; transform-origin: center; animation-delay: .8s; }
+      .tick { animation: tick 2.6s ease-in-out infinite; }
+      @keyframes move { to { stroke-dashoffset: -420; } }
+      @keyframes breathe { 0%,100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.12); } }
+      @keyframes tick { 0%,100% { opacity: .28; } 50% { opacity: 1; } }
+    </style>
+  </defs>
+  <rect width="1400" height="760" rx="32" fill="url(#panel)"/>
+  <g opacity=".1" stroke="#fff">
+    <path d="M0 95H1400M0 190H1400M0 285H1400M0 380H1400M0 475H1400M0 570H1400M0 665H1400"/>
+    <path d="M100 0V760M200 0V760M300 0V760M400 0V760M500 0V760M600 0V760M700 0V760M800 0V760M900 0V760M1000 0V760M1100 0V760M1200 0V760M1300 0V760"/>
+  </g>
+  <g transform="translate(80 66)">
+    <text class="mono" x="0" y="0" fill="#fff" font-size="18" font-weight="800" letter-spacing="2">HALLOW RUNTIME GRAPH</text>
+    <text x="0" y="58" fill="#fff" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="900">One local agent OS, many capability lanes.</text>
+    <text class="mono" x="2" y="100" fill="#bdbdbd" font-size="18">Every edge is policy-gated. Every meaningful action becomes a trace.</text>
+  </g>
+  <g transform="translate(90 180)" stroke="#fff" stroke-width="2">
+    <path class="wire" d="M590 200 C430 64 222 80 96 200"/>
+    <path class="wire" d="M590 200 C450 226 300 336 112 390"/>
+    <path class="wire2" d="M590 200 C540 38 704 22 836 92"/>
+    <path class="wire" d="M590 200 C730 166 900 174 1068 202"/>
+    <path class="wire2" d="M590 200 C720 280 860 360 1052 414"/>
+    <path class="wire" d="M590 200 C516 370 640 470 832 532"/>
+    <path class="wire2" d="M590 200 C420 392 270 492 118 556"/>
+  </g>
+  <g class="mono" font-size="16" font-weight="800">
+    <g class="node" filter="url(#glow)">
+      <circle cx="680" cy="380" r="74" fill="#fff"/>
+      <circle cx="680" cy="380" r="58" fill="#050505"/>
+      <text x="632" y="374" fill="#fff">HALLOW</text>
+      <text x="640" y="400" fill="#999">runtime</text>
+    </g>
+    <g class="node2">
+      <rect x="120" y="320" width="230" height="86" rx="22" fill="#fff"/>
+      <text x="152" y="354" fill="#050505">LOCAL MEMORY</text>
+      <text x="152" y="382" fill="#555">sqlite / vectors / vault</text>
+    </g>
+    <g class="node">
+      <rect x="110" y="548" width="250" height="86" rx="22" fill="#fff"/>
+      <text x="142" y="582" fill="#050505">TRACE EVIDENCE</text>
+      <text x="142" y="610" fill="#555">artifacts / audits / usage</text>
+    </g>
+    <g class="node2">
+      <rect x="116" y="186" width="214" height="86" rx="22" fill="#fff"/>
+      <text x="150" y="220" fill="#050505">MCP TOOLS</text>
+      <text x="150" y="248" fill="#555">stdio / http / filters</text>
+    </g>
+    <g class="node">
+      <rect x="874" y="124" width="260" height="86" rx="22" fill="#fff"/>
+      <text x="906" y="158" fill="#050505">MODEL ROUTER</text>
+      <text x="906" y="186" fill="#555">openai / claude / local</text>
+    </g>
+    <g class="node2">
+      <rect x="1134" y="344" width="210" height="86" rx="22" fill="#050505" stroke="#fff"/>
+      <text x="1166" y="378" fill="#fff">GATEWAYS</text>
+      <text x="1166" y="406" fill="#aaa">chat / device / web</text>
+    </g>
+    <g class="node">
+      <rect x="906" y="570" width="270" height="86" rx="22" fill="#050505" stroke="#fff"/>
+      <text x="938" y="604" fill="#fff">SELF-HEALING</text>
+      <text x="938" y="632" fill="#aaa">quality / repair / promote</text>
+    </g>
+    <g class="node2">
+      <rect x="544" y="666" width="270" height="58" rx="18" fill="#fff"/>
+      <text x="584" y="702" fill="#050505">SIGNED PACKAGES</text>
+    </g>
+  </g>
+  <g class="mono" font-size="15" fill="#fff">
+    <text class="tick" x="1040" y="92">policy ok</text>
+    <text class="tick" x="346" y="154">capability discovered</text>
+    <text class="tick" x="868" y="494">repair candidate scored</text>
+    <text class="tick" x="354" y="672">private by default</text>
+  </g>
+</svg>

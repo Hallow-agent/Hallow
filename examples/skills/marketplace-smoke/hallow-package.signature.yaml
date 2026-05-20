@@ -1,0 +1,18 @@
+schema: hallow.package_signature/v1
+package_type: skill
+package_id: marketplace-smoke
+standard_version: hallow.skill/v1
+source_path: Z:\kodingan\SOSMED AI\Hallow\examples\skills\marketplace-smoke
+digest: sha256:239f94b4bdedb58ea13ba501be5d4f5389e75be91b6cf2804f6514bdf0e207ba
+signature_algorithm: ed25519
+signature: VqKXFvChiII3ON/vZNYUt30+Dy7jlrEBQpqebOfkH1S1ia5ihGmzn531yGAaPccLyYWjg9sSbcyVdPp9rb2yCg==
+public_key: |
+  -----BEGIN PUBLIC KEY-----
+  MCowBQYDK2VwAyEAUnv+TlP8LUnrWvXhZ/IExDz526aT4s4nNMA8vjUoIL8=
+  -----END PUBLIC KEY-----
+signed_at: 2026-05-19T20:14:13.459Z
+claims:
+  - manifest-verified
+  - local-first
+  - policy-gated
+  - skill-standard

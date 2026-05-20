@@ -1,0 +1,4 @@
+input:
+  prompt: "Verify marketplace smoke skill."
+expect:
+  status: succeeded

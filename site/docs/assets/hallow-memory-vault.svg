@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 420" role="img" aria-labelledby="title desc">
+  <title id="title">Hallow memory vault</title>
+  <desc id="desc">A monochrome visual of local memory blocks and vectors inside a private vault.</desc>
+  <rect width="760" height="420" rx="30" fill="#101010"/>
+  <g opacity=".2" stroke="#f7f7f4">
+    <path d="M60 60h640M60 120h640M60 180h640M60 240h640M60 300h640M60 360h640"/>
+    <path d="M100 40v340M180 40v340M260 40v340M340 40v340M420 40v340M500 40v340M580 40v340M660 40v340"/>
+  </g>
+  <rect x="122" y="76" width="516" height="268" rx="26" fill="#f7f7f4"/>
+  <rect x="154" y="108" width="452" height="204" rx="18" fill="#050505"/>
+  <g font-family="Consolas, monospace" font-size="14" font-weight="700">
+    <text x="182" y="146" fill="#f7f7f4">memory://vault/local</text>
+    <text x="182" y="176" fill="#8b8b85">trace_2026_05_20</text>
+    <text x="182" y="206" fill="#8b8b85">decision: keep context private</text>
+    <text x="182" y="236" fill="#8b8b85">vector: 181 item(s)</text>
+    <text x="182" y="266" fill="#f7f7f4">status: ready</text>
+  </g>
+  <g fill="none" stroke="#f7f7f4" stroke-width="3">
+    <path d="M510 144c36 0 62 28 62 64s-26 64-62 64-62-28-62-64 26-64 62-64z"/>
+    <path d="M479 209h62M510 178v62"/>
+    <path d="M466 166l88 88M554 166l-88 88" opacity=".38"/>
+  </g>
+</svg>

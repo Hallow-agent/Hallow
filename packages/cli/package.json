@@ -1,0 +1,19 @@
+{
+  "name": "@hallow/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "hallow": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "dependencies": {
+    "@hallow/core": "workspace:*",
+    "@hallow/models": "workspace:*",
+    "@hallow/runtime": "workspace:*"
+  }
+}
+

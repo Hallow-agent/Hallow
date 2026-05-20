@@ -33,7 +33,7 @@ ensure_node() {
     else
       case "$(uname -s 2>/dev/null || printf unknown)" in
         MINGW*|MSYS*|CYGWIN*)
-          fail "Node.js 22+ is required inside this Bash environment. On Windows, prefer PowerShell: irm https://hallow-agent.xyz/install.ps1 | iex"
+          fail "Node.js 22+ is required inside this Bash environment. On Windows, run: powershell -ExecutionPolicy Bypass -NoProfile -Command \"irm https://hallow-agent.xyz/install.ps1 | iex\""
           ;;
       esac
       fail "Node.js 22+ is required. Install Node.js, then rerun this installer."
@@ -45,7 +45,7 @@ ensure_node() {
   if [ "$major" -lt 22 ]; then
     case "$(uname -s 2>/dev/null || printf unknown)" in
       MINGW*|MSYS*|CYGWIN*)
-        fail "Hallow requires Node.js 22+. On Windows, prefer PowerShell: irm https://hallow-agent.xyz/install.ps1 | iex"
+        fail "Hallow requires Node.js 22+. On Windows, run: powershell -ExecutionPolicy Bypass -NoProfile -Command \"irm https://hallow-agent.xyz/install.ps1 | iex\""
         ;;
     esac
     fail "Hallow requires Node.js 22+. Current Node major is $major."
@@ -109,6 +109,10 @@ EOF
   chmod +x "$launcher"
 }
 
+run_hallow() {
+  node "$PROJECT_DIR/packages/cli/dist/index.js" --home "$HALLOW_HOME_DIR" "$@"
+}
+
 printf '\n\033[32mHallow Installer\033[0m\n'
 printf 'Local-first runtime for autonomous agents\n\n'
 
@@ -162,10 +166,22 @@ fi
 
 if [ "$SKIP_SETUP" != "1" ]; then
   log "Initializing Hallow home at $HALLOW_HOME_DIR"
-  corepack pnpm hallow --home "$HALLOW_HOME_DIR" init
-  corepack pnpm hallow --home "$HALLOW_HOME_DIR" desktop setup
+  run_hallow init >/dev/null
+  desktop_output="$(run_hallow desktop setup)"
+  desktop_url="$(printf '%s\n' "$desktop_output" | awk -F'URL: ' '/^URL: /{print $2; exit}')"
+  if [ -n "$desktop_url" ]; then
+    printf 'Desktop: %s\n' "$desktop_url"
+  else
+    printf 'Desktop: ready\n'
+  fi
   log "Running install health check"
-  corepack pnpm hallow --home "$HALLOW_HOME_DIR" doctor
+  doctor_output="$(run_hallow doctor)"
+  if printf '%s\n' "$doctor_output" | grep -q '^FAIL '; then
+    printf '%s\n' "$doctor_output"
+    fail "Hallow doctor reported failed check(s)."
+  fi
+  ok_count="$(printf '%s\n' "$doctor_output" | grep -c '^OK ' || true)"
+  printf 'Doctor: OK (%s checks)\n' "$ok_count"
 fi
 
 BIN_DIR="${HALLOW_BIN_DIR:-$HOME/.local/bin}"
@@ -177,11 +193,6 @@ printf 'Project: %s\n' "$PROJECT_DIR"
 printf 'Home:    %s\n' "$HALLOW_HOME_DIR"
 printf 'Command: hallow\n\n'
 
-if [ "$SKIP_SETUP" != "1" ]; then
-  corepack pnpm hallow --home "$HALLOW_HOME_DIR" terminal
-  printf '\n'
-fi
-
 case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
   *)
@@ -190,8 +201,9 @@ case ":$PATH:" in
     ;;
 esac
 
-printf 'Try:\n'
-printf '  hallow terminal\n'
-printf '  hallow setup\n'
-printf '  hallow doctor\n'
+printf 'Run now:\n'
+printf '  "%s/hallow" version\n' "$BIN_DIR"
+printf '  "%s/hallow" start\n\n' "$BIN_DIR"
+printf 'After opening a new terminal:\n'
+printf '  hallow version\n'
 printf '  hallow start\n'

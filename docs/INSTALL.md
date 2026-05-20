@@ -16,7 +16,19 @@ Requirement: Node.js 22+ and Git. The installer can install Git/Node with common
 
 ## Windows
 
-PowerShell:
+Use this from CMD or PowerShell:
+
+```cmd
+powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"
+```
+
+CMD-only downloadable wrapper:
+
+```cmd
+curl -fsSL https://hallow-agent.xyz/install.cmd -o "%TEMP%\hallow-install.cmd" && "%TEMP%\hallow-install.cmd"
+```
+
+PowerShell-native:
 
 ```powershell
 irm https://hallow-agent.xyz/install.ps1 | iex
@@ -53,7 +65,7 @@ The Windows installer writes launchers to:
 Open a new terminal after install, then run:
 
 ```powershell
-hallow setup
+hallow version
 hallow doctor
 hallow start
 ```
@@ -100,7 +112,7 @@ export PATH="$HOME/.local/bin:$PATH"
 Configure or refresh the local runtime:
 
 ```bash
-hallow setup
+hallow version
 hallow doctor
 hallow start
 ```

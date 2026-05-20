@@ -523,13 +523,13 @@
           </div>
           <div class="cmd">
             <strong>Windows</strong>
-            <code>irm https://hallow-agent.xyz/install.ps1 | iex</code>
-            <button class="copy-btn" data-copy="irm https://hallow-agent.xyz/install.ps1 | iex">Copy</button>
+            <code>powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"</code>
+            <button class="copy-btn" data-copy='powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"'>Copy</button>
           </div>
           <div class="cmd">
-            <strong>Setup</strong>
-            <code>hallow setup</code>
-            <button class="copy-btn" data-copy="hallow setup">Copy</button>
+            <strong>Check</strong>
+            <code>hallow version</code>
+            <button class="copy-btn" data-copy="hallow version">Copy</button>
           </div>
           <div class="cmd">
             <strong>Start</strong>
@@ -563,13 +563,13 @@
     <section class="section" id="demo">
       <div class="section-head">
         <h2>Use it without a manual.</h2>
-        <p>Install, configure, run a health check, then create an agent. The public UI never exposes your machine path.</p>
+        <p>Install, check the launcher, start the runtime, then create an agent. The public UI never exposes your machine path.</p>
       </div>
       <div class="demo">
         <div class="terminal" data-terminal="site" aria-label="Animated Hallow terminal"></div>
         <div class="steps">
-          <div class="step"><strong>1. Configure</strong><code>hallow setup</code></div>
-          <div class="step"><strong>2. Check</strong><code>hallow doctor</code></div>
+          <div class="step"><strong>1. Check</strong><code>hallow version</code></div>
+          <div class="step"><strong>2. Start</strong><code>hallow start</code></div>
           <div class="step"><strong>3. Create Agent</strong><code>hallow agent create research</code></div>
         </div>
       </div>
@@ -602,7 +602,10 @@
         { text: "launcher installed", status: "ok" },
         { text: "operator terminal ready", status: "ok" },
         { pause: true },
-        { text: "> hallow setup", type: true },
+        { text: "> hallow version", type: true },
+        { text: "Hallow 001 (0.0.1)", status: "ok" },
+        { pause: true },
+        { text: "> hallow start", type: true },
         { text: "runtime initialized", status: "ok" },
         { text: "memory vault ready", status: "ok" },
         { text: "mcp tools discovered", status: "ok" },

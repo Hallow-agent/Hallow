@@ -10,11 +10,11 @@ It is not a chatbot wrapper, not a landing-page demo, and not a cloud account th
 curl -fsSL https://hallow-agent.xyz/install.sh | bash
 ```
 
-```powershell
-irm https://hallow-agent.xyz/install.ps1 | iex
+```cmd
+powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"
 ```
 
-> Windows note: use PowerShell for the `.ps1` installer. Use the bash installer only inside WSL, Git Bash, macOS, Linux, or Termux.
+> Windows note: the command above works from CMD and PowerShell. Use the bash installer only inside WSL, Git Bash, macOS, Linux, or Termux.
 
 ## Why Hallow Exists
 
@@ -34,8 +34,7 @@ Hallow tries to make those lanes feel like one installable agent OS. The platfor
 ## First Run
 
 ```bash
-hallow terminal
-hallow setup
+hallow version
 hallow doctor
 hallow start
 ```
@@ -46,7 +45,11 @@ Then open:
 http://127.0.0.1:4767/desktop
 ```
 
-The terminal is part of the product, not an afterthought:
+The operator terminal is optional when you want the full runtime surface:
+
+```bash
+hallow terminal
+```
 
 ![Hallow terminal preview](./docs/assets/hallow-terminal-preview.svg)
 
@@ -83,17 +86,17 @@ corepack enable
 corepack pnpm install --frozen-lockfile
 corepack pnpm build
 corepack pnpm hallow --home .hallow-dev setup
-corepack pnpm hallow --home .hallow-dev terminal
+corepack pnpm hallow --home .hallow-dev start
 ```
 
 ## Core Commands
 
 ```bash
-hallow terminal
-hallow setup
+hallow version
 hallow doctor
 hallow readiness
 hallow start
+hallow terminal
 hallow agent create research
 hallow skill hub
 hallow mcp discover

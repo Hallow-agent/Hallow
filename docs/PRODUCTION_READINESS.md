@@ -37,10 +37,10 @@ Hallow's public install command is:
 curl -fsSL https://hallow-agent.xyz/install.sh | bash
 ```
 
-Windows PowerShell:
+Windows:
 
-```powershell
-irm https://hallow-agent.xyz/install.ps1 | iex
+```cmd
+powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"
 ```
 
 Before publishing those commands, confirm:
@@ -49,6 +49,7 @@ Before publishing those commands, confirm:
 - `main` contains `scripts/install.sh`, `scripts/install.ps1`, `package.json`, `pnpm-lock.yaml`, and all workspace packages.
 - `https://hallow-agent.xyz/install.sh` returns the self-contained Bash installer.
 - `https://hallow-agent.xyz/install.ps1` returns the self-contained PowerShell installer.
+- `https://hallow-agent.xyz/install.cmd` returns the CMD wrapper.
 - A clean machine with Node.js 22+ can install, build, run `hallow doctor`, and launch `hallow start`.
 
 ## Runtime Boundary

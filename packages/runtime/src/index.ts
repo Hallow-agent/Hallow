@@ -15343,7 +15343,7 @@ function renderDesktopShellHtml(manifest: DesktopShellManifest): string {
       </div>
       <div class="feature-grid">
         <article class="feature" data-index="01"><h3>Install</h3><p>Fetch Hallow from the official domain.</p><code class="mini-code">curl -fsSL https://hallow-agent.xyz/install.sh | bash</code></article>
-        <article class="feature" data-index="02"><h3>Setup</h3><p>Create the private runtime, vault, shell, and standard manifest.</p><code class="mini-code">hallow setup</code></article>
+        <article class="feature" data-index="02"><h3>Windows</h3><p>Install cleanly from CMD or PowerShell.</p><code class="mini-code">powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"</code></article>
         <article class="feature" data-index="03"><h3>Start</h3><p>Launch the local agent OS and open the desktop runtime.</p><code class="mini-code">hallow start</code></article>
         <article class="feature" data-index="04"><h3>Create agent</h3><p>Generate a starter agent under the Hallow standard.</p><code class="mini-code">hallow agent create research</code></article>
         <article class="feature" data-index="05"><h3>Add models</h3><p>Connect OpenAI-compatible, local, or custom providers.</p><code class="mini-code">hallow models list</code></article>
@@ -16046,13 +16046,13 @@ function renderDesktopShellHtmlGradient(manifest: DesktopShellManifest): string 
           </div>
           <div class="cmd">
             <strong>Windows</strong>
-            <code>irm https://hallow-agent.xyz/install.ps1 | iex</code>
-            <button class="copy-btn" data-copy="irm https://hallow-agent.xyz/install.ps1 | iex">Copy</button>
+            <code>powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"</code>
+            <button class="copy-btn" data-copy='powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"'>Copy</button>
           </div>
           <div class="cmd">
-            <strong>Setup</strong>
-            <code>hallow setup</code>
-            <button class="copy-btn" data-copy="hallow setup">Copy</button>
+            <strong>Check</strong>
+            <code>hallow version</code>
+            <button class="copy-btn" data-copy="hallow version">Copy</button>
           </div>
           <div class="cmd">
             <strong>Start</strong>
@@ -16091,8 +16091,8 @@ function renderDesktopShellHtmlGradient(manifest: DesktopShellManifest): string 
       <div class="demo">
         <div class="terminal" data-terminal="runtime" aria-label="Animated Hallow terminal"></div>
         <div class="steps">
-          <div class="step"><strong>1. Configure</strong><code>hallow setup</code></div>
-          <div class="step"><strong>2. Check</strong><code>hallow doctor</code></div>
+          <div class="step"><strong>1. Check</strong><code>hallow version</code></div>
+          <div class="step"><strong>2. Start</strong><code>hallow start</code></div>
           <div class="step"><strong>3. Create Agent</strong><code>hallow agent create research</code></div>
         </div>
       </div>
@@ -16114,7 +16114,10 @@ function renderDesktopShellHtmlGradient(manifest: DesktopShellManifest): string 
   <script>
     const terminalScripts = {
       runtime: [
-        { text: "> hallow setup", type: true },
+        { text: "> hallow version", type: true },
+        { text: "Hallow 001 (0.0.1)", status: "ok" },
+        { pause: true },
+        { text: "> hallow start", type: true },
         { text: "runtime initialized", status: "ok" },
         { text: "memory vault ready", status: "ok" },
         { text: "mcp tools discovered", status: "ok" },

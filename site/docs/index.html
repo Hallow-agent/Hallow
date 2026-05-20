@@ -408,17 +408,16 @@
           <figcaption>The first-run path stays simple before deeper runtime controls appear.</figcaption>
         </figure>
         <pre><code>curl -fsSL https://hallow-agent.xyz/install.sh | bash
-hallow terminal
-hallow setup
+hallow version
 hallow doctor
 hallow start</code></pre>
-        <div class="note">On Windows, use the PowerShell installer below. If you use WSL2, install inside the Linux environment for the cleanest local runtime.</div>
+        <div class="note">On Windows, the command below works from CMD and PowerShell. If you use WSL2, install inside the Linux environment for the cleanest local runtime.</div>
       </section>
 
       <section id="windows">
         <h2>Installation</h2>
         <div class="steps">
-          <article class="step"><span>01</span><div><strong>Windows</strong><pre><code>irm https://hallow-agent.xyz/install.ps1 | iex</code></pre></div></article>
+          <article class="step"><span>01</span><div><strong>Windows</strong><pre><code>powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"</code></pre></div></article>
           <article class="step"><span>02</span><div><strong>macOS / Linux / WSL2</strong><pre><code>curl -fsSL https://hallow-agent.xyz/install.sh | bash</code></pre></div></article>
           <article class="step" id="android"><span>03</span><div><strong>Android / Termux</strong><p>Use the Linux installer inside Termux after Node and Git are available. Mobile support is a runtime target, not the recommended first install path.</p></div></article>
         </div>

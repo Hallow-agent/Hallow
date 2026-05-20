@@ -4207,7 +4207,8 @@ function terminalNextRows(context: CommandContext, options: TerminalWelcomeOptio
 
   return [
     formatMetric("install", "curl -fsSL https://hallow-agent.xyz/install.sh | bash"),
-    formatMetric("setup", "hallow setup"),
+    formatMetric("windows", 'powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"'),
+    formatMetric("check", "hallow version"),
     formatMetric("start", startCommand),
     formatMetric("doctor", "hallow doctor")
   ];
@@ -4450,7 +4451,7 @@ Usage:
   hallow usage list [--limit 20]
 
 Examples:
-  hallow setup
+  hallow version
   hallow agent run hallow "turn my weekly repo review into a reusable workflow"
   hallow model add ollama
   hallow start

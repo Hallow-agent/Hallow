@@ -117,6 +117,20 @@ function Write-Launchers {
   ) -join "`r`n" | Set-Content -Encoding ASCII $ps1Path
 }
 
+function Invoke-HallowCli {
+  param(
+    [string]$ProjectDir,
+    [string]$HomeDir,
+    [string[]]$CliArgs
+  )
+
+  $cliPath = Join-Path $ProjectDir "packages\cli\dist\index.js"
+  & node $cliPath --home $HomeDir @CliArgs
+  if ($LASTEXITCODE -ne 0) {
+    throw "hallow $($CliArgs -join ' ') failed with exit code $LASTEXITCODE"
+  }
+}
+
 Write-Host ""
 Write-Host "Hallow Installer" -ForegroundColor Green
 Write-Host "Local-first runtime for autonomous agents"
@@ -180,10 +194,23 @@ try {
 
   if (-not $SkipSetup) {
     Write-Step "Initializing Hallow home at $HallowHome"
-    corepack pnpm hallow --home $HallowHome init
-    corepack pnpm hallow --home $HallowHome desktop setup
+    Invoke-HallowCli -ProjectDir $projectDir -HomeDir $HallowHome -CliArgs @("init") | Out-Null
+    $desktopOutput = Invoke-HallowCli -ProjectDir $projectDir -HomeDir $HallowHome -CliArgs @("desktop", "setup")
+    $desktopUrl = ($desktopOutput | Where-Object { $_ -like "URL:*" } | Select-Object -First 1) -replace "^URL:\s*", ""
+    if ($desktopUrl) {
+      Write-Host "Desktop: $desktopUrl"
+    } else {
+      Write-Host "Desktop: ready"
+    }
     Write-Step "Running install health check"
-    corepack pnpm hallow --home $HallowHome doctor
+    $doctorOutput = Invoke-HallowCli -ProjectDir $projectDir -HomeDir $HallowHome -CliArgs @("doctor")
+    $failed = @($doctorOutput | Where-Object { $_ -like "FAIL *" })
+    if ($failed.Count -gt 0) {
+      $doctorOutput | ForEach-Object { Write-Host $_ }
+      throw "Hallow doctor reported $($failed.Count) failed check(s)."
+    }
+    $okCount = @($doctorOutput | Where-Object { $_ -like "OK *" }).Count
+    Write-Host "Doctor: OK ($okCount checks)"
   }
 } finally {
   Pop-Location
@@ -195,6 +222,9 @@ Write-Launchers -BinDir $binDir -ProjectDir $projectDir -HomeDir $HallowHome
 
 if (-not $NoPath) {
   Add-UserPath -PathToAdd $binDir
+  if (($env:Path -split ";") -notcontains $binDir) {
+    $env:Path = "$binDir;$env:Path"
+  }
 }
 
 Write-Host ""
@@ -202,21 +232,13 @@ Write-Host "Hallow installed." -ForegroundColor Green
 Write-Host "Project: $projectDir"
 Write-Host "Home:    $HallowHome"
 Write-Host "Command: hallow"
+Write-Host "Direct:  $binDir\hallow.cmd"
 Write-Host ""
-
-if (-not $SkipSetup) {
-  Push-Location $projectDir
-  try {
-    corepack pnpm hallow --home $HallowHome terminal
-  } finally {
-    Pop-Location
-  }
-  Write-Host ""
-}
-
-Write-Host "Open a new terminal, then run:"
-Write-Host "  hallow terminal"
-Write-Host "  hallow setup"
-Write-Host "  hallow doctor"
+Write-Host "Run now:"
+Write-Host "  `"$binDir\hallow.cmd`" version"
+Write-Host "  `"$binDir\hallow.cmd`" start"
+Write-Host ""
+Write-Host "After opening a new terminal:"
+Write-Host "  hallow version"
 Write-Host "  hallow start"
 Write-Host ""

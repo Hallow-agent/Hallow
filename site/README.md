@@ -15,15 +15,14 @@ Public install surface:
 curl -fsSL https://hallow-agent.xyz/install.sh | bash
 ```
 
-```powershell
-irm https://hallow-agent.xyz/install.ps1 | iex
+```cmd
+powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"
 ```
 
 Configure after install:
 
 ```bash
-hallow terminal
-hallow setup
+hallow version
 hallow start
 ```
 
@@ -33,4 +32,4 @@ Docs surface:
 /docs
 ```
 
-The bootstrap scripts fetch the canonical installer from the GitHub repo and keep `/install.sh` plus `/install.ps1` stable for the public domain.
+The install scripts are self-contained at `/install.sh`, `/install.ps1`, and `/install.cmd`.

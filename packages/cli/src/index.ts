@@ -60,7 +60,8 @@ import {
   WebAuthStatusReport
 } from "@hallow/runtime";
 
-const HALLOW_CLI_VERSION = "0.1.0";
+const HALLOW_CLI_VERSION = "0.0.1";
+const HALLOW_RELEASE_LABEL = "001";
 
 const HALLOW_WORDMARK = String.raw`
  __    __   ______   __       __        ______   __       __
@@ -150,6 +151,11 @@ async function dispatch(context: CommandContext): Promise<void> {
 
   if (!command || command === "help" || command === "--help" || command === "-h") {
     printHelp();
+    return;
+  }
+
+  if (command === "version" || command === "--version" || command === "-v") {
+    console.log(`Hallow ${HALLOW_RELEASE_LABEL} (${HALLOW_CLI_VERSION})`);
     return;
   }
 
@@ -268,6 +274,11 @@ async function dispatch(context: CommandContext): Promise<void> {
 
   if (command === "memory") {
     await handleMemory(context, subcommand, rest);
+    return;
+  }
+
+  if (command === "workspace") {
+    await handleWorkspace(context, subcommand, rest);
     return;
   }
 
@@ -441,6 +452,9 @@ async function handleAgent(
     console.log(`Trace: ${hallowPath(context.home, "traces", `${result.trace.id}.yaml`)}`);
     if (result.simulated) {
       console.log("Note: model route was unavailable, so Hallow used local fallback mode.");
+    }
+    if (result.trace.status === "failed") {
+      process.exitCode = 1;
     }
     return;
   }
@@ -1329,7 +1343,7 @@ async function handleHallowMcpMessage(context: CommandContext, message: CliJsonR
         },
         serverInfo: {
           name: "hallow",
-          version: "0.1.0"
+          version: "0.0.1"
         }
       });
       return;
@@ -1734,6 +1748,43 @@ async function handleTool(
   }
 
   throw new Error(`Unknown tool command: ${subcommand}`);
+}
+
+async function handleWorkspace(
+  context: CommandContext,
+  subcommand: string | undefined,
+  rest: string[]
+): Promise<void> {
+  await context.runtime.init();
+
+  if (subcommand === "path" || !subcommand) {
+    console.log(await context.runtime.getWorkspacePath());
+    return;
+  }
+
+  if (subcommand === "import") {
+    const sourcePath = readOption(rest, "--path") ?? rest[0];
+    const destinationPath = readOption(rest, "--as") ?? readOption(rest, "--dest");
+
+    if (!sourcePath) {
+      throw new Error("Usage: hallow workspace import <source-file> [--as relative/file.txt]");
+    }
+
+    const result = await context.runtime.importWorkspaceFile(sourcePath, destinationPath);
+    console.log(`${result.status.toUpperCase()} ${result.tool}`);
+    console.log(`Workspace: ${await context.runtime.getWorkspacePath()}`);
+    console.log(`Target: ${result.target}`);
+    console.log(result.message);
+    if (result.output_path) {
+      console.log(`Imported: ${result.output_path}`);
+    }
+    if (result.status !== "success") {
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  throw new Error(`Unknown workspace command: ${subcommand}`);
 }
 
 async function handleTask(
@@ -3991,7 +4042,7 @@ async function printTerminalWelcome(context: CommandContext, options: TerminalWe
   printTerminalText(repeatChar("-", width), "90");
 
   const rightBlock = [
-    `Hallow Agent OS v${HALLOW_CLI_VERSION}  ::  ${terminalModeLabel(options.mode)}`,
+    `Hallow Agent OS ${HALLOW_RELEASE_LABEL} / v${HALLOW_CLI_VERSION}  ::  ${terminalModeLabel(options.mode)}`,
     `session ${session}  ::  local-first / private runtime`,
     `readiness ${readiness ? `${readiness.score}% ${readiness.status}` : "collecting"}  ::  checks ${checkCount > 0 ? `${passingChecks}/${checkCount}` : "pending"}`,
     `memory ${snapshot.memory ? `${snapshot.memory.sqlite_items} item(s), ${snapshot.memory.index_items} indexed` : "vault pending"}`,
@@ -4292,6 +4343,8 @@ Usage:
   hallow memory search "query"
   hallow memory export [--path file] [--obsidian]
   hallow memory stats
+  hallow workspace path
+  hallow workspace import <source-file> [--as relative/file.txt]
   hallow embedding status
   hallow embedding list
   hallow embedding configure <name> [--type openai_compatible|ollama|local_token] [--model model] [--base-url url] [--api-key-env ENV] [--default]

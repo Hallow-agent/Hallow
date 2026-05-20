@@ -31,6 +31,11 @@ ensure_node() {
       log "Installing Node.js and git with Homebrew"
       brew install node git
     else
+      case "$(uname -s 2>/dev/null || printf unknown)" in
+        MINGW*|MSYS*|CYGWIN*)
+          fail "Node.js 22+ is required inside this Bash environment. On Windows, prefer PowerShell: irm https://hallow-agent.xyz/install.ps1 | iex"
+          ;;
+      esac
       fail "Node.js 22+ is required. Install Node.js, then rerun this installer."
     fi
   fi
@@ -38,6 +43,11 @@ ensure_node() {
   local major
   major="$(node -p 'Number(process.versions.node.split(".")[0])')"
   if [ "$major" -lt 22 ]; then
+    case "$(uname -s 2>/dev/null || printf unknown)" in
+      MINGW*|MSYS*|CYGWIN*)
+        fail "Hallow requires Node.js 22+. On Windows, prefer PowerShell: irm https://hallow-agent.xyz/install.ps1 | iex"
+        ;;
+    esac
     fail "Hallow requires Node.js 22+. Current Node major is $major."
   fi
 }
@@ -154,6 +164,8 @@ if [ "$SKIP_SETUP" != "1" ]; then
   log "Initializing Hallow home at $HALLOW_HOME_DIR"
   corepack pnpm hallow --home "$HALLOW_HOME_DIR" init
   corepack pnpm hallow --home "$HALLOW_HOME_DIR" desktop setup
+  log "Running install health check"
+  corepack pnpm hallow --home "$HALLOW_HOME_DIR" doctor
 fi
 
 BIN_DIR="${HALLOW_BIN_DIR:-$HOME/.local/bin}"

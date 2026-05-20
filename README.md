@@ -160,7 +160,9 @@ ANTHROPIC_API_KEY=
 
 ## Current Status
 
-Hallow is in demo-to-product hardening. The current build includes:
+Hallow `001` (`0.0.1`) is the first public preview. It is ready for local-first installation and real testing, with future releases planned for native installer, hosted registry, deeper sandboxing, richer gateway adapters, stronger desktop UX, and more autonomous loops.
+
+The current build includes:
 
 - CLI installer flow.
 - Local runtime server.
@@ -175,6 +177,8 @@ Hallow is in demo-to-product hardening. The current build includes:
 - OAuth and web-auth profile definitions.
 - Autonomy tick, loop, heartbeat, quality, reactive repair, and heal commands.
 - Security audit, sandbox profile, approval queue, and API token guard.
+
+See [CHANGELOG.md](./CHANGELOG.md) for release notes.
 
 Next production jumps:
 
@@ -192,6 +196,8 @@ Next production jumps:
 - [Comparison](./docs/COMPARISON.md)
 - [Gap closure](./docs/GAP_CLOSURE.md)
 - [Perfect build checklist](./docs/PERFECT_BUILD.md)
+- [Production readiness](./docs/PRODUCTION_READINESS.md)
+- [Security policy](./SECURITY.md)
 - [Blueprint](./BLUEPRINT.md)
 
 ## Project Shape

@@ -284,7 +284,7 @@ export function createDefaultSkillManifest(id: string, name = titleize(id)): Ski
     schema: "hallow.skill/v1",
     id,
     name,
-    version: "0.1.0",
+    version: "0.0.1",
     author: "local",
     license: "private",
     entry: "SKILL.md",

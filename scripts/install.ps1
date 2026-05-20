@@ -182,6 +182,8 @@ try {
     Write-Step "Initializing Hallow home at $HallowHome"
     corepack pnpm hallow --home $HallowHome init
     corepack pnpm hallow --home $HallowHome desktop setup
+    Write-Step "Running install health check"
+    corepack pnpm hallow --home $HallowHome doctor
   }
 } finally {
   Pop-Location

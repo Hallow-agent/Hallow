@@ -42,7 +42,7 @@
     <text x="142" y="412" fill="#fff">10|  11 11   |01</text>
     <text x="142" y="438" fill="#fff">10| 0_11_0   |01</text>
     <text x="142" y="464" fill="#fff">001\__11__/100</text>
-    <text x="420" y="334" fill="#fff">Hallow Agent OS v0.1.0  ::  runtime online</text>
+    <text x="420" y="334" fill="#fff">Hallow Agent OS 001 / v0.0.1  ::  runtime online</text>
     <text x="420" y="360" fill="#aaa">session 20260520_114818  ::  local-first / private runtime</text>
     <text class="line" x="420" y="386" fill="#fff">readiness 100% strong  ::  checks 33/33</text>
     <text class="line2" x="420" y="412" fill="#fff">memory 213 item(s), 213 indexed</text>

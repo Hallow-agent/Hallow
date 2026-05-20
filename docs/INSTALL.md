@@ -7,9 +7,12 @@ Hallow follows the Hermes-style install model:
 - dependencies are installed with Corepack/pnpm;
 - Hallow is built locally;
 - `~/.hallow` / `%USERPROFILE%\.hallow` is initialized;
+- `hallow doctor` runs before the installer exits;
 - a global `hallow` launcher is written into the user path.
 
 This is intentionally simpler than shipping a large native app first. The desktop shell still runs from the local runtime.
+
+Requirement: Node.js 22+ and Git. The installer can install Git/Node with common package managers on some systems, but a clean manual Node.js 22+ install is the safest path.
 
 ## Windows
 
@@ -101,6 +104,16 @@ hallow setup
 hallow doctor
 hallow start
 ```
+
+## Model Keys
+
+Hallow can run with local models first. For hosted models, put keys in the local Hallow home, never in Git:
+
+```bash
+cp .env.example ~/.hallow/.env
+```
+
+Then fill only the providers you use, for example `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY`.
 
 ## What This Is Not
 

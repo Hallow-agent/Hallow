@@ -1,6 +1,6 @@
 {
   "name": "@hallow/cli",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "type": "module",
   "bin": {
     "hallow": "./dist/index.js"
@@ -16,4 +16,3 @@
     "@hallow/runtime": "workspace:*"
   }
 }
-

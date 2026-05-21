@@ -8,10 +8,10 @@ It is not a chatbot wrapper, not a landing-page demo, and not a cloud account th
 
 ## Install Hallow 001
 
-Windows PowerShell:
+Windows CMD or PowerShell:
 
-```powershell
-irm https://hallow-agent.xyz/install.ps1 | iex
+```cmd
+powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"
 ```
 
 macOS, Linux, WSL2, or Termux:
@@ -20,10 +20,10 @@ macOS, Linux, WSL2, or Termux:
 curl -fsSL https://hallow-agent.xyz/install.sh | bash
 ```
 
-CMD fallback:
+PowerShell-native fallback:
 
-```cmd
-powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"
+```powershell
+irm https://hallow-agent.xyz/install.ps1 | iex
 ```
 
 After install, `hallow` is written into the user path as the global launcher.

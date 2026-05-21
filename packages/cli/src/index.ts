@@ -63,29 +63,28 @@ import {
 const HALLOW_CLI_VERSION = "0.0.1";
 const HALLOW_RELEASE_LABEL = "001";
 
+const HALLOW_WINDOWS_INSTALL_COMMAND = 'powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"';
+
 const HALLOW_WORDMARK = String.raw`
- __    __   ______   __       __        ______   __       __
-|  \  |  \ /      \ |  \     |  \      /      \ |  \  _  |  \
-| $$  | $$|  $$$$$$\| $$     | $$     |  $$$$$$\| $$ / \ | $$
-| $$__| $$| $$__| $$| $$     | $$     | $$  | $$| $$/  $\| $$
-| $$    $$| $$    $$| $$     | $$     | $$  | $$| $$  $$$\ $$
-| $$$$$$$$| $$$$$$$$| $$     | $$     | $$  | $$| $$ $$\$$\$$
-| $$  | $$| $$  | $$| $$_____| $$_____| $$__/ $$| $$$$  \$$$$
-| $$  | $$| $$  | $$| $$     \| $$     \ \$$    $$| $$$    \$$$
- \$$   \$$ \$$   \$$ \$$$$$$$$ \$$$$$$$$  \$$$$$$  \$$      \$$
+HH   HH   AAAAA   LL       LL        OOOOO   WW        WW
+HH   HH  AA   AA  LL       LL       OO   OO  WW   WW   WW
+HHHHHHH  AAAAAAA  LL       LL       OO   OO  WW  WWWW  WW
+HH   HH  AA   AA  LL       LL       OO   OO   WWWW  WWWW
+HH   HH  AA   AA  LLLLLLL  LLLLLLL   OOOOO     WW    WW
 `.trim().split("\n");
 
 const HALLOW_MASK_ASCII = String.raw`
-          001111111100
-       001/          \100
-     01/   11111111   \10
-    10|      11 11     |01
-    10|    0_11 11_0   |01
-    10|       000      |01
-    10|    __/  \__    |01
-     01\     11      /10
-       001\__11__/100
-           000000
+             00111111111100
+          001/              \100
+        01/      111111      \10
+       10|        ||||        |01
+       10|        ||||        |01
+       10|   00   ||||   00   |01
+       01|  00 \  1111  / 00  |10
+        01\      0000      /10
+          001\    ||    /100
+             001\ || /100
+                001100
 `.split("\n").slice(1, -1);
 
 type CommandContext = {
@@ -112,6 +111,7 @@ type TerminalWelcomeOptions = {
   port?: number;
   startUrl?: string;
   desktop?: DesktopShellStatus;
+  notice?: string;
 };
 
 type TerminalSnapshot = {
@@ -212,8 +212,28 @@ async function dispatch(context: CommandContext): Promise<void> {
     const config = await context.runtime.readConfig();
     const selectedPort = Number.isFinite(port) && port > 0 ? port : config.gateway.local_console.port;
     const startUrl = `http://${config.gateway.local_console.host}:${selectedPort}/desktop`;
-    await context.runtime.startLocalApi(selectedPort, { quiet: true });
-    await printTerminalWelcome(context, { mode: "start", port: selectedPort, startUrl });
+    try {
+      await context.runtime.startLocalApi(selectedPort, { quiet: true });
+      await printTerminalWelcome(context, { mode: "start", port: selectedPort, startUrl });
+    } catch (error) {
+      if (isAddressInUseError(error)) {
+        const isHallow = await isLocalHallowRuntime(config.gateway.local_console.host, selectedPort);
+        if (isHallow) {
+          await printTerminalWelcome(context, {
+            mode: "start",
+            port: selectedPort,
+            startUrl,
+            notice: `runtime already active on port ${selectedPort}`
+          });
+          return;
+        }
+
+        console.error(`Port ${selectedPort} is already in use. Try: hallow start --port ${selectedPort + 1}`);
+        process.exitCode = 1;
+        return;
+      }
+      throw error;
+    }
     return;
   }
 
@@ -4040,22 +4060,24 @@ async function printTerminalWelcome(context: CommandContext, options: TerminalWe
   const startUrl = options.startUrl ?? snapshot.desktop?.start_url ?? "/desktop";
   const port = options.port ?? snapshot.desktop?.port ?? 4767;
 
+  prepareTerminalSurface();
   printTerminalText("");
+  printTerminalFrame(`HALLOW AGENT OS ${HALLOW_RELEASE_LABEL}`, "LOCAL-FIRST AUTONOMOUS RUNTIME", width);
   for (const line of HALLOW_WORDMARK) {
-    printTerminalText(line, "1;97");
+    printTerminalText(`  ${line}`, "1;97");
   }
   printTerminalText(repeatChar("-", width), "90");
 
   const rightBlock = [
     `Hallow Agent OS ${HALLOW_RELEASE_LABEL} / v${HALLOW_CLI_VERSION}  ::  ${terminalModeLabel(options.mode)}`,
+    options.notice ? `state ${options.notice}` : `runtime http://127.0.0.1:${port}/desktop`,
     `session ${session}  ::  local-first / private runtime`,
     `readiness ${readiness ? `${readiness.score}% ${readiness.status}` : "collecting"}  ::  checks ${checkCount > 0 ? `${passingChecks}/${checkCount}` : "pending"}`,
     `memory ${snapshot.memory ? `${snapshot.memory.sqlite_items} item(s), ${snapshot.memory.index_items} indexed` : "vault pending"}`,
     `mcp ${mcpServers} server(s), ${mcpTools} registered tool(s)`,
     `models ${modelProviders} provider(s), ${modelRoutes} route(s)`,
     `gateway ${snapshot.gateway ? `${snapshot.gateway.enabled_channels}/${snapshot.gateway.total_channels} channel(s), ${snapshot.gateway.active_pairings} pairing(s)` : "not scanned"}`,
-    `tools ${enabledTools}/${totalTools} enabled  ::  skills ${installedSkills}/${skillEntries} installed  ::  agents ${agentCount}`,
-    `runtime http://127.0.0.1:${port}/desktop`
+    `tools ${enabledTools}/${totalTools} enabled  ::  skills ${installedSkills}/${skillEntries} installed  ::  agents ${agentCount}`
   ];
 
   const logoWidth = Math.max(...HALLOW_MASK_ASCII.map((line) => line.length));
@@ -4064,7 +4086,9 @@ async function printTerminalWelcome(context: CommandContext, options: TerminalWe
   for (let index = 0; index < bodyRows; index += 1) {
     const logo = padRight(HALLOW_MASK_ASCII[index] ?? "", logoWidth);
     const detail = clipText(rightBlock[index] ?? "", detailWidth);
-    printTerminalText(`${logo}   ${detail}`, index < HALLOW_MASK_ASCII.length ? "37" : undefined);
+    const logoPart = terminalColor(logo, index < HALLOW_MASK_ASCII.length ? "1;97" : "90");
+    const detailPart = terminalColor(detail, index === 1 && options.notice ? "1;97" : "37");
+    printTerminalText(`${logoPart}   ${detailPart}`);
   }
 
   printTerminalSection("RUNTIME CHECKS", [
@@ -4136,6 +4160,27 @@ async function collectTerminalSnapshot(context: CommandContext, desktop?: Deskto
 
 function settledValue<T>(result: PromiseSettledResult<T>): T | undefined {
   return result.status === "fulfilled" ? result.value : undefined;
+}
+
+function isAddressInUseError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "EADDRINUSE";
+}
+
+async function isLocalHallowRuntime(host: string, port: number): Promise<boolean> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 800);
+  try {
+    const response = await fetch(`http://${host}:${port}/api/health`, { signal: controller.signal });
+    if (!response.ok) {
+      return false;
+    }
+    const body = await response.json() as { ok?: unknown };
+    return body.ok === true;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function terminalToolRows(snapshot: TerminalSnapshot): string[] {
@@ -4211,7 +4256,7 @@ function terminalNextRows(context: CommandContext, options: TerminalWelcomeOptio
   }
 
   return [
-    formatMetric("global install", "irm https://hallow-agent.xyz/install.ps1 | iex"),
+    formatMetric("windows install", HALLOW_WINDOWS_INSTALL_COMMAND),
     formatMetric("mac/linux", "curl -fsSL https://hallow-agent.xyz/install.sh | bash"),
     formatMetric("open", "hallow"),
     formatMetric("start", startCommand),
@@ -4219,11 +4264,31 @@ function terminalNextRows(context: CommandContext, options: TerminalWelcomeOptio
   ];
 }
 
+function prepareTerminalSurface(): void {
+  if (!process.stdout.isTTY) {
+    return;
+  }
+
+  process.stdout.write(`\x1b]0;Hallow Agent OS ${HALLOW_RELEASE_LABEL}\x07`);
+  if (supportsAnsi()) {
+    process.stdout.write("\x1b[0m");
+  }
+}
+
+function printTerminalFrame(title: string, subtitle: string, width: number): void {
+  const innerWidth = Math.max(20, width - 2);
+  printTerminalText(`+${repeatChar("=", innerWidth)}+`, "90");
+  printTerminalText(`|${centerText(title, innerWidth)}|`, "1;30;47");
+  printTerminalText(`|${centerText(subtitle, innerWidth)}|`, "37");
+  printTerminalText(`+${repeatChar("=", innerWidth)}+`, "90");
+}
+
 function printTerminalSection(title: string, rows: string[], width: number): void {
   printTerminalText("");
-  printTerminalText(title, "1;97");
+  const divider = repeatChar("-", Math.max(2, width - title.length - 5));
+  printTerminalText(`-- ${title} ${divider}`, "90");
   for (const row of rows) {
-    printTerminalText(`  ${clipText(row, width - 2)}`, "37");
+    printTerminalText(`  ${clipText(row, width - 2)}`, "97");
   }
 }
 
@@ -4270,6 +4335,15 @@ function createTerminalSessionId(): string {
 
 function padRight(value: string, length: number): string {
   return value.length >= length ? value : `${value}${" ".repeat(length - value.length)}`;
+}
+
+function centerText(value: string, length: number): string {
+  if (value.length >= length) {
+    return value.slice(0, length);
+  }
+  const left = Math.floor((length - value.length) / 2);
+  const right = length - value.length - left;
+  return `${" ".repeat(left)}${value}${" ".repeat(right)}`;
 }
 
 function clipText(value: string, maxLength: number): string {

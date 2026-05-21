@@ -518,8 +518,8 @@
         <div class="commands">
           <div class="cmd primary">
             <strong>Global Install</strong>
-            <code data-install-command>irm https://hallow-agent.xyz/install.ps1 | iex</code>
-            <button class="copy-btn" data-copy="irm https://hallow-agent.xyz/install.ps1 | iex" data-install-copy>Copy</button>
+            <code data-install-command>powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"</code>
+            <button class="copy-btn" data-copy='powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"' data-install-copy>Copy</button>
           </div>
           <div class="cmd">
             <strong>Launch</strong>
@@ -587,7 +587,7 @@
   </main>
   <script>
     const globalInstallCommand = /win/i.test(navigator.platform || navigator.userAgent)
-      ? "irm https://hallow-agent.xyz/install.ps1 | iex"
+      ? 'powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"'
       : "curl -fsSL https://hallow-agent.xyz/install.sh | bash";
 
     const terminalScripts = {

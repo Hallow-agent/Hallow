@@ -38,7 +38,7 @@ function Ensure-Command {
   }
 
   if (-not (Test-Command $Name)) {
-    throw "$Name is required for Hallow. Install it, open a new terminal, then rerun this installer."
+    throw "$Name is required for Hallow. Install it, then rerun this installer."
   }
 }
 
@@ -164,7 +164,7 @@ Ensure-Command git "Git.Git" "repository install/update"
 Ensure-Command corepack "OpenJS.NodeJS.LTS" "pnpm package manager activation"
 
 if ((Get-NodeMajor) -lt 22) {
-  throw "Hallow requires Node.js 22+. Upgrade Node, open a new terminal, then rerun this installer."
+  throw "Hallow requires Node.js 22+. Upgrade Node, then rerun this installer."
 }
 
 Write-Step "Enabling Corepack / pnpm"
@@ -254,11 +254,12 @@ Write-Host "Home:    $HallowHome"
 Write-Host "Global command: hallow"
 Write-Host "Direct:  $binDir\hallow.cmd"
 Write-Host ""
-Write-Host "Run now:"
-Write-Host "  hallow"
-Write-Host "  hallow doctor"
-Write-Host ""
-Write-Host "After opening a new terminal:"
+if ($env:HALLOW_INSTALL_NO_LAUNCH -ne "1") {
+  Write-Host "Opening Hallow terminal in this window..."
+  & (Join-Path $binDir "hallow.cmd")
+  Write-Host ""
+}
+Write-Host "Use later:"
 Write-Host "  hallow"
 Write-Host "  hallow start"
 Write-Host ""

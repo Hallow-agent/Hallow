@@ -33,8 +33,8 @@ Required result:
 
 Hallow's public Windows install command is:
 
-```powershell
-irm https://hallow-agent.xyz/install.ps1 | iex
+```cmd
+powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"
 ```
 
 macOS, Linux, WSL2, and Termux use:
@@ -43,10 +43,10 @@ macOS, Linux, WSL2, and Termux use:
 curl -fsSL https://hallow-agent.xyz/install.sh | bash
 ```
 
-CMD fallback:
+PowerShell-native fallback:
 
-```cmd
-powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"
+```powershell
+irm https://hallow-agent.xyz/install.ps1 | iex
 ```
 
 Before publishing those commands, confirm:

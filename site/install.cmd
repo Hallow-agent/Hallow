@@ -18,11 +18,11 @@ echo.
 if exist "%HALLOW_CMD%" (
   echo Hallow is installed.
   echo.
-  echo Run now:
+  echo Same window:
   echo   "%HALLOW_CMD%"
   echo   "%HALLOW_CMD%" doctor
   echo.
-  echo After opening a new terminal:
+  echo Later:
   echo   hallow
   echo   hallow doctor
 ) else (

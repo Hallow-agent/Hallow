@@ -402,24 +402,24 @@
 
       <section id="installation">
         <h2>Quickstart</h2>
-        <p class="section-lead">The public flow stays small: one global install command, then <code>hallow</code>. Everything advanced lives behind the terminal.</p>
+        <p class="section-lead">The public flow stays small: one Windows command that works from CMD or PowerShell, then <code>hallow</code>. Everything advanced lives behind the terminal.</p>
         <figure class="visual-card section-visual">
           <img src="/docs/assets/hallow-install-flow.svg" alt="Four step Hallow boot sequence: install, setup, doctor, start.">
           <figcaption>The first-run path stays simple before deeper runtime controls appear.</figcaption>
         </figure>
-        <pre><code>irm https://hallow-agent.xyz/install.ps1 | iex
+        <pre><code>powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"
 hallow
 hallow doctor
 hallow start</code></pre>
-        <div class="note">Use the command above in PowerShell. CMD and macOS/Linux commands are listed below for shell-specific installs.</div>
+        <div class="note">Use the command above directly in CMD or PowerShell. macOS/Linux commands are listed below for shell-specific installs.</div>
       </section>
 
       <section id="windows">
         <h2>Installation</h2>
         <div class="steps">
-          <article class="step"><span>01</span><div><strong>Windows PowerShell</strong><pre><code>irm https://hallow-agent.xyz/install.ps1 | iex</code></pre></div></article>
+          <article class="step"><span>01</span><div><strong>Windows CMD / PowerShell</strong><pre><code>powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"</code></pre></div></article>
           <article class="step"><span>02</span><div><strong>macOS / Linux / WSL2</strong><pre><code>curl -fsSL https://hallow-agent.xyz/install.sh | bash</code></pre></div></article>
-          <article class="step"><span>03</span><div><strong>CMD fallback</strong><pre><code>powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"</code></pre></div></article>
+          <article class="step"><span>03</span><div><strong>PowerShell-native fallback</strong><pre><code>irm https://hallow-agent.xyz/install.ps1 | iex</code></pre></div></article>
           <article class="step" id="android"><span>04</span><div><strong>Android / Termux</strong><p>Use the Linux installer inside Termux after Node and Git are available. Mobile support is a runtime target, not the recommended first install path.</p></div></article>
         </div>
       </section>

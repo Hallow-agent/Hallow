@@ -11,16 +11,12 @@ vercel --prod
 
 Public install surface:
 
-```powershell
-irm https://hallow-agent.xyz/install.ps1 | iex
+```cmd
+powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"
 ```
 
 ```bash
 curl -fsSL https://hallow-agent.xyz/install.sh | bash
-```
-
-```cmd
-powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"
 ```
 
 Configure after install:

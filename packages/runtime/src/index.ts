@@ -7811,8 +7811,18 @@ export class HallowRuntime {
       await this.handleApiRequest(request, response);
     });
 
-    await new Promise<void>((resolve) => {
-      server.listen(selectedPort, host, resolve);
+    await new Promise<void>((resolve, reject) => {
+      const onListening = () => {
+        server.off("error", onError);
+        resolve();
+      };
+      const onError = (error: Error) => {
+        server.off("listening", onListening);
+        reject(error);
+      };
+      server.once("listening", onListening);
+      server.once("error", onError);
+      server.listen(selectedPort, host);
     });
 
     if (!options.quiet) {
@@ -15342,7 +15352,7 @@ function renderDesktopShellHtml(manifest: DesktopShellManifest): string {
         <p>Install, setup, start, then create or connect agents. No local machine paths are shown in the product UI.</p>
       </div>
       <div class="feature-grid">
-        <article class="feature" data-index="01"><h3>Global install</h3><p>Run one official PowerShell command, then use <code>hallow</code> anywhere.</p><code class="mini-code">irm https://hallow-agent.xyz/install.ps1 | iex</code></article>
+        <article class="feature" data-index="01"><h3>Global install</h3><p>Run one official Windows command from CMD or PowerShell, then use <code>hallow</code>.</p><code class="mini-code">powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"</code></article>
         <article class="feature" data-index="02"><h3>macOS / Linux</h3><p>Use the same install model inside Bash, WSL2, or Termux.</p><code class="mini-code">curl -fsSL https://hallow-agent.xyz/install.sh | bash</code></article>
         <article class="feature" data-index="03"><h3>Start</h3><p>Launch the local agent OS and open the desktop runtime.</p><code class="mini-code">hallow start</code></article>
         <article class="feature" data-index="04"><h3>Create agent</h3><p>Generate a starter agent under the Hallow standard.</p><code class="mini-code">hallow agent create research</code></article>
@@ -16040,8 +16050,8 @@ function renderDesktopShellHtmlGradient(manifest: DesktopShellManifest): string 
         <div class="commands">
           <div class="cmd primary">
             <strong>Global Install</strong>
-            <code data-install-command>irm https://hallow-agent.xyz/install.ps1 | iex</code>
-            <button class="copy-btn" data-copy="irm https://hallow-agent.xyz/install.ps1 | iex" data-install-copy>Copy</button>
+            <code data-install-command>powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"</code>
+            <button class="copy-btn" data-copy='powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"' data-install-copy>Copy</button>
           </div>
           <div class="cmd">
             <strong>Launch</strong>
@@ -16102,7 +16112,7 @@ function renderDesktopShellHtmlGradient(manifest: DesktopShellManifest): string 
   </main>
   <script>
     const globalInstallCommand = /win/i.test(navigator.platform || navigator.userAgent)
-      ? "irm https://hallow-agent.xyz/install.ps1 | iex"
+      ? 'powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"'
       : "curl -fsSL https://hallow-agent.xyz/install.sh | bash";
 
     const terminalScripts = {

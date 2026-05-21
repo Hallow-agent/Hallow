@@ -16,18 +16,18 @@ Requirement: Node.js 22+ and Git. The installer can install Git/Node with common
 
 ## Windows
 
-Recommended PowerShell command:
+Recommended Windows command. It works from CMD and PowerShell, so you do not need to switch terminals:
+
+```cmd
+powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"
+```
+
+This installs Hallow globally for the current Windows user and opens the Hallow terminal in the same window when it finishes. For later sessions, run `hallow`.
+
+PowerShell-native fallback:
 
 ```powershell
 irm https://hallow-agent.xyz/install.ps1 | iex
-```
-
-This installs Hallow globally for the current Windows user. After it finishes, open a new terminal and run `hallow`.
-
-CMD fallback:
-
-```cmd
-powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"
 ```
 
 CMD-only downloadable wrapper:

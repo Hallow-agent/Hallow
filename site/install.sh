@@ -33,7 +33,7 @@ ensure_node() {
     else
       case "$(uname -s 2>/dev/null || printf unknown)" in
         MINGW*|MSYS*|CYGWIN*)
-          fail "Node.js 22+ is required inside this Bash environment. On Windows PowerShell, run: irm https://hallow-agent.xyz/install.ps1 | iex"
+          fail "Node.js 22+ is required inside this Bash environment. On Windows, run: powershell -nop -ep bypass -c \"irm https://hallow-agent.xyz/install.ps1|iex\""
           ;;
       esac
       fail "Node.js 22+ is required. Install Node.js, then rerun this installer."
@@ -45,7 +45,7 @@ ensure_node() {
   if [ "$major" -lt 22 ]; then
     case "$(uname -s 2>/dev/null || printf unknown)" in
       MINGW*|MSYS*|CYGWIN*)
-        fail "Hallow requires Node.js 22+. On Windows PowerShell, run: irm https://hallow-agent.xyz/install.ps1 | iex"
+        fail "Hallow requires Node.js 22+. On Windows, run: powershell -nop -ep bypass -c \"irm https://hallow-agent.xyz/install.ps1|iex\""
         ;;
     esac
     fail "Hallow requires Node.js 22+. Current Node major is $major."
@@ -204,6 +204,6 @@ esac
 printf 'Run now:\n'
 printf '  "%s/hallow" version\n' "$BIN_DIR"
 printf '  "%s/hallow" start\n\n' "$BIN_DIR"
-printf 'After opening a new terminal:\n'
+printf 'Use later:\n'
 printf '  hallow version\n'
 printf '  hallow start\n'

@@ -4211,8 +4211,8 @@ function terminalNextRows(context: CommandContext, options: TerminalWelcomeOptio
   }
 
   return [
-    formatMetric("install", "curl -fsSL https://hallow-agent.xyz/install.sh | bash"),
-    formatMetric("windows", 'powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"'),
+    formatMetric("global install", "irm https://hallow-agent.xyz/install.ps1 | iex"),
+    formatMetric("mac/linux", "curl -fsSL https://hallow-agent.xyz/install.sh | bash"),
     formatMetric("open", "hallow"),
     formatMetric("start", startCommand),
     formatMetric("doctor", "hallow doctor")

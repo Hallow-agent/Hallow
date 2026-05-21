@@ -20,11 +20,11 @@ if exist "%HALLOW_CMD%" (
   echo.
   echo Run now:
   echo   "%HALLOW_CMD%"
-  echo   "%HALLOW_CMD%" start
+  echo   "%HALLOW_CMD%" doctor
   echo.
   echo After opening a new terminal:
   echo   hallow
-  echo   hallow start
+  echo   hallow doctor
 ) else (
   echo Hallow installer finished, but the launcher was not found at:
   echo   "%HALLOW_CMD%"

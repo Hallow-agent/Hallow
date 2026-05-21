@@ -31,13 +31,19 @@ Required result:
 
 ## Public Install Gate
 
-Hallow's public install command is:
+Hallow's public Windows install command is:
+
+```powershell
+irm https://hallow-agent.xyz/install.ps1 | iex
+```
+
+macOS, Linux, WSL2, and Termux use:
 
 ```bash
 curl -fsSL https://hallow-agent.xyz/install.sh | bash
 ```
 
-Windows:
+CMD fallback:
 
 ```cmd
 powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"

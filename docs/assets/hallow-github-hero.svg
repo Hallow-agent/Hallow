@@ -43,7 +43,7 @@
       <circle cx="26" cy="26" r="5" fill="#fff" opacity=".88"/>
       <circle cx="45" cy="26" r="5" fill="#fff" opacity=".54"/>
       <circle cx="64" cy="26" r="5" fill="#fff" opacity=".34"/>
-      <text x="24" y="70" class="mono" fill="#fff" font-size="18">$ curl -fsSL https://hallow-agent.xyz/install.sh | bash</text>
+      <text x="24" y="70" class="mono" fill="#fff" font-size="18">PS&gt; irm https://hallow-agent.xyz/install.ps1 | iex</text>
       <text x="24" y="102" class="mono" fill="#aaa" font-size="16">runtime initialized / terminal ready / local vault online</text>
     </g>
   </g>

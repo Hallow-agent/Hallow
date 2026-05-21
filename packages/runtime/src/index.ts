@@ -15342,8 +15342,8 @@ function renderDesktopShellHtml(manifest: DesktopShellManifest): string {
         <p>Install, setup, start, then create or connect agents. No local machine paths are shown in the product UI.</p>
       </div>
       <div class="feature-grid">
-        <article class="feature" data-index="01"><h3>Install</h3><p>Fetch Hallow from the official domain.</p><code class="mini-code">curl -fsSL https://hallow-agent.xyz/install.sh | bash</code></article>
-        <article class="feature" data-index="02"><h3>Windows</h3><p>Install cleanly from CMD or PowerShell.</p><code class="mini-code">powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"</code></article>
+        <article class="feature" data-index="01"><h3>Global install</h3><p>Run one official PowerShell command, then use <code>hallow</code> anywhere.</p><code class="mini-code">irm https://hallow-agent.xyz/install.ps1 | iex</code></article>
+        <article class="feature" data-index="02"><h3>macOS / Linux</h3><p>Use the same install model inside Bash, WSL2, or Termux.</p><code class="mini-code">curl -fsSL https://hallow-agent.xyz/install.sh | bash</code></article>
         <article class="feature" data-index="03"><h3>Start</h3><p>Launch the local agent OS and open the desktop runtime.</p><code class="mini-code">hallow start</code></article>
         <article class="feature" data-index="04"><h3>Create agent</h3><p>Generate a starter agent under the Hallow standard.</p><code class="mini-code">hallow agent create research</code></article>
         <article class="feature" data-index="05"><h3>Add models</h3><p>Connect OpenAI-compatible, local, or custom providers.</p><code class="mini-code">hallow models list</code></article>
@@ -15460,7 +15460,6 @@ function renderDesktopShellHtml(manifest: DesktopShellManifest): string {
 function renderDesktopShellHtmlGradient(manifest: DesktopShellManifest): string {
   const completedSteps = manifest.steps.filter((step) => step.ok).length;
   const readinessPercent = Math.round((completedSteps / Math.max(manifest.steps.length, 1)) * 100);
-  const launchCommand = manifest.port === 4767 ? "hallow start" : `hallow start --port ${manifest.port}`;
   const featureRows = manifest.steps
     .slice(0, 9)
     .map(
@@ -16039,25 +16038,15 @@ function renderDesktopShellHtmlGradient(manifest: DesktopShellManifest): string 
         <h1>The agent OS is running.</h1>
         <p class="lead">Hallow is live on this machine with memory, tools, skills, gateway lanes, and readiness checks behind one local standard. Local paths stay out of the product UI.</p>
         <div class="commands">
-          <div class="cmd">
-            <strong>Install</strong>
-            <code>curl -fsSL https://hallow-agent.xyz/install.sh | bash</code>
-            <button class="copy-btn" data-copy="curl -fsSL https://hallow-agent.xyz/install.sh | bash">Copy</button>
+          <div class="cmd primary">
+            <strong>Global Install</strong>
+            <code data-install-command>irm https://hallow-agent.xyz/install.ps1 | iex</code>
+            <button class="copy-btn" data-copy="irm https://hallow-agent.xyz/install.ps1 | iex" data-install-copy>Copy</button>
           </div>
           <div class="cmd">
-            <strong>Windows</strong>
-            <code>powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"</code>
-            <button class="copy-btn" data-copy='powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"'>Copy</button>
-          </div>
-          <div class="cmd">
-            <strong>Check</strong>
+            <strong>Launch</strong>
             <code>hallow</code>
             <button class="copy-btn" data-copy="hallow">Copy</button>
-          </div>
-          <div class="cmd">
-            <strong>Start</strong>
-            <code>${escapeHtml(launchCommand)}</code>
-            <button class="copy-btn" data-copy="${escapeHtml(launchCommand)}">Copy</button>
           </div>
         </div>
       </div>
@@ -16112,6 +16101,10 @@ function renderDesktopShellHtmlGradient(manifest: DesktopShellManifest): string 
     </footer>
   </main>
   <script>
+    const globalInstallCommand = /win/i.test(navigator.platform || navigator.userAgent)
+      ? "irm https://hallow-agent.xyz/install.ps1 | iex"
+      : "curl -fsSL https://hallow-agent.xyz/install.sh | bash";
+
     const terminalScripts = {
       runtime: [
         { text: "> hallow", type: true },
@@ -16153,6 +16146,13 @@ function renderDesktopShellHtmlGradient(manifest: DesktopShellManifest): string 
       }
     }
     document.querySelectorAll(".code-logo").forEach((element) => initAsciiLogo(element));
+
+    document.querySelectorAll("[data-install-command]").forEach((element) => {
+      element.textContent = globalInstallCommand;
+    });
+    document.querySelectorAll("[data-install-copy]").forEach((button) => {
+      button.dataset.copy = globalInstallCommand;
+    });
 
     function appendTerminalLine(terminal, entry, done) {
       const row = document.createElement("div");

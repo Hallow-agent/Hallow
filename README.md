@@ -6,15 +6,27 @@
 
 It is not a chatbot wrapper, not a landing-page demo, and not a cloud account that owns your memory. Hallow installs a private runtime on the user's machine, then gives agents one standard for memory, tools, model routing, signed skills, gateway lanes, traces, readiness checks, and self-healing loops.
 
+## Install Hallow 001
+
+Windows PowerShell:
+
+```powershell
+irm https://hallow-agent.xyz/install.ps1 | iex
+```
+
+macOS, Linux, WSL2, or Termux:
+
 ```bash
 curl -fsSL https://hallow-agent.xyz/install.sh | bash
 ```
+
+CMD fallback:
 
 ```cmd
 powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"
 ```
 
-> Windows note: the command above works from CMD and PowerShell. Use the bash installer only inside WSL, Git Bash, macOS, Linux, or Termux.
+After install, `hallow` is written into the user path as the global launcher.
 
 ## Why Hallow Exists
 

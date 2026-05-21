@@ -506,7 +506,7 @@
         <a class="link" href="#install">Install</a>
         <a class="link" href="/docs">Docs</a>
         <a class="link" href="#features">Features</a>
-        <a class="button" href="/install.sh">Get Hallow</a>
+        <a class="button" href="#install">Get Hallow</a>
       </div>
     </nav>
 
@@ -516,25 +516,15 @@
         <h1>Agents that run where you do.</h1>
         <p class="lead">Hallow installs a private agent OS on your machine: memory, tools, skills, model routing, and self-healing loops without turning your project into a cloud dashboard.</p>
         <div class="commands">
-          <div class="cmd">
-            <strong>Install</strong>
-            <code>curl -fsSL https://hallow-agent.xyz/install.sh | bash</code>
-            <button class="copy-btn" data-copy="curl -fsSL https://hallow-agent.xyz/install.sh | bash">Copy</button>
+          <div class="cmd primary">
+            <strong>Global Install</strong>
+            <code data-install-command>irm https://hallow-agent.xyz/install.ps1 | iex</code>
+            <button class="copy-btn" data-copy="irm https://hallow-agent.xyz/install.ps1 | iex" data-install-copy>Copy</button>
           </div>
           <div class="cmd">
-            <strong>Windows</strong>
-            <code>powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"</code>
-            <button class="copy-btn" data-copy='powershell -ExecutionPolicy Bypass -NoProfile -Command "irm https://hallow-agent.xyz/install.ps1 | iex"'>Copy</button>
-          </div>
-          <div class="cmd">
-            <strong>Check</strong>
+            <strong>Launch</strong>
             <code>hallow</code>
             <button class="copy-btn" data-copy="hallow">Copy</button>
-          </div>
-          <div class="cmd">
-            <strong>Start</strong>
-            <code>hallow start</code>
-            <button class="copy-btn" data-copy="hallow start">Copy</button>
           </div>
         </div>
       </div>
@@ -596,9 +586,13 @@
     </footer>
   </main>
   <script>
+    const globalInstallCommand = /win/i.test(navigator.platform || navigator.userAgent)
+      ? "irm https://hallow-agent.xyz/install.ps1 | iex"
+      : "curl -fsSL https://hallow-agent.xyz/install.sh | bash";
+
     const terminalScripts = {
       site: [
-        { text: "$ curl -fsSL https://hallow-agent.xyz/install.sh | bash", type: true },
+        { text: "> " + globalInstallCommand, type: true },
         { text: "launcher installed", status: "ok" },
         { text: "operator terminal ready", status: "ok" },
         { pause: true },
@@ -641,6 +635,13 @@
       }
     }
     document.querySelectorAll(".code-logo").forEach((element) => initAsciiLogo(element));
+
+    document.querySelectorAll("[data-install-command]").forEach((element) => {
+      element.textContent = globalInstallCommand;
+    });
+    document.querySelectorAll("[data-install-copy]").forEach((button) => {
+      button.dataset.copy = globalInstallCommand;
+    });
 
     function appendTerminalLine(terminal, entry, done) {
       const row = document.createElement("div");

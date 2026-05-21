@@ -11,6 +11,10 @@ vercel --prod
 
 Public install surface:
 
+```powershell
+irm https://hallow-agent.xyz/install.ps1 | iex
+```
+
 ```bash
 curl -fsSL https://hallow-agent.xyz/install.sh | bash
 ```

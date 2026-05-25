@@ -1,5 +1,9 @@
 #!/usr/bin/env node
-import { getHallowHome, hallowPath, loadEnvFile, RiskLevel, writeText } from "@hallow/core";
+import { spawn } from "node:child_process";
+import { dirname, resolve } from "node:path";
+import { stdin as terminalInput, stdout as terminalOutput } from "node:process";
+import { createInterface } from "node:readline/promises";
+import { getHallowHome, hallowPath, loadEnvFile, pathExists, RiskLevel, writeText } from "@hallow/core";
 import { AddProviderOptions, ModelCatalogEntry, ModelCatalogProvider, ModelRegistry } from "@hallow/models";
 import {
   AgentInstallResult,
@@ -152,7 +156,11 @@ async function dispatch(context: CommandContext): Promise<void> {
   if (!command || command === "help" || command === "--help" || command === "-h") {
     if (!command) {
       await context.runtime.init();
+      await ensureFirstPartySkillSource(context);
       await printTerminalWelcome(context, { mode: "welcome" });
+      if (shouldOpenOperatorShell()) {
+        await startOperatorShell(context);
+      }
     } else {
       printHelp();
     }
@@ -161,6 +169,14 @@ async function dispatch(context: CommandContext): Promise<void> {
 
   if (command === "version" || command === "--version" || command === "-v") {
     console.log(`Hallow ${HALLOW_RELEASE_LABEL} (${HALLOW_CLI_VERSION})`);
+    return;
+  }
+
+  if (command === "shell" || command === "operator") {
+    await context.runtime.init();
+    await ensureFirstPartySkillSource(context);
+    await printTerminalWelcome(context, { mode: "welcome" });
+    await startOperatorShell(context);
     return;
   }
 
@@ -181,6 +197,7 @@ async function dispatch(context: CommandContext): Promise<void> {
     const commandArgs = context.args.slice(1);
     const port = readNumberOption(commandArgs, "--port");
     await context.runtime.init();
+    await ensureFirstPartySkillSource(context);
     const desktop = await context.runtime.setupDesktopShell({ port });
     await printTerminalWelcome(context, {
       mode: "setup",
@@ -408,6 +425,7 @@ async function handleAgent(
   rest: string[]
 ): Promise<void> {
   await context.runtime.init();
+  await ensureFirstPartySkillSource(context);
 
   if (subcommand === "create") {
     const id = rest[0];
@@ -576,6 +594,7 @@ async function handleSkill(
   rest: string[]
 ): Promise<void> {
   await context.runtime.init();
+  await ensureFirstPartySkillSource(context);
 
   if (subcommand === "create") {
     const id = rest[0];
@@ -4041,6 +4060,287 @@ function printWebAuthLaunch(report: WebAuthLaunchReport): void {
   }
 }
 
+function shouldOpenOperatorShell(): boolean {
+  return Boolean(
+    terminalInput.isTTY &&
+      terminalOutput.isTTY &&
+      process.env.HALLOW_NO_INTERACTIVE !== "1" &&
+      process.env.CI !== "true"
+  );
+}
+
+async function ensureFirstPartySkillSource(context: CommandContext): Promise<void> {
+  const sourcePath = resolve(dirname(process.argv[1] ?? process.cwd()), "..", "..", "..", "examples", "skills");
+  if (!(await pathExists(sourcePath))) {
+    return;
+  }
+
+  const sources = await context.runtime.listSkillSources();
+  if (sources.some((source) => source.id === "first-party" || resolve(source.path) === sourcePath)) {
+    return;
+  }
+
+  await context.runtime.addSkillSource("first-party", sourcePath, {
+    trust: "signed",
+    install_mode: "copy",
+    enabled: true
+  });
+}
+
+async function startOperatorShell(context: CommandContext): Promise<void> {
+  if (!terminalInput.isTTY || !terminalOutput.isTTY) {
+    printTerminalText("Hallow operator shell requires an interactive terminal.", "90");
+    return;
+  }
+
+  printOperatorShellHelp(true);
+  const shell = createInterface({
+    input: terminalInput,
+    output: terminalOutput,
+    terminal: true
+  });
+
+  try {
+    while (true) {
+      const line = (await shell.question(terminalColor("hallow> ", "1;97"))).trim();
+      if (!line) {
+        continue;
+      }
+
+      const lower = line.toLowerCase();
+      if (lower === "exit" || lower === "quit" || lower === "q" || lower === "/exit" || lower === "/quit") {
+        printTerminalText("Hallow terminal closed.", "90");
+        break;
+      }
+
+      await runOperatorShellLine(context, line);
+    }
+  } finally {
+    shell.close();
+  }
+}
+
+async function runOperatorShellLine(context: CommandContext, line: string): Promise<void> {
+  const normalized = normalizeOperatorShellLine(line);
+  const lower = normalized.toLowerCase();
+
+  if (lower === "help" || lower === "?" || lower === "/help") {
+    printOperatorShellHelp(false);
+    return;
+  }
+
+  if (lower === "clear" || lower === "/clear") {
+    console.clear();
+    await printTerminalWelcome(context, { mode: "welcome" });
+    return;
+  }
+
+  if (lower === "status" || lower === "dashboard" || lower === "home" || lower === "/status") {
+    await printTerminalWelcome(context, { mode: "status" });
+    return;
+  }
+
+  const parts = splitCommandLine(normalized);
+  if (parts.length === 0) {
+    return;
+  }
+
+  const [command, ...rest] = parts;
+  if (command === "start" || command === "/start") {
+    await startRuntimeFromOperatorShell(context, rest);
+    return;
+  }
+
+  if (command === "open" || command === "/open") {
+    await printRuntimeUrl(context, rest);
+    return;
+  }
+
+  if (command === "run" || command === "ask" || command === "/run" || command === "/ask") {
+    const prompt = rest.join(" ").trim();
+    if (!prompt) {
+      printTerminalText('Usage: run "task prompt"', "90");
+      return;
+    }
+    await runDefaultAgentFromShell(context, prompt);
+    return;
+  }
+
+  if (command === "skills" || command === "/skills") {
+    await runDispatchFromShell(context, rest[0] === "hub" ? ["skill", "hub", ...rest.slice(1)] : ["skill", "list", ...rest]);
+    return;
+  }
+
+  if (command === "tools" || command === "/tools") {
+    await runDispatchFromShell(context, ["tool", "list", ...rest]);
+    return;
+  }
+
+  if (command === "models" || command === "/models") {
+    await runDispatchFromShell(context, ["model", rest[0] ?? "routes", ...rest.slice(1)]);
+    return;
+  }
+
+  if (command === "memory" && rest.length === 0) {
+    await runDispatchFromShell(context, ["memory", "list"]);
+    return;
+  }
+
+  if (isLikelyAgentPrompt(command, normalized)) {
+    await runDefaultAgentFromShell(context, normalized);
+    return;
+  }
+
+  await runDispatchFromShell(context, parts);
+}
+
+function normalizeOperatorShellLine(line: string): string {
+  const trimmed = line.trim();
+  if (trimmed.toLowerCase().startsWith("hallow ")) {
+    return trimmed.slice("hallow ".length).trim();
+  }
+  if (trimmed.startsWith("/")) {
+    return trimmed.slice(1).trim();
+  }
+  return trimmed;
+}
+
+function isLikelyAgentPrompt(command: string, line: string): boolean {
+  const known = new Set([
+    "agent",
+    "approval",
+    "autonomy",
+    "browser",
+    "demo",
+    "desktop",
+    "doctor",
+    "embedding",
+    "fleet",
+    "gateway",
+    "help",
+    "init",
+    "integration",
+    "marketplace",
+    "mcp",
+    "memory",
+    "model",
+    "notification",
+    "onboarding",
+    "perfect",
+    "readiness",
+    "sandbox",
+    "schedule",
+    "security",
+    "setup",
+    "skill",
+    "status",
+    "task",
+    "terminal",
+    "tool",
+    "usage",
+    "version",
+    "web-auth",
+    "workspace"
+  ]);
+  return !known.has(command) && /\s/.test(line);
+}
+
+async function runDispatchFromShell(context: CommandContext, args: string[]): Promise<void> {
+  const previousExitCode = process.exitCode;
+  process.exitCode = undefined;
+  try {
+    await dispatch({ ...context, args });
+    if (process.exitCode !== undefined && process.exitCode !== 0) {
+      printTerminalText(`Command exited with code ${process.exitCode}.`, "90");
+    }
+  } catch (error) {
+    printTerminalText(error instanceof Error ? error.message : String(error), "1;91");
+  } finally {
+    process.exitCode = previousExitCode;
+  }
+}
+
+async function runDefaultAgentFromShell(context: CommandContext, prompt: string): Promise<void> {
+  printTerminalText(`agent:hallow > ${prompt}`, "1;97");
+  try {
+    const result = await context.runtime.runAgent("hallow", prompt);
+    printTerminalText(`status     ${result.trace.status}`, result.trace.status === "failed" ? "1;91" : "1;92");
+    printTerminalText(`model      ${result.usedModel}`, "37");
+    printTerminalText(`tools      ${result.plan.tools.length > 0 ? result.plan.tools.join(", ") : "none"}`, "37");
+    for (const toolUse of result.tool_uses.slice(0, 6)) {
+      printTerminalText(`tool       ${toolUse.tool} ${toolUse.status} ${toolUse.target}`, "37");
+    }
+    printTerminalText(`output     ${result.outputPath}`, "37");
+    printTerminalText(`trace      ${hallowPath(context.home, "traces", `${result.trace.id}.yaml`)}`, "37");
+    if (result.simulated) {
+      printTerminalText("note       model route unavailable; local fallback answered.", "90");
+    }
+  } catch (error) {
+    printTerminalText(error instanceof Error ? error.message : String(error), "1;91");
+  }
+}
+
+async function startRuntimeFromOperatorShell(context: CommandContext, args: string[]): Promise<void> {
+  await context.runtime.init();
+  const config = await context.runtime.readConfig();
+  const requestedPort = readNumberOption(args, "--port");
+  const selectedPort = requestedPort && requestedPort > 0 ? requestedPort : config.gateway.local_console.port;
+  const url = `http://${config.gateway.local_console.host}:${selectedPort}/desktop`;
+
+  if (await isLocalHallowRuntime(config.gateway.local_console.host, selectedPort)) {
+    printTerminalText(`runtime already active: ${url}`, "1;92");
+    return;
+  }
+
+  const cliEntry = process.argv[1];
+  const child = spawn(process.execPath, [cliEntry, "--home", context.home, "start", "--port", String(selectedPort)], {
+    detached: true,
+    stdio: "ignore",
+    env: { ...process.env, HALLOW_NO_INTERACTIVE: "1" }
+  });
+  child.unref();
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await sleep(200);
+    if (await isLocalHallowRuntime(config.gateway.local_console.host, selectedPort)) {
+      printTerminalText(`runtime started: ${url}`, "1;92");
+      return;
+    }
+  }
+
+  printTerminalText(`runtime launch requested. Check: ${url}`, "90");
+}
+
+async function printRuntimeUrl(context: CommandContext, args: string[]): Promise<void> {
+  await context.runtime.init();
+  const config = await context.runtime.readConfig();
+  const requestedPort = readNumberOption(args, "--port");
+  const selectedPort = requestedPort && requestedPort > 0 ? requestedPort : config.gateway.local_console.port;
+  printTerminalText(`http://${config.gateway.local_console.host}:${selectedPort}/desktop`, "1;97");
+}
+
+function printOperatorShellHelp(compact: boolean): void {
+  const rows = [
+    "status              refresh the Hallow operator dashboard",
+    "start               launch the local runtime in the background",
+    "open                print the desktop runtime URL",
+    "doctor              run local health checks",
+    "skills / skills hub list installed skills or indexed hub entries",
+    "models              show model routes",
+    "tools               show approved tool registry",
+    'run <task>          run the default hallow agent on a task',
+    "hallow <command>    run any normal CLI command inside this shell",
+    "clear / exit        redraw or close the operator shell"
+  ];
+  printTerminalText("");
+  printTerminalText(compact ? 'Operator shell ready. Type "help" for commands.' : "Operator shell commands", "90");
+  if (!compact) {
+    for (const row of rows) {
+      printTerminalText(`  ${row}`, "37");
+    }
+  }
+}
+
 async function printTerminalWelcome(context: CommandContext, options: TerminalWelcomeOptions): Promise<void> {
   const snapshot = await collectTerminalSnapshot(context, options.desktop);
   const width = terminalWidth();
@@ -4357,6 +4657,47 @@ function repeatChar(value: string, count: number): string {
   return value.repeat(Math.max(0, count));
 }
 
+function splitCommandLine(value: string): string[] {
+  const args: string[] = [];
+  let current = "";
+  let quote: '"' | "'" | undefined;
+
+  for (const char of value) {
+    if (quote) {
+      if (char === quote) {
+        quote = undefined;
+      } else {
+        current += char;
+      }
+      continue;
+    }
+
+    if (char === '"' || char === "'") {
+      quote = char;
+      continue;
+    }
+
+    if (/\s/.test(char)) {
+      if (current.length > 0) {
+        args.push(current);
+        current = "";
+      }
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current.length > 0) {
+    args.push(current);
+  }
+  return args;
+}
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
 function stripOption(args: string[], name: string): string[] {
   const index = args.indexOf(name);
   if (index === -1) {
@@ -4373,6 +4714,7 @@ Usage:
   hallow init [--home path]
   hallow setup [--port 4767]
   hallow terminal
+  hallow shell
   hallow doctor [--home path]
   hallow status [--home path]
   hallow readiness [--strict]
@@ -4531,9 +4873,15 @@ Usage:
 
 Examples:
   hallow
+  hallow shell
   hallow agent run hallow "turn my weekly repo review into a reusable workflow"
   hallow model add ollama
   hallow start
+
+Operator shell:
+  status, start, open, doctor, skills, skills hub, models, tools
+  run "task prompt"
+  hallow <any normal command>
 `);
 }
 

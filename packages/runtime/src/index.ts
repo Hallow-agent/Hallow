@@ -16119,15 +16119,17 @@ function renderDesktopShellHtmlGradient(manifest: DesktopShellManifest): string 
       runtime: [
         { text: "> hallow", type: true },
         { text: "Hallow Agent OS 001", status: "ok" },
+        { text: "hallow> status", type: true },
+        { text: "readiness ${readinessPercent}% / tools online / models routed", status: "ok" },
         { pause: true },
-        { text: "> hallow start", type: true },
+        { text: "hallow> start", type: true },
         { text: "runtime initialized", status: "ok" },
         { text: "memory vault ready", status: "ok" },
         { text: "mcp tools discovered", status: "ok" },
         { pause: true },
-        { text: "> hallow agent create research", type: true },
-        { text: "agent manifest signed", status: "ok" },
-        { text: "desktop runtime online", cursor: true }
+        { text: 'hallow> run "research this repo and propose a skill"', type: true },
+        { text: "agent trace saved", status: "ok" },
+        { text: "skill candidate queued", cursor: true }
       ]
     };
 

@@ -64,7 +64,7 @@ The Windows installer writes launchers to:
 %LOCALAPPDATA%\hallow\bin\hallow.ps1
 ```
 
-Open a new terminal after install, then run:
+The installer opens the Hallow operator shell in the same window. Later, run:
 
 ```powershell
 hallow

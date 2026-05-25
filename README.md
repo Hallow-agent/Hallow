@@ -51,13 +51,23 @@ hallow doctor
 hallow start
 ```
 
-Then open:
+`hallow` opens the operator shell. From inside the shell:
+
+```text
+hallow> status
+hallow> start
+hallow> skills hub
+hallow> run "summarize this workspace and suggest the next skill"
+hallow> exit
+```
+
+The runtime desktop is served at:
 
 ```text
 http://127.0.0.1:4767/desktop
 ```
 
-`hallow` without arguments opens the branded Hallow operator terminal. Direct commands still work:
+Direct commands still work outside the shell:
 
 ```bash
 hallow version

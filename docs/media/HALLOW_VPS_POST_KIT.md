@@ -35,7 +35,7 @@ Install Hallow in one command, then work with a persistent private agent: native
 - `hallow-vps-install.png` — installation poster, 1080×1350.
 - `hallow-vps-runtime.png` — service and recovery proof, 1080×1350.
 - `hallow-vps-chat.png` — live model/session proof, 1080×1350.
-- `hallow-vps-launch.mp4` — H.264, 1080×1350, 25 fps, approximately 12 seconds.
+- `hallow-vps-launch.mp4` — H.264, 1080×1350, 25 fps, approximately 20 seconds.
 - `hallow-vps-launch.webm` — original browser recording.
 
 The public artwork intentionally excludes the VPS IP address, SSH credential, API token, and provider key.

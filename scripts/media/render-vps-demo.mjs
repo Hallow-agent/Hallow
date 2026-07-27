@@ -33,7 +33,7 @@ try {
   const videoPage = await videoContext.newPage();
   const video = videoPage.video();
   await videoPage.goto(`${pathToFileURL(htmlPath).href}?scene=video`, { waitUntil: "load" });
-  await videoPage.waitForTimeout(12_800);
+  await videoPage.waitForTimeout(20_200);
   await videoPage.close();
   await videoContext.close();
   const recordedPath = await video.path();

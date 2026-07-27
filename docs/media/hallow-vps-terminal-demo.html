@@ -159,8 +159,8 @@
     .video .scene .line { opacity: 0; transform: translateY(5px); }
     .video .scene.active .line { animation: lineIn .28s forwards; }
     @keyframes lineIn { to { opacity: 1; transform: translateY(0); } }
-    .video .architecture { animation: architecturePulse 12.6s ease-in-out both; }
-    @keyframes architecturePulse { 0%,100% { background: rgba(240,231,210,.58); } 44%,58% { background: rgba(121,219,226,.18); } }
+    .video .architecture { animation: architecturePulse 20s ease-in-out both; }
+    @keyframes architecturePulse { 0%,100% { background: rgba(240,231,210,.58); } 34%,70% { background: rgba(121,219,226,.18); } }
   </style>
 </head>
 <body>
@@ -287,8 +287,8 @@
     if (mode === "video") {
       poster.classList.add("video");
       show("install", true);
-      setTimeout(() => show("runtime", true), 4700);
-      setTimeout(() => show("chat", true), 8800);
+      setTimeout(() => show("runtime", true), 7000);
+      setTimeout(() => show("chat", true), 14000);
     } else {
       show(mode);
     }

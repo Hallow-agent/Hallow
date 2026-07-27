@@ -8,10 +8,10 @@ It is not a chatbot wrapper, not a landing-page demo, and not a cloud account th
 
 ## Install Hallow 001
 
-Windows CMD or PowerShell:
+Windows PowerShell:
 
-```cmd
-powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"
+```powershell
+iex (irm https://hallow-agent.xyz/install.ps1)
 ```
 
 macOS, Linux, WSL2, or Termux:
@@ -20,10 +20,10 @@ macOS, Linux, WSL2, or Termux:
 curl -fsSL https://hallow-agent.xyz/install.sh | bash
 ```
 
-PowerShell-native fallback:
+Windows CMD fallback:
 
-```powershell
-irm https://hallow-agent.xyz/install.ps1 | iex
+```cmd
+powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"
 ```
 
 The installer downloads into a staging directory, builds against the lockfile, runs `hallow doctor`, writes the global launcher, starts the managed local runtime, and opens the desktop. It does not require Git or Corepack. Existing runtime data under `~/.hallow/` is preserved during updates.

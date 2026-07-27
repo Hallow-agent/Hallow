@@ -44,14 +44,14 @@
     <text x="142" y="464" fill="#fff">001\__11__/100</text>
     <text x="420" y="334" fill="#fff">Hallow Agent OS 001 / v0.0.1  ::  runtime online</text>
     <text x="420" y="360" fill="#aaa">session 20260520_114818  ::  local-first / private runtime</text>
-    <text class="line" x="420" y="386" fill="#fff">readiness 100% strong  ::  checks 33/33</text>
+    <text class="line" x="420" y="386" fill="#fff">foundation 100% strong :: checks 33/33</text>
     <text class="line2" x="420" y="412" fill="#fff">memory 213 item(s), 213 indexed</text>
     <text class="line3" x="420" y="438" fill="#fff">mcp 2 server(s), 8 registered tool(s)</text>
     <text class="line4" x="420" y="464" fill="#fff">models 15 provider(s), 6 route(s)</text>
   </g>
   <g class="mono" font-size="17" fill="#fff">
     <text x="92" y="528">RUNTIME CHECKS</text>
-    <text x="118" y="560">readiness                100% strong</text>
+    <text x="118" y="560">foundation               100% strong</text>
     <text x="118" y="590">doctor                   33/33 passing</text>
     <text x="118" y="620">security                 hardened</text>
     <text x="92" y="670">$ hallow start</text>

@@ -11,8 +11,8 @@ vercel --prod
 
 Public install surface:
 
-```cmd
-powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"
+```powershell
+iex (irm https://hallow-agent.xyz/install.ps1)
 ```
 
 ```bash

@@ -169,8 +169,12 @@
   </footer>
   <dialog class="modal install-modal" data-install-modal>
     <button class="modal-close" type="button" aria-label="Close installer" data-modal-close>×</button><span class="eyebrow">Install / Hallow 001</span><h2>Open the<br><em>local runtime.</em></h2>
-    <div class="os-tabs" role="tablist"><button type="button" class="is-active" data-os="windows">Windows</button><button type="button" data-os="unix">macOS / Linux</button></div>
-    <div class="command-box"><code data-command>powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"</code><button type="button" data-copy>Copy</button></div><p>Review the script first if you prefer. Hallow creates its runtime under <code>~/.hallow/</code>.</p><div class="modal-actions"><a href="/docs">Read install guide</a><a href="https://github.com/Hallow-agent/Hallow" target="_blank" rel="noreferrer">Inspect source ↗</a></div>
+    <div class="install-promise"><strong>One command. One running agent.</strong><span>No Git, Corepack, or manual build.</span></div>
+    <div class="install-command-list">
+      <article class="install-command" data-install-platform="windows"><div class="install-command-head"><span>Windows / PowerShell</span><i data-platform-badge>Native</i></div><div class="command-box"><code data-command>iex (irm https://hallow-agent.xyz/install.ps1)</code><button type="button" data-copy-command>Copy</button></div></article>
+      <article class="install-command" data-install-platform="unix"><div class="install-command-head"><span>macOS / Linux / WSL</span><i data-platform-badge>Shell</i></div><div class="command-box"><code data-command>curl -fsSL https://hallow-agent.xyz/install.sh | bash</code><button type="button" data-copy-command>Copy</button></div></article>
+    </div>
+    <p>Choose the single command for your operating system. It installs dependencies, verifies Hallow, starts the private runtime, and opens the desktop.</p><div class="modal-actions"><a href="/docs">Read install guide</a><a href="https://github.com/Hallow-agent/Hallow" target="_blank" rel="noreferrer">Inspect source ↗</a></div>
   </dialog>
   <dialog class="modal tour-modal" data-tour-modal><button class="modal-close" type="button" aria-label="Close film" data-modal-close>×</button><video controls muted loop playsinline poster="/assets/autonomy-repair.jpg"><source src="/assets/fog-atmosphere.webm" type="video/webm"></video><div><span class="eyebrow">Atmosphere study / CC BY 3.0</span><p>A visual pause for the space between command and consequence.</p></div></dialog>
   <script src="/assets/vendor/gsap.min.js"></script><script src="/assets/vendor/ScrollTrigger.min.js"></script><script src="/assets/vendor/lenis.min.js"></script><script src="/webgl.js"></script><script src="/app.js"></script>

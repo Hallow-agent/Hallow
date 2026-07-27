@@ -24,7 +24,7 @@ Required result:
 - TypeScript build passes.
 - Production dependency audit reports no known vulnerabilities.
 - Doctor has no failed checks.
-- Readiness is `100% strong`.
+- Foundation readiness is `100% strong`.
 - Security audit is `hardened`.
 - Demo checklist is `100% strong`.
 - Perfect checklist is `100% perfect`.

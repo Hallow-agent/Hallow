@@ -68,7 +68,7 @@ import {
 const HALLOW_CLI_VERSION = "0.0.1";
 const HALLOW_RELEASE_LABEL = "001";
 
-const HALLOW_WINDOWS_INSTALL_COMMAND = 'powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"';
+const HALLOW_WINDOWS_INSTALL_COMMAND = "iex (irm https://hallow-agent.xyz/install.ps1)";
 
 const HALLOW_WORDMARK = String.raw`
 HH   HH   AAAAA   LL       LL        OOOOO   WW        WW
@@ -308,7 +308,7 @@ async function dispatch(context: CommandContext): Promise<void> {
 
   if (command === "readiness") {
     const report = await context.runtime.getReadinessReport();
-    console.log(`Hallow readiness: ${report.score}% (${report.status})`);
+    console.log(`Hallow foundation readiness: ${report.score}% (${report.status})`);
     for (const check of report.checks) {
       console.log(`${check.ok ? "OK" : "GAP"} ${check.id}\t${check.weight}\t${check.detail}`);
     }
@@ -4626,7 +4626,7 @@ async function printTerminalWelcome(context: CommandContext, options: TerminalWe
     `Hallow Agent OS ${HALLOW_RELEASE_LABEL} / v${HALLOW_CLI_VERSION}  ::  ${terminalModeLabel(options.mode)}`,
     options.notice ? `state ${options.notice}` : `runtime http://127.0.0.1:${port}/desktop`,
     `session ${session}  ::  local-first / private runtime`,
-    `readiness ${readiness ? `${readiness.score}% ${readiness.status}` : "collecting"}  ::  checks ${checkCount > 0 ? `${passingChecks}/${checkCount}` : "pending"}`,
+    `foundation ${readiness ? `${readiness.score}% ${readiness.status}` : "collecting"}  ::  checks ${checkCount > 0 ? `${passingChecks}/${checkCount}` : "pending"}`,
     `memory ${snapshot.memory ? `${snapshot.memory.sqlite_items} item(s), ${snapshot.memory.index_items} indexed` : "vault pending"}`,
     `mcp ${mcpServers} server(s), ${mcpTools} registered tool(s)`,
     `models ${modelProviders} provider(s), ${modelRoutes} route(s)`,
@@ -4646,7 +4646,7 @@ async function printTerminalWelcome(context: CommandContext, options: TerminalWe
   }
 
   printTerminalSection("RUNTIME CHECKS", [
-    formatMetric("readiness", readiness ? `${readiness.score}% ${readiness.status}` : "pending"),
+    formatMetric("foundation", readiness ? `${readiness.score}% ${readiness.status}` : "pending"),
     formatMetric("doctor", checkCount > 0 ? `${passingChecks}/${checkCount} passing` : "pending"),
     formatMetric("security", snapshot.security?.status ?? "not scanned"),
     formatMetric("usage", snapshot.usage ? `${snapshot.usage.entry_count} run(s), $${snapshot.usage.total_cost_usd_estimate.toFixed(4)} est.` : "not scanned")

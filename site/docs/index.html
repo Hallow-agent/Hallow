@@ -407,7 +407,7 @@
           <img src="/docs/assets/hallow-install-flow.svg" alt="Four step Hallow boot sequence: install, setup, doctor, start.">
           <figcaption>The first-run path stays simple before deeper runtime controls appear.</figcaption>
         </figure>
-        <pre><code>powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"
+        <pre><code>iex (irm https://hallow-agent.xyz/install.ps1)
  hallow
  hallow&gt; status
  hallow&gt; run "summarize this workspace"</code></pre>
@@ -417,9 +417,9 @@
       <section id="windows">
         <h2>Installation</h2>
         <div class="steps">
-          <article class="step"><span>01</span><div><strong>Windows CMD / PowerShell</strong><pre><code>powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"</code></pre></div></article>
+          <article class="step"><span>01</span><div><strong>Windows PowerShell</strong><pre><code>iex (irm https://hallow-agent.xyz/install.ps1)</code></pre></div></article>
           <article class="step"><span>02</span><div><strong>macOS / Linux / WSL2</strong><pre><code>curl -fsSL https://hallow-agent.xyz/install.sh | bash</code></pre></div></article>
-          <article class="step"><span>03</span><div><strong>PowerShell-native fallback</strong><pre><code>irm https://hallow-agent.xyz/install.ps1 | iex</code></pre></div></article>
+          <article class="step"><span>03</span><div><strong>Windows CMD fallback</strong><pre><code>powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"</code></pre></div></article>
           <article class="step" id="android"><span>04</span><div><strong>Verify before installing</strong><pre><code>irm https://hallow-agent.xyz/install.ps1 -OutFile install.ps1
 .\install.ps1 -DryRun</code></pre><p>The Bash installer supports <code>--dry-run</code>, <code>--no-start</code>, <code>--no-open</code>, and <code>--verify</code>. PowerShell exposes equivalent switches.</p></div></article>
         </div>

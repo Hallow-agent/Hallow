@@ -322,20 +322,31 @@
     [install, tour].forEach(dialog => dialog?.addEventListener('click', event => {
       if (event.target === dialog) { $('video', dialog)?.pause(); dialog.close(); lock(false); lenis?.start(); }
     }));
-    const commands = {
-      windows: 'powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"',
-      unix: 'curl -fsSL https://hallow-agent.xyz/install.sh | bash'
+    const platformName = `${navigator.userAgentData?.platform || ''} ${navigator.platform || ''} ${navigator.userAgent || ''}`.toLowerCase();
+    const detectedPlatform = /win/.test(platformName) && !/android/.test(platformName) ? 'windows' : 'unix';
+    $$('[data-install-platform]').forEach(row => {
+      const recommended = row.dataset.installPlatform === detectedPlatform;
+      row.classList.toggle('is-recommended', recommended);
+      if (recommended) $('[data-platform-badge]', row).textContent = 'Recommended';
+    });
+    const copyText = async value => {
+      if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(value);
+      const field = document.createElement('textarea');
+      field.value = value;
+      field.style.position = 'fixed';
+      field.style.opacity = '0';
+      document.body.appendChild(field);
+      field.select();
+      document.execCommand('copy');
+      field.remove();
     };
-    $$('[data-os]').forEach(tab => tab.addEventListener('click', () => {
-      $$('[data-os]').forEach(item => item.classList.toggle('is-active', item === tab));
-      $('[data-command]').textContent = commands[tab.dataset.os];
-    }));
-    $('[data-copy]')?.addEventListener('click', async event => {
-      await navigator.clipboard.writeText($('[data-command]').textContent);
+    $$('[data-copy-command]').forEach(button => button.addEventListener('click', async event => {
+      const command = $('[data-command]', event.currentTarget.closest('.install-command')).textContent;
+      await copyText(command);
       const old = event.currentTarget.textContent;
       event.currentTarget.textContent = 'Copied';
       setTimeout(() => event.currentTarget.textContent = old, 1400);
-    });
+    }));
   }
 
   function initPointerEffects() {

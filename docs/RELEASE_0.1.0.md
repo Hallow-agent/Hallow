@@ -1,6 +1,6 @@
 # Hallow 0.1.0 — Operator Preview Upgrade
 
-Hallow 0.1.0 turns the original local runtime prototype into a clearer, installable Agent OS preview with a stronger operator experience, verifiable demonstrations, and the first domain specialization.
+Hallow 0.1.0 turns the original local runtime prototype into a clearer, installable Agent OS preview with a stronger operator experience, verifiable demonstrations, and the Guardian specialization.
 
 ## What changed
 
@@ -27,9 +27,9 @@ Hallow 0.1.0 turns the original local runtime prototype into a clearer, installa
 
 ### Hallow Guardian
 
-Guardian is the first specialization built on Hallow. It adds:
+Guardian is Hallow's blockchain intelligence specialization. It adds:
 
-- canonical-first RWA identity resolution;
+- canonical identity resolution for RWAs;
 - recorded and live market evidence lanes;
 - arbitrary-contract memecoin inspection without ticker trust;
 - deterministic spend, reserve, slippage, exposure, freshness, and allowlist policy;

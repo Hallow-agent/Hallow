@@ -4,7 +4,7 @@ Installation takes one terminal command on macOS, Linux, WSL, or Termux. Windows
 
 Before doing real work, Hallow Doctor checks what is actually ready: the runtime, private model route, memory boundary, tool policy, installed skills, and chain connection.
 
-Then ask in plain English. Investigate AAPL on Robinhood Chain. Show evidence, risk, and unknowns. One request activates multiple bounded tools. Hallow checks the network, official market data, token intelligence, and policy, then returns an inspectable answer.
+Then define the mission: investigate AAPL on Robinhood Chain and show evidence, risk, and unknowns. One request activates multiple bounded tools. Hallow checks the network, official market data, token intelligence, and policy, then returns an inspectable answer.
 
 For real-world assets, a ticker is not enough. Hallow resolves the official deployment, checks market activity, public liquidity, holder distribution, and protocol readiness. It also states what the evidence cannot prove, including future sellability, ownership rights, and legal eligibility.
 

@@ -4,7 +4,7 @@ One command builds the private runtime, verifies every dependency, creates the w
 
 Before the first mission, Hallow proves it is ready. The runtime is healthy. Memory is indexed. Model routes are connected. Tool policy is active. Skills are verified. Recovery is armed. No vague promise. A readiness check you can inspect.
 
-Now, ask for the outcome in plain English. Hallow recalls durable context, scopes the workspace, selects bounded tools, and turns one instruction into a mission that can continue beyond a single reply.
+Now, give Hallow a concrete outcome. It recalls durable context, scopes the workspace, selects bounded tools, and turns one instruction into a mission that can continue beyond a single reply.
 
 Watch the work happen. Memory recall. Repository inspection. Controlled repair. Verification. Release preparation. Every important step becomes a trace. When the mission reaches an external action, policy stops it at the boundary.
 

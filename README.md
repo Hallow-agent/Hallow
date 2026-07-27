@@ -4,7 +4,7 @@
 
 <h1 align="center">Hallow</h1>
 
-<p align="center"><strong>The local-first Agent OS for autonomous work.</strong></p>
+<p align="center"><strong>The local Agent OS for autonomous work.</strong></p>
 
 <p align="center">
   Persistent memory · Model routing · Bounded tools · Tested skills · Long-running tasks · Human approval · Recovery
@@ -61,7 +61,7 @@ curl -fsSL https://hallow-agent.xyz/install.sh -o install.sh
 bash install.sh --dry-run
 ```
 
-## The first five minutes
+## Start in five minutes
 
 ```bash
 hallow
@@ -82,7 +82,7 @@ hallow> exit
 ```
 
 <p align="center">
-  <img src="./docs/assets/hallow-terminal-preview.svg" alt="Hallow local operator terminal" width="92%">
+  <img src="./docs/media/hallow-agent-os-poster.png" alt="Hallow operator terminal showing runtime readiness" width="92%">
 </p>
 
 ## What makes it an Agent OS
@@ -128,6 +128,10 @@ flowchart LR
 
 The model is one component inside this system. Memory, policy, tool permissions, approval, and evidence are runtime responsibilities rather than prompt conventions.
 
+<p align="center">
+  <img src="./docs/assets/hallow-runtime-field.png" alt="Hallow runtime field with the official eclipse mark and governed system orbits" width="100%">
+</p>
+
 ## One mission, end to end
 
 ```bash
@@ -149,10 +153,10 @@ The exact behavior depends on the selected agent, tools, model route, sandbox ba
 ## Guardian: proof before action
 
 <p align="center">
-  <img src="./docs/assets/hallow-logo.png" alt="Hallow official eclipse mark" width="260">
+  <img src="./docs/assets/hallow-guardian-product.png" alt="Hallow Guardian product interface for evidence-led onchain analysis" width="100%">
 </p>
 
-[Hallow Guardian](https://hallow-agent.xyz/guardian) is the first domain specialization built on the runtime. It gives an agent a disciplined, non-custodial way to reason about RWAs and memecoins on Robinhood Chain.
+[Hallow Guardian](https://hallow-agent.xyz/guardian) is a blockchain intelligence specialization built on the runtime. It gives an agent a disciplined, non-custodial way to reason about RWAs and memecoins on Robinhood Chain.
 
 | Gate | Responsibility |
 | --- | --- |
@@ -256,7 +260,7 @@ corepack pnpm audit:prod
 
 Hallow `0.1.0` is an alpha release.
 
-- The installed runtime is local-first, but cloud models and remote tools send the data required for their calls to the provider selected by the operator.
+- The installed runtime begins on the operator's machine, but cloud models and remote tools send the data required for their calls to the provider selected by the operator.
 - Sandbox strength depends on the configured backend and host operating system. Do not treat the default runtime as a hardened boundary for hostile code.
 - The public marketplace is package metadata and local sources, not yet a hosted trustless registry.
 - Messaging and OAuth adapters require operator-owned credentials and configuration.

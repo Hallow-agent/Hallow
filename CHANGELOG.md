@@ -13,9 +13,9 @@ This release turns the first prototype into a clearer installable Agent OS previ
 
 Read the [full 0.1.0 upgrade notes](./docs/RELEASE_0.1.0.md).
 
-## Hallow 001 / 0.0.1 - First Public Preview
+## Hallow 001 / 0.0.1 - Public Preview
 
-Hallow's first public preview is the initial local-first agent OS release.
+Hallow 001 introduced the initial local agent OS preview.
 
 This version includes:
 

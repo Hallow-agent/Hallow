@@ -2,7 +2,7 @@
   "name": "hallow",
   "version": "0.1.0",
   "private": true,
-  "description": "Local-first runtime for self-improving autonomous agents.",
+  "description": "Local Agent OS for autonomous work.",
   "homepage": "https://hallow-agent.xyz",
   "repository": {
     "type": "git",

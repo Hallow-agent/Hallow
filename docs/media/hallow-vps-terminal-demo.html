@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hallow VPS Deployment</title>
+  <style>
+    :root {
+      --paper: #d9caac;
+      --ink: #10100f;
+      --terminal: #080907;
+      --terminal-2: #11120f;
+      --white: #f3efe4;
+      --muted: #8f9188;
+      --cyan: #79dbe2;
+      --green: #8bea9d;
+      --amber: #e3c778;
+      --red: #e87979;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+    body {
+      background:
+        radial-gradient(circle at 84% 8%, rgba(255,255,255,.32), transparent 26%),
+        repeating-linear-gradient(0deg, transparent 0 47px, rgba(16,16,15,.045) 48px),
+        repeating-linear-gradient(90deg, transparent 0 47px, rgba(16,16,15,.045) 48px),
+        var(--paper);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .poster {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      padding: 56px 56px 48px;
+      overflow: hidden;
+    }
+
+    .poster::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: .15;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.25'/%3E%3C/svg%3E");
+      mix-blend-mode: multiply;
+    }
+
+    header { display: flex; justify-content: space-between; align-items: flex-start; height: 140px; }
+    .kicker, .index, .architecture, .terminal-bar, .terminal, footer {
+      font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
+    }
+    .kicker { font-size: 17px; letter-spacing: .14em; font-weight: 700; }
+    h1 { margin: 10px 0 0; font-family: Georgia, "Times New Roman", serif; font-size: 68px; line-height: .92; font-weight: 400; letter-spacing: -.045em; }
+    h1 em { display: block; font-weight: 400; }
+    .index { font-size: 16px; line-height: 1.45; text-align: right; letter-spacing: .08em; }
+
+    .architecture {
+      height: 74px;
+      display: grid;
+      grid-template-columns: 1fr 96px 1fr;
+      align-items: center;
+      border: 1px solid rgba(16,16,15,.55);
+      margin: 20px 0 26px;
+      background: rgba(240,231,210,.46);
+    }
+    .architecture .node { padding: 0 24px; }
+    .architecture .node:last-child { text-align: right; }
+    .architecture strong { display: block; font-size: 16px; letter-spacing: .08em; }
+    .architecture small { display: block; margin-top: 5px; color: rgba(16,16,15,.68); font-size: 12px; }
+    .arrow { text-align: center; font-size: 25px; }
+
+    .terminal-shell {
+      height: 860px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 22px 54px rgba(18,15,10,.28);
+      border: 1px solid #24251f;
+      background: var(--terminal);
+    }
+    .terminal-bar {
+      height: 50px;
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      color: #b8b9af;
+      background: #171815;
+      border-bottom: 1px solid #2b2c26;
+      font-size: 13px;
+      letter-spacing: .03em;
+    }
+    .lights { display: flex; gap: 8px; margin-right: 18px; }
+    .lights i { width: 9px; height: 9px; border-radius: 50%; display: block; background: #64665c; }
+    .lights i:first-child { background: var(--red); }
+    .lights i:nth-child(2) { background: var(--amber); }
+    .lights i:last-child { background: var(--green); }
+    .terminal-title { flex: 1; text-align: center; transform: translateX(-36px); }
+
+    .terminal {
+      position: relative;
+      height: 810px;
+      padding: 27px 30px;
+      color: var(--white);
+      background:
+        radial-gradient(circle at 90% 5%, rgba(121,219,226,.055), transparent 32%),
+        linear-gradient(135deg, var(--terminal), var(--terminal-2));
+      font-size: 16px;
+      line-height: 1.56;
+      letter-spacing: -.015em;
+    }
+    .scene { position: absolute; inset: 27px 30px; opacity: 0; pointer-events: none; }
+    .scene.active { opacity: 1; }
+    .scene .line { white-space: pre; min-height: 25px; }
+    .prompt { color: var(--white); }
+    .prompt::before { content: "$ "; color: var(--cyan); }
+    .dim { color: var(--muted); }
+    .cyan { color: var(--cyan); }
+    .green { color: var(--green); }
+    .amber { color: var(--amber); }
+    .big-mark { margin: 6px 0 18px; color: var(--white); font-weight: 800; line-height: 1.2; }
+    .divider { color: #5f6158; }
+    .status-box { border: 1px solid #44463e; margin: 16px 0; padding: 14px 18px; }
+    .status-grid { display: grid; grid-template-columns: 180px 1fr; row-gap: 6px; }
+    .cursor { display: inline-block; width: 9px; height: 19px; vertical-align: -4px; background: var(--white); animation: blink .9s steps(2) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    footer {
+      height: 74px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      align-items: end;
+      padding-top: 21px;
+      font-size: 12px;
+      letter-spacing: .04em;
+    }
+    footer span { border-top: 1px solid rgba(16,16,15,.48); padding-top: 10px; }
+    footer b { display: block; font-size: 15px; margin-bottom: 2px; }
+
+    .video .scene .line { opacity: 0; transform: translateY(5px); }
+    .video .scene.active .line { animation: lineIn .28s forwards; }
+    @keyframes lineIn { to { opacity: 1; transform: translateY(0); } }
+    .video .architecture { animation: architecturePulse 12.6s ease-in-out both; }
+    @keyframes architecturePulse { 0%,100% { background: rgba(240,231,210,.46); } 44%,58% { background: rgba(121,219,226,.18); } }
+  </style>
+</head>
+<body>
+  <main class="poster" id="poster">
+    <header>
+      <div>
+        <div class="kicker">DEPLOYMENT RECORD / 001</div>
+        <h1>One website.<br><em>One private engine.</em></h1>
+      </div>
+      <div class="index">HALLOW<br>AGENT OS<br>27.07.2026</div>
+    </header>
+
+    <section class="architecture">
+      <div class="node"><strong>VERCEL / WEBSITE</strong><small>public interface · global edge</small></div>
+      <div class="arrow">⟶</div>
+      <div class="node"><strong>UBUNTU / VPS ENGINE</strong><small>private runtime · persistent state</small></div>
+    </section>
+
+    <section class="terminal-shell">
+      <div class="terminal-bar">
+        <span class="lights"><i></i><i></i><i></i></span>
+        <span class="terminal-title">ubuntu@vps — /opt/hallow</span>
+      </div>
+      <div class="terminal">
+        <div class="scene install" data-scene="install">
+          <div class="line prompt">curl -fsSL https://hallow-agent.xyz/install.sh | bash</div>
+          <div class="line"> </div>
+          <div class="line big-mark">H   H   AAAAA   L       L        OOOOO   W       W</div>
+          <div class="line cyan">AGENT OS 001  <span class="dim">/ PRIVATE RUNTIME INSTALLER</span></div>
+          <div class="line divider">--------------------------------------------------------</div>
+          <div class="line"> </div>
+          <div class="line"><span class="dim">[01/08]</span> <span class="cyan">PREFLIGHT</span></div>
+          <div class="line green">        OK  Install root verified</div>
+          <div class="line"><span class="dim">[02/08]</span> <span class="cyan">RUNTIME</span>      <span class="dim">Node.js 22+ / pnpm 10.11</span></div>
+          <div class="line green">        OK  Runtime plan validated</div>
+          <div class="line"><span class="dim">[03/08]</span> <span class="cyan">SOURCE</span>       <span class="dim">Staged source promotion</span></div>
+          <div class="line green">        OK  Source downloaded and inspected</div>
+          <div class="line"><span class="dim">[04/08]</span> <span class="cyan">DEPENDENCIES</span> <span class="dim">Locked workspace install</span></div>
+          <div class="line green">        OK  Dependencies ready</div>
+          <div class="line"><span class="dim">[05/08]</span> <span class="cyan">BUILD</span>        <span class="dim">Core · models · runtime · CLI</span></div>
+          <div class="line green">        OK  Build verified</div>
+          <div class="line"><span class="dim">[06/08]</span> <span class="cyan">WORKSPACE</span>    <span class="dim">Private state initialized</span></div>
+          <div class="line green">        OK  Runtime home checked</div>
+          <div class="line"><span class="dim">[07/08]</span> <span class="cyan">COMMAND</span>      <span class="dim">Global launcher</span></div>
+          <div class="line green">        OK  hallow command ready</div>
+          <div class="line"><span class="dim">[08/08]</span> <span class="cyan">LAUNCH</span>       <span class="dim">Managed background runtime</span></div>
+          <div class="line green">        OK  Runtime online</div>
+          <div class="line"> </div>
+          <div class="line green">+------------------------------------------------------+</div>
+          <div class="line green">|  HALLOW IS READY                                     |</div>
+          <div class="line green">+------------------------------------------------------+</div>
+        </div>
+
+        <div class="scene runtime" data-scene="runtime">
+          <div class="line prompt">systemctl status hallow --no-pager</div>
+          <div class="line">● hallow.service — Hallow Agent Runtime</div>
+          <div class="line green">     Active: active (running)</div>
+          <div class="line dim">     Loaded: enabled · starts automatically after reboot</div>
+          <div class="line">   Main PID: 3702519 (node)</div>
+          <div class="line"> </div>
+          <div class="line prompt">hallow status --strict</div>
+          <div class="status-box">
+            <div class="status-grid">
+              <span class="dim">runtime</span><span class="green">online</span>
+              <span class="dim">doctor</span><span>33 / 33 passing</span>
+              <span class="dim">security</span><span class="green">hardened</span>
+              <span class="dim">sandbox</span><span>node-permission / isolated</span>
+              <span class="dim">provider</span><span>OpenRouter reachable</span>
+              <span class="dim">listener</span><span>127.0.0.1:4767 / private</span>
+            </div>
+          </div>
+          <div class="line prompt">curl -s http://127.0.0.1:4767/api/health</div>
+          <div class="line green">{ "ok": true, "home": "/home/ubuntu/.hallow" }</div>
+          <div class="line"> </div>
+          <div class="line prompt">sudo kill -TERM 3702185</div>
+          <div class="line amber">systemd: recovering runtime…</div>
+          <div class="line green">OLD_PID=3702185  NEW_PID=3702519  RECOVERY_OK</div>
+          <div class="line"> </div>
+          <div class="line dim">persistent engine ready <span class="cursor"></span></div>
+        </div>
+
+        <div class="scene chat" data-scene="chat">
+          <div class="line prompt">hallow chat "Reply with exactly: VPS HALLOW ONLINE"</div>
+          <div class="line"> </div>
+          <div class="line green">VPS HALLOW ONLINE</div>
+          <div class="line"> </div>
+          <div class="line dim">Session: session_2026…74c0e24a</div>
+          <div class="line dim">Model: openrouter:openai/gpt-5-mini</div>
+          <div class="line dim">Iterations: 1</div>
+          <div class="line"> </div>
+          <div class="line prompt">hallow sessions list --limit 3</div>
+          <div class="line cyan">session_2026…  active  2  VPS HALLOW ONLINE</div>
+          <div class="line"> </div>
+          <div class="line prompt">hallow sandbox smoke</div>
+          <div class="line green">Sandbox success: node --permission</div>
+          <div class="line dim">outside_fs=ERR_ACCESS_DENIED</div>
+          <div class="line dim">child_process=ERR_ACCESS_DENIED</div>
+          <div class="line"> </div>
+          <div class="status-box">
+            <div class="status-grid">
+              <span class="dim">frontend</span><span>Vercel</span>
+              <span class="dim">engine</span><span>Ubuntu VPS</span>
+              <span class="dim">state</span><span>SQLite / persistent</span>
+              <span class="dim">recovery</span><span class="green">automatic</span>
+            </div>
+          </div>
+          <div class="line prompt">hallow <span class="cursor"></span></div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <span><b>17 / 17</b>regression tests</span>
+      <span><b>33 / 33</b>doctor checks</span>
+      <span><b>HARDENED</b>security audit</span>
+      <span><b>ALWAYS ON</b>systemd recovery</span>
+    </footer>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const mode = params.get("scene") || "runtime";
+    const poster = document.getElementById("poster");
+    const scenes = [...document.querySelectorAll(".scene")];
+
+    function show(name, animate = false) {
+      scenes.forEach(scene => {
+        const active = scene.dataset.scene === name;
+        scene.classList.toggle("active", active);
+        if (active && animate) {
+          [...scene.querySelectorAll(".line")].forEach((line, index) => {
+            line.style.animationDelay = `${index * 0.075}s`;
+          });
+        }
+      });
+    }
+
+    if (mode === "video") {
+      poster.classList.add("video");
+      show("install", true);
+      setTimeout(() => show("runtime", true), 4700);
+      setTimeout(() => show("chat", true), 8800);
+    } else {
+      show(mode);
+    }
+  </script>
+</body>
+</html>

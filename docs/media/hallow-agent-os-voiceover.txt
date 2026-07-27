@@ -1,0 +1,19 @@
+Most AI agents still live in a tab. Their memory expires with the session. Their tools feel disconnected. And their decisions disappear behind an answer.
+
+Hallow changes where the agent lives. It is an open-source Agent OS installed directly on your PC, with a private runtime, a durable workspace, and an operator in control.
+
+One command builds the runtime, verifies its dependencies, starts the managed service, and opens the desktop. No Git ritual. No maze of services. From a clean machine to a living agent.
+
+Ask for an outcome in plain English. Hallow recalls the right context, scopes the workspace, selects bounded tools, and turns the request into a mission that can keep working beyond a single reply.
+
+Intelligence becomes a system. Route between local and cloud models. Connect MCP tools. Reuse tested skills. Keep memory close—and keep policy outside the prompt.
+
+Long-running work gets a queue, checkpoints, retries, evidence, and history. Schedule it. Resume it. Inspect every stage without rebuilding the context from zero.
+
+When an action crosses a sensitive boundary, Hallow stops. You see the exact target, change, evidence, and risk before anything leaves the machine. Autonomy moves quickly. Consent stays human.
+
+And when work fails, failure becomes evidence. Doctor checks, readiness proofs, traces, reflection, and controlled recovery help the agent explain what broke, repair safely, and verify again.
+
+This is the difference. Not a temporary chat session. An installable runtime. Not rented context. Durable local memory. Not one model locked to one workflow. Routing, tools, MCP, and tested skills. Not action without accountability. Approvals, traces, readiness, and recovery.
+
+Your machine. Your memory. Your agent. Hallow Agent OS. Install the intelligence that keeps working—and keeps you in control.

@@ -119,8 +119,10 @@ export class RobinhoodChainClient {
     const canonicalAsset = assetsResult.find((asset) => asset.deployments.some((deployment) =>
       deployment.chain_id === this.network.chain_id && deployment.contract_address.toLowerCase() === address.toLowerCase()
     ));
-    const canonical = Boolean(canonicalAsset);
+    const canonicalSystemSymbol = address === USDG_ADDRESS ? "USDG" : address === WETH_ADDRESS ? "WETH" : undefined;
+    const canonical = Boolean(canonicalAsset || canonicalSystemSymbol);
     if (canonicalAsset) evidence.push({ source: "Robinhood Stock Token API", claim: "Canonical Stock Token", value: canonicalAsset.symbol, observed_at: observedAt });
+    if (canonicalSystemSymbol) evidence.push({ source: "Robinhood Chain canonical contracts", claim: "Canonical system contract", value: canonicalSystemSymbol, observed_at: observedAt });
 
     const detectedCapabilities = detectBytecodeCapabilities(code);
     if (detectedCapabilities.includes("mint")) {

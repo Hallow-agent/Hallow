@@ -69,6 +69,13 @@ test("Robinhood connector creates a canonical, evidence-backed Asset Passport", 
   assert.ok(passport.contract.detected_capabilities.includes("mint"));
 });
 
+test("official USDG system contract is recognized as canonical", async () => {
+  const client = new RobinhoodChainClient({ fetch: mockFetch, network: "mainnet" });
+  const passport = await client.inspectAsset("0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168", { kind: "stablecoin", now: NOW });
+  assert.equal(passport.canonical, true);
+  assert.ok(passport.evidence.some((entry) => entry.claim === "Canonical system contract" && entry.value === "USDG"));
+});
+
 test("Guardian policy blocks oversized, high-slippage memecoin actions", async () => {
   const client = new RobinhoodChainClient({ fetch: mockFetch });
   const passport = await client.inspectAsset(CONTRACT, { kind: "meme", now: NOW });

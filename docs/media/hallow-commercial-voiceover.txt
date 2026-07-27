@@ -1,0 +1,17 @@
+Most AI products begin with a chat box. Hallow begins with a private runtime—and a rule: intelligence before action, proof after it.
+
+Installation takes one terminal command on macOS, Linux, WSL, or Termux. Windows has its own one-line PowerShell installer. Hallow verifies dependencies, creates the private workspace, starts the managed service, and preserves existing data during updates.
+
+Before doing real work, Hallow Doctor checks what is actually ready: the runtime, private model route, memory boundary, tool policy, installed skills, and chain connection.
+
+Then ask in plain English. Investigate AAPL on Robinhood Chain. Show evidence, risk, and unknowns. One request activates multiple bounded tools. Hallow checks the network, official market data, token intelligence, and policy, then returns an inspectable answer.
+
+For real-world assets, a ticker is not enough. Hallow resolves the official deployment, checks market activity, public liquidity, holder distribution, and protocol readiness. It also states what the evidence cannot prove, including future sellability, ownership rights, and legal eligibility.
+
+For memecoins, the same discipline applies. In this recorded snapshot, the deepest observed liquidity is only about eleven thousand dollars. Guardian stops for review. No swap, wallet, or private key is required.
+
+Hallow is more than one blockchain scanner. It provides private memory, bounded tools, reusable skills, long-running tasks, conversation gateways, traces, readiness checks, and controlled recovery—inside one installable agent operating system.
+
+Research still does not grant permission to move money. Guardian evaluates spending, reserve, slippage, asset identity, and risk policy. A human approves one exact plan. The dry run leaves a tamper-evident receipt while prompts, private memory, credentials, and wallet secrets remain excluded.
+
+Typical agents connect a model directly to action. Hallow builds a chain anyone can inspect: evidence, policy, consent, then proof. Install the agent you can inspect. Hallow Agent OS.

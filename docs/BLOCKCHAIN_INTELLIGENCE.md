@@ -38,7 +38,7 @@ hallow guardian plan buy AAPL --usd 50 --slippage-bps 30 --reserve-percent 20
 | Open Blockscout data | How many holders are reported and how concentrated is the observable supply? |
 | Official Uniswap deployment | Are the documented v4 contracts actually present on chain? |
 
-The deterministic report remains useful without an AI model. When DeepSeek is configured, it receives only the bounded evidence object and must separate known facts, failure modes, and unknowns. It cannot turn missing evidence into a confident claim.
+The deterministic report remains useful without an AI model. When an analyst model is configured, it receives only the bounded evidence object and must separate known facts, failure modes, and unknowns. It cannot turn missing evidence into a confident claim. The public product remains model-agnostic; provider selection and credentials stay private to the user's runtime.
 
 ## Why this is different
 

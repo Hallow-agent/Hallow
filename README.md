@@ -18,7 +18,7 @@ hallow guardian analyze 0xCONTRACT --kind meme
 hallow guardian plan buy AAPL --usd 50 --slippage-bps 30 --reserve-percent 20
 ```
 
-`analyze` joins the official Robinhood Stock Token registry, multiplier-aware quotes, open DEX liquidity/activity, Blockscout holders, verified Uniswap deployments, and an optional evidence-bound DeepSeek explanation. It never needs a wallet or private key and never moves funds.
+`analyze` joins the official Robinhood Stock Token registry, multiplier-aware quotes, open DEX liquidity/activity, Blockscout holders, verified Uniswap deployments, and an optional evidence-bound AI explanation. Hallow is model-agnostic: users select their own cloud or local model route. Research never needs a wallet or private key and never moves funds.
 
 Read [the live intelligence design](docs/BLOCKCHAIN_INTELLIGENCE.md) and [Guardian architecture and safety model](docs/GUARDIAN.md). This software provides technical controls and bounded evidence, not financial, legal, or investment advice.
 

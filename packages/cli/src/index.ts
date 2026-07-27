@@ -3194,8 +3194,8 @@ function printGuardianIntelligence(
   printTerminalSection("WHAT IS NOT PROVEN", item.unknowns, width);
   if (explanation) {
     const lines = explanation.content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    printTerminalSection("DEEPSEEK EXPLAINS", lines, width);
-    printTerminalText(`Active model: ${explanation.provider}:${explanation.model}`, "90");
+    printTerminalSection("AI ANALYST EXPLAINS", lines, width);
+    printTerminalText("Analysis route: configured privately", "90");
   } else {
     printTerminalSection("AI ANALYST", ["The model is unavailable; the deterministic evidence above remains valid and auditable."], width);
   }

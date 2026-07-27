@@ -270,9 +270,9 @@ export class RobinhoodChainClient {
       stale_quotes: stale,
       quotes,
       plain_language: [
-        `${assets.length} official Stock Token records are currently visible; this brief checked ${quotes.length}.`,
-        `${activeQuotes} checked assets returned a two-sided quote; ${halts} reported a trading halt and ${stale} had stale or missing timestamps.`,
-        "Displayed token-equivalent prices apply the official corporate-action multiplier. This is market evidence, not a recommendation."
+        `${assets.length} official Stock Token records are visible; this pulse checked ${quotes.length}.`,
+        `${activeQuotes} checked assets have two-sided quotes; ${halts} are halted and ${stale} have stale or incomplete timestamps.`,
+        "Displayed token prices apply the official corporate-action multiplier. This is market evidence, not a recommendation."
       ],
       observed_at: now.toISOString()
     };
@@ -308,7 +308,8 @@ export class RobinhoodChainClient {
       "Holder addresses do not reveal common ownership across wallets.",
       "Social credibility, issuer promises, and legal eligibility require separate verification."
     ];
-    const attention = warnings.some((warning) => /critical|no observed liquidity|largest non-pool holder/i.test(warning))
+    const attention = warnings.some((warning) => /critical|no observed liquidity/i.test(warning))
+      || (passport.kind !== "rwa" && warnings.some((warning) => /largest non-pool holder/i.test(warning)))
       ? "avoid-until-reviewed" as const
       : warnings.length > 0 ? "review" as const : "normal" as const;
     const base = {
@@ -437,10 +438,10 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const USDG_ADDRESS = "0x5fc5360d0400a0fd4f2af552add042d716f1d168";
 const WETH_ADDRESS = "0x0bd7d308f8e1639fab988df18a8011f41eacad73";
 const UNISWAP_V4_CONTRACTS = {
-  pool_manager: "0x33620f62c5b9b2086dd6b62f4a297a9f30347029",
-  quoter: "0x20e6487c371a2086f841ef453f85378223df4f4e",
-  state_view: "0x21b954fba3f5ddebe77ef2d47a3100c066908b2a",
-  universal_router: "0xa2dc7d0266f0cc50b3eeaf36c9bfcecff1beea91",
+  pool_manager: "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+  quoter: "0x8dc178efb8111bb0973dd9d722ebeff267c98f94",
+  state_view: "0xf3334192d15450cdd385c8b70e03f9a6bd9e673b",
+  universal_router: "0x8876789976decbfcbbbe364623c63652db8c0904",
   permit2: "0x000000000022d473030f116ddee9f6b43ac78ba3"
 } as const;
 
@@ -638,8 +639,16 @@ function createIntelligenceWarnings(input: {
   if (input.totalLiquidity <= 0) warnings.push("No observed liquidity route was found; do not assume the token can be sold.");
   else if (input.totalLiquidity < 50_000) warnings.push("CRITICAL: observed liquidity is below $50,000 and price impact may be extreme.");
   else if (input.totalLiquidity < 250_000) warnings.push("Observed liquidity is thin; small trades may move the price materially.");
-  if (input.largest !== undefined && input.largest >= 20) warnings.push(`Largest non-pool holder controls about ${input.largest.toFixed(1)}% of supply.`);
-  if (input.top10 !== undefined && input.top10 >= 50) warnings.push(`Top ten observed non-pool holders control about ${input.top10.toFixed(1)}% of supply.`);
+  if (input.largest !== undefined && input.largest >= 20) {
+    warnings.push(input.passport.kind === "rwa" && input.passport.canonical
+      ? `Largest observed non-pool holder has about ${input.largest.toFixed(1)}% of supply; this may be issuer, custody, or bridge inventory and needs address-label verification.`
+      : `Largest non-pool holder controls about ${input.largest.toFixed(1)}% of supply.`);
+  }
+  if (input.top10 !== undefined && input.top10 >= 50) {
+    warnings.push(input.passport.kind === "rwa" && input.passport.canonical
+      ? `Top ten observed non-pool holders have about ${input.top10.toFixed(1)}% of supply; do not interpret this as sell pressure without identifying the addresses.`
+      : `Top ten observed non-pool holders control about ${input.top10.toFixed(1)}% of supply.`);
+  }
   if (input.holderCount !== undefined && input.holderCount < 100) warnings.push(`Only ${input.holderCount} holder addresses are reported by the explorer.`);
   const trades = input.buys + input.sells;
   if (trades >= 20 && Math.min(input.buys, input.sells) / Math.max(input.buys, input.sells, 1) < 0.2)

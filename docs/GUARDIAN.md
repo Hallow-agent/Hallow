@@ -22,6 +22,9 @@ intent -> Asset Passport -> policy checks -> dry-run plan -> human approval -> r
 
 ```bash
 hallow guardian status
+hallow guardian brief --limit 8
+hallow guardian analyze AAPL
+hallow guardian analyze 0xCONTRACT --kind meme
 hallow guardian inspect 0xCONTRACT --kind rwa
 hallow guardian plan buy 0xCONTRACT --usd 50 --slippage-bps 30 --reserve-percent 20
 hallow guardian policy show

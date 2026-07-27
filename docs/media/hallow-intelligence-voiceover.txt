@@ -1,0 +1,15 @@
+Blockchain agents are usually judged by how quickly they can send a transaction. But acting fast is not the same as understanding risk. Hallow takes a different path: proof before action.
+
+Everything starts in the terminal. Market Pulse reads Robinhood's official Stock Token registry, two-sided quotes, trading status, data timestamps, and corporate-action multipliers. The model does not guess the numbers. Market evidence comes first.
+
+When a user analyzes AAPL, Hallow does not trust the ticker. It resolves the official contract, reads onchain evidence, measures public liquidity and activity, checks holder distribution, and verifies that the documented Uniswap contracts are actually present on Robinhood Chain.
+
+The same discipline applies to memecoins. In this HOOD snapshot, the deepest observed liquidity is only about eleven thousand dollars. Hallow immediately surfaces extreme price-impact risk and stops the workflow for review. No swap, no wallet, and no private key is requested.
+
+DeepSeek acts as the analyst, not the source of truth. It receives only the evidence package already collected by Hallow. When something cannot be proven, the answer must say it is unknown. The model cannot invent prices, catalysts, returns, or call an asset safe.
+
+After research, Guardian creates a simulation plan. Transaction size, memecoin exposure, reserve funds, slippage, canonical identity, and trading halts are checked by deterministic policy. Prompts can bend. Policy cannot.
+
+If a plan passes, a human must still approve the exact action, asset, and amount. Consent is bound to one immutable plan hash, not an open-ended permission for the agent. Hallow then creates a verifiable receipt without publishing conversations, model keys, private memory, or wallet secrets.
+
+That is the difference. A typical agent connects a model directly to action. Hallow builds an inspectable chain: evidence, policy, consent, then proof. It is not an auto-trader. Hallow is a control plane for onchain economic agents.

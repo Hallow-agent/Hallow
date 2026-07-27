@@ -12,11 +12,15 @@ Guardian gives Hallow a safer way to reason about RWAs and memecoins: inspect a 
 
 ```bash
 hallow guardian status
-hallow guardian inspect 0xCONTRACT --kind rwa
-hallow guardian plan buy 0xCONTRACT --usd 50 --slippage-bps 30
+hallow guardian brief --limit 8
+hallow guardian analyze AAPL
+hallow guardian analyze 0xCONTRACT --kind meme
+hallow guardian plan buy AAPL --usd 50 --slippage-bps 30 --reserve-percent 20
 ```
 
-Read [the Guardian architecture and safety model](docs/GUARDIAN.md). This software provides technical controls and bounded evidence, not financial, legal, or investment advice.
+`analyze` joins the official Robinhood Stock Token registry, multiplier-aware quotes, open DEX liquidity/activity, Blockscout holders, verified Uniswap deployments, and an optional evidence-bound DeepSeek explanation. It never needs a wallet or private key and never moves funds.
+
+Read [the live intelligence design](docs/BLOCKCHAIN_INTELLIGENCE.md) and [Guardian architecture and safety model](docs/GUARDIAN.md). This software provides technical controls and bounded evidence, not financial, legal, or investment advice.
 
 ## Install Hallow 001
 

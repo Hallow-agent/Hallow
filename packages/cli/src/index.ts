@@ -3004,7 +3004,7 @@ async function handleGuardian(
     const explanation = rest.includes("--no-ai")
       ? undefined
       : await context.runtime.explainGuardianIntelligence(record.intelligence, {
-          language: rest.includes("--english") ? "en" : "id",
+          language: "en",
           model: readOption(rest, "--model")
         }).catch(() => undefined);
     printGuardianIntelligence(record, explanation);
@@ -3021,7 +3021,7 @@ async function handleGuardian(
     const brief = await context.runtime.getGuardianMarketBrief({ network, limit: 8 });
     printGuardianMarketBrief(brief.brief);
     const record = await context.runtime.inspectGuardianTokenIntelligence(query, { network, kind: "auto" });
-    const explanation = await context.runtime.explainGuardianIntelligence(record.intelligence, { language: "id" }).catch(() => undefined);
+    const explanation = await context.runtime.explainGuardianIntelligence(record.intelligence, { language: "en" }).catch(() => undefined);
     printGuardianIntelligence(record, explanation);
     return;
   }
@@ -3143,13 +3143,13 @@ function printGuardianMarketBrief(
   const width = terminalWidth();
   prepareTerminalSurface();
   printTerminalText("");
-  printTerminalFrame("HALLOW MARKET PULSE", "BUKTI LIVE / BUKAN SINYAL BELI", width);
-  printTerminalSection("APA YANG TERJADI", [
-    formatMetric("aset resmi terdaftar", brief.registered_assets.toLocaleString()),
-    formatMetric("aset diperiksa sekarang", brief.assets_checked.toLocaleString()),
-    formatMetric("quote dua arah aktif", brief.active_quotes.toLocaleString()),
-    formatMetric("perdagangan dihentikan", brief.trading_halts.toLocaleString()),
-    formatMetric("data basi / tidak lengkap", brief.stale_quotes.toLocaleString())
+  printTerminalFrame("HALLOW MARKET PULSE", "LIVE EVIDENCE / NOT A BUY SIGNAL", width);
+  printTerminalSection("WHAT IS HAPPENING", [
+    formatMetric("official assets listed", brief.registered_assets.toLocaleString()),
+    formatMetric("assets checked now", brief.assets_checked.toLocaleString()),
+    formatMetric("active two-sided quotes", brief.active_quotes.toLocaleString()),
+    formatMetric("trading halts", brief.trading_halts.toLocaleString()),
+    formatMetric("stale / incomplete data", brief.stale_quotes.toLocaleString())
   ], width);
   const rows = brief.quotes.slice(0, 8).map((quote) => {
     const bid = quote.token_bid === undefined ? "-" : guardianUsd(quote.token_bid);
@@ -3158,10 +3158,10 @@ function printGuardianMarketBrief(
     const state = quote.trading_halt ? "HALT" : quote.stale ? "STALE" : "LIVE";
     return `${padRight(quote.symbol, 9)} ${padRight(state, 7)} bid ${padRight(bid, 12)} ask ${padRight(ask, 12)} spread ${spread}`;
   });
-  printTerminalSection("SNAPSHOT RWA", rows.length ? rows : ["Belum ada quote yang dapat ditampilkan."], width);
-  printTerminalSection("ARTINYA", brief.plain_language, width);
+  printTerminalSection("RWA SNAPSHOT", rows.length ? rows : ["No quote is currently available."], width);
+  printTerminalSection("WHAT IT MEANS", brief.plain_language, width);
   printTerminalText(repeatChar("-", width), "90");
-  printTerminalText("Hallow tidak merangking aset dan tidak menjanjikan keuntungan. Data disimpan privat untuk audit.", "90");
+  printTerminalText("Hallow does not rank assets or promise returns. Evidence is stored privately for audit.", "90");
 }
 
 function printGuardianIntelligence(
@@ -3175,32 +3175,32 @@ function printGuardianIntelligence(
   prepareTerminalSurface();
   printTerminalText("");
   printTerminalFrame("BLOCKCHAIN INTELLIGENCE", `${symbol} / ${verdict}`, width);
-  printTerminalSection("DALAM BAHASA MANUSIA", [item.human_summary], width);
-  printTerminalSection("APA YANG KITA TAHU", [
-    formatMetric("jenis", item.passport.kind),
-    formatMetric("kontrak resmi", item.passport.canonical ? "ya, cocok dengan registry" : "belum terverifikasi"),
-    formatMetric("harga teramati", item.market.price_usd === undefined ? "belum tersedia" : guardianUsd(item.market.price_usd)),
-    formatMetric("likuiditas terdalam", guardianUsd(item.market.deepest_liquidity_usd)),
-    formatMetric("volume 24 jam", guardianUsd(item.market.volume_h24_usd)),
-    formatMetric("aktivitas 24 jam", `${item.market.buys_h24.toLocaleString()} beli / ${item.market.sells_h24.toLocaleString()} jual`),
-    formatMetric("Uniswap", item.uniswap.supported ? `${item.uniswap.active_pairs} pool teramati / kontrak v4 aktif` : "belum dapat diverifikasi")
+  printTerminalSection("IN PLAIN ENGLISH", [item.human_summary], width);
+  printTerminalSection("WHAT WE KNOW", [
+    formatMetric("asset type", item.passport.kind),
+    formatMetric("canonical contract", item.passport.canonical ? "yes, official registry match" : "not verified"),
+    formatMetric("observed price", item.market.price_usd === undefined ? "not available" : guardianUsd(item.market.price_usd)),
+    formatMetric("deepest liquidity", guardianUsd(item.market.deepest_liquidity_usd)),
+    formatMetric("24h volume", guardianUsd(item.market.volume_h24_usd)),
+    formatMetric("24h activity", `${item.market.buys_h24.toLocaleString()} buys / ${item.market.sells_h24.toLocaleString()} sells`),
+    formatMetric("Uniswap", item.uniswap.supported ? `${item.uniswap.active_pairs} observed pools / v4 contracts live` : "not verified")
   ], width);
-  printTerminalSection("SIAPA YANG MEMEGANG", [
-    formatMetric("jumlah holder", item.holders.holder_count?.toLocaleString() ?? "tidak diketahui"),
-    formatMetric("holder terbesar", item.holders.largest_non_pool_percent === undefined ? "tidak terukur" : `${item.holders.largest_non_pool_percent.toFixed(2)}% di luar pool`),
-    formatMetric("10 holder terbesar", item.holders.top_10_non_pool_percent === undefined ? "tidak terukur" : `${item.holders.top_10_non_pool_percent.toFixed(2)}% di luar pool`)
+  printTerminalSection("WHO HOLDS IT", [
+    formatMetric("holder count", item.holders.holder_count?.toLocaleString() ?? "unknown"),
+    formatMetric("largest holder", item.holders.largest_non_pool_percent === undefined ? "not measured" : `${item.holders.largest_non_pool_percent.toFixed(2)}% outside observed pools`),
+    formatMetric("top ten holders", item.holders.top_10_non_pool_percent === undefined ? "not measured" : `${item.holders.top_10_non_pool_percent.toFixed(2)}% outside observed pools`)
   ], width);
-  printTerminalSection("YANG BISA SALAH", item.warnings.length ? item.warnings : ["Tidak ada peringatan besar dari pemeriksaan terbatas ini."], width);
-  printTerminalSection("YANG BELUM BISA DIBUKTIKAN", item.unknowns, width);
+  printTerminalSection("WHAT CAN GO WRONG", item.warnings.length ? item.warnings : ["No major warning was found by this bounded inspection."], width);
+  printTerminalSection("WHAT IS NOT PROVEN", item.unknowns, width);
   if (explanation) {
     const lines = explanation.content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    printTerminalSection("DEEPSEEK MENJELASKAN", lines, width);
-    printTerminalText(`Model aktif: ${explanation.provider}:${explanation.model}`, "90");
+    printTerminalSection("DEEPSEEK EXPLAINS", lines, width);
+    printTerminalText(`Active model: ${explanation.provider}:${explanation.model}`, "90");
   } else {
-    printTerminalSection("AI ANALYST", ["Model belum tersedia; bukti deterministik di atas tetap valid dan dapat diaudit."], width);
+    printTerminalSection("AI ANALYST", ["The model is unavailable; the deterministic evidence above remains valid and auditable."], width);
   }
   printTerminalText(repeatChar("-", width), "90");
-  printTerminalText(`GUARDIAN VERDICT: ${verdict}. Tidak ada dana dipindahkan. Bukti disimpan privat di Hallow.`, item.attention === "avoid-until-reviewed" ? "91" : "90");
+  printTerminalText(`GUARDIAN VERDICT: ${verdict}. No funds moved. Evidence is stored privately by Hallow.`, item.attention === "avoid-until-reviewed" ? "91" : "90");
 }
 
 function guardianUsd(value: number): string {

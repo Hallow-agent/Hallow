@@ -1,0 +1,116 @@
+1
+00:00:00,050 --> 00:00:03,932
+Blockchain agents are usually judged by how quickly they can send a transaction.
+
+2
+00:00:03,932 --> 00:00:07,182
+But acting fast is not the same as understanding risk.
+
+3
+00:00:07,182 --> 00:00:09,913
+Hallow takes a different path: proof before action.
+
+4
+00:00:09,913 --> 00:00:11,471
+Everything starts in the terminal.
+
+5
+00:00:11,471 --> 00:00:18,980
+Market Pulse reads Robinhood's official Stock Token registry, two-sided quotes, trading status, data timestamps, and corporate-action multipliers.
+
+6
+00:00:18,980 --> 00:00:20,730
+The model does not guess the numbers.
+
+7
+00:00:20,730 --> 00:00:22,528
+Market evidence comes first.
+
+8
+00:00:22,528 --> 00:00:25,971
+When a user analyzes AAPL, Hallow does not trust the ticker.
+
+9
+00:00:25,971 --> 00:00:36,394
+It resolves the official contract, reads onchain evidence, measures public liquidity and activity, checks holder distribution, and verifies that the documented Uniswap contracts are actually present on Robinhood Chain.
+
+10
+00:00:36,394 --> 00:00:38,788
+The same discipline applies to memecoins.
+
+11
+00:00:38,788 --> 00:00:43,942
+In this HOOD snapshot, the deepest observed liquidity is only about eleven thousand dollars.
+
+12
+00:00:43,942 --> 00:00:48,596
+Hallow immediately surfaces extreme price-impact risk and stops the workflow for review.
+
+13
+00:00:48,596 --> 00:00:52,009
+No swap, no wallet, and no private key is requested.
+
+14
+00:00:52,009 --> 00:00:55,096
+DeepSeek acts as the analyst, not the source of truth.
+
+15
+00:00:55,096 --> 00:00:58,490
+It receives only the evidence package already collected by Hallow.
+
+16
+00:00:58,490 --> 00:01:02,134
+When something cannot be proven, the answer must say it is unknown.
+
+17
+00:01:02,134 --> 00:01:06,548
+The model cannot invent prices, catalysts, returns, or call an asset safe.
+
+18
+00:01:06,548 --> 00:01:09,403
+After research, Guardian creates a simulation plan.
+
+19
+00:01:09,403 --> 00:01:16,461
+Transaction size, memecoin exposure, reserve funds, slippage, canonical identity, and trading halts are checked by deterministic policy.
+
+20
+00:01:16,461 --> 00:01:17,365
+Prompts can bend.
+
+21
+00:01:17,365 --> 00:01:18,307
+Policy cannot.
+
+22
+00:01:18,307 --> 00:01:22,884
+If a plan passes, a human must still approve the exact action, asset, and amount.
+
+23
+00:01:22,884 --> 00:01:27,701
+Consent is bound to one immutable plan hash, not an open-ended permission for the agent.
+
+24
+00:01:27,701 --> 00:01:34,375
+Hallow then creates a verifiable receipt without publishing conversations, model keys, private memory, or wallet secrets.
+
+25
+00:01:34,375 --> 00:01:35,413
+That is the difference.
+
+26
+00:01:35,413 --> 00:01:38,403
+A typical agent connects a model directly to action.
+
+27
+00:01:38,403 --> 00:01:43,019
+Hallow builds an inspectable chain: evidence, policy, consent, then proof.
+
+28
+00:01:43,019 --> 00:01:44,259
+It is not an auto-trader.
+
+29
+00:01:44,259 --> 00:01:47,163
+Hallow is a control plane for onchain economic agents.
+

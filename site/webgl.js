@@ -25,6 +25,7 @@
     uniform float u_time;
     uniform float u_scroll;
     uniform float u_variant;
+    uniform float u_hero;
 
     float hash(vec2 p) {
       p = fract(p * vec2(123.34, 456.21));
@@ -43,17 +44,26 @@
 
     void main() {
       vec2 uv = v_uv;
-      float edge = smoothstep(.9, .18, distance(uv, vec2(.5)));
-      vec2 pointer = (u_pointer - .5) * .025;
+      float travel = smoothstep(.02, .96, u_scroll);
+      float startZoom = mix(1.25, 1.55, u_hero);
+      float cameraZoom = mix(startZoom, 1., travel);
+      vec2 centered = uv - .5;
+      float radius = dot(centered, centered);
+      centered *= 1. + (1. - travel) * radius * .14;
+      uv = centered / cameraZoom + .5;
+
+      float edge = smoothstep(.9, .18, distance(v_uv, vec2(.5)));
+      vec2 pointer = (u_pointer - .5) * mix(.045, .018, travel);
       float wave = sin(uv.y * 19. + u_time * .42) * .0025;
       wave += sin(uv.y * 61. - u_time * .18) * .0008;
       uv.x += wave * (1. + u_scroll * 2.) + pointer.x * (uv.y - .5);
       uv.y += pointer.y * (uv.x - .5);
 
-      float blocks = mix(220., 72., smoothstep(.08, .92, u_scroll));
+      float transitionFx = sin(travel * 3.14159265);
+      float blocks = mix(200., 100., transitionFx);
       vec2 blockUv = floor(uv * vec2(blocks, blocks * u_resolution.y / u_resolution.x)) /
                      vec2(blocks, blocks * u_resolution.y / u_resolution.x);
-      float blockMix = .035 + .21 * smoothstep(.25, 1., u_scroll);
+      float blockMix = .02 + .10 * transitionFx;
       uv = mix(uv, blockUv, blockMix);
 
       vec4 tex = texture2D(u_texture, cover(uv));
@@ -61,9 +71,9 @@
       vec3 warm = vec3(luma * 1.08, luma * .98, luma * .82);
       tex.rgb = mix(tex.rgb, warm, .25 + .13 * u_variant);
 
-      vec2 ditherCell = floor(gl_FragCoord.xy / mix(2., 5., u_scroll));
+      vec2 ditherCell = floor(gl_FragCoord.xy / mix(2., 4., transitionFx));
       float dither = hash(ditherCell) - .5;
-      tex.rgb += dither * (.018 + .08 * u_scroll);
+      tex.rgb += dither * (.012 + .035 * transitionFx);
       float scan = sin(gl_FragCoord.y * .64 + u_time * 1.2) * .012;
       tex.rgb += scan * (.2 + u_scroll);
       tex.rgb *= mix(.68, 1., edge);
@@ -129,7 +139,8 @@
         pointer: gl.getUniformLocation(this.program, 'u_pointer'),
         time: gl.getUniformLocation(this.program, 'u_time'),
         scroll: gl.getUniformLocation(this.program, 'u_scroll'),
-        variant: gl.getUniformLocation(this.program, 'u_variant')
+        variant: gl.getUniformLocation(this.program, 'u_variant'),
+        hero: gl.getUniformLocation(this.program, 'u_hero')
       };
       this.texture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, this.texture);
@@ -196,6 +207,7 @@
       gl.uniform1f(this.uniforms.time, time * .001);
       gl.uniform1f(this.uniforms.scroll, this.scroll);
       gl.uniform1f(this.uniforms.variant, this.index / Math.max(1, canvases.length - 1));
+      gl.uniform1f(this.uniforms.hero, this.canvas.dataset.scene === 'hero' ? 1 : 0);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
   }

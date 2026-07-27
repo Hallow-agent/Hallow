@@ -70,7 +70,7 @@
           .to(titleLetters, { yPercent: -125, opacity: 0, duration: .6, stagger: .025, ease: 'power3.in' }, 0)
           .to('.preloader-top,.preloader-intro,.preloader-foot', { opacity: 0, y: -10, duration: .38, stagger: .035, ease: 'power2.in' }, .04)
           .to(scene, { width: innerWidth, height: innerHeight, borderRadius: 0, duration: 1.18, ease: 'power4.inOut' }, .16)
-          .to(sceneImage, { scale: 1, filter: 'saturate(.68) brightness(.78)', duration: 1.18, ease: 'power4.inOut' }, .16)
+          .to(sceneImage, { scale: 1.48, filter: 'saturate(.68) brightness(.78)', duration: 1.18, ease: 'power4.inOut' }, .16)
           .to(loader, { backgroundColor: 'rgba(13,12,10,0)', duration: .6, ease: 'power2.out' }, .65)
           .to(scene, { opacity: 0, duration: .3, ease: 'power2.out' }, 1.12)
           .to(loader, { opacity: 0, duration: .3, ease: 'power2.out' }, 1.14);
@@ -153,12 +153,12 @@
       scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom bottom', scrub: .5 }
     });
     heroTimeline
-      .to('.hero-title', { scale: .54, yPercent: 8, ease: 'none' }, 0)
+      .to('.hero-title', { scale: .82, yPercent: -6, ease: 'none' }, 0)
       .to('.hero-kicker', { y: -80, opacity: 0, ease: 'none' }, 0)
       .to('.hero-meta', { y: 70, opacity: 0, stagger: .03, ease: 'none' }, .08)
       .to('.orbit-cta,.scene-tour', { opacity: 0, scale: .75, ease: 'none' }, .18)
-      .to('.hero-title', { opacity: 0, ease: 'power2.in' }, .68)
-      .to('.hero-stage canvas,.hero-fallback', { scale: .72, borderRadius: '28px', ease: 'power2.inOut' }, .62);
+      .to('.hero-title', { opacity: 0, yPercent: -18, duration: .25, ease: 'power2.in' }, .26)
+      .to('.hero-fallback', { scale: 1, ease: 'none' }, 0);
     ScrollTrigger.create({
       trigger: hero, start: 'top top', end: 'bottom bottom',
       onUpdate: self => document.documentElement.style.setProperty('--progress', `${self.progress * 100}%`)
@@ -169,7 +169,7 @@
       scrollTrigger: { trigger: '.prologue blockquote', start: 'top 78%', end: 'bottom 40%', scrub: true }
     });
     gsap.from('.about-title h2', { yPercent: 25, opacity: 0, duration: 1.2, ease: 'power3.out', scrollTrigger: { trigger: '.about-title', start: 'top 75%' } });
-    gsap.to('.world-image>img', { scale: 1, yPercent: 5, ease: 'none', scrollTrigger: { trigger: '.world-image', start: 'top bottom', end: 'bottom top', scrub: true } });
+    gsap.to('.world-image>img', { scale: 1, yPercent: 3, ease: 'none', scrollTrigger: { trigger: '.world-image', start: 'top bottom', end: 'bottom top', scrub: true } });
     gsap.from('.map-line', { strokeDashoffset: 300, opacity: 0, duration: 2, stagger: .2, ease: 'power2.out', scrollTrigger: { trigger: '.map-canvas', start: 'top 72%' } });
     gsap.from('.map-node', { scale: 0, transformOrigin: 'center', duration: .7, stagger: .12, ease: 'back.out(2)', scrollTrigger: { trigger: '.map-canvas', start: 'top 62%' } });
 
@@ -180,7 +180,7 @@
       .add(() => modeCopies[1].classList.add('is-active'), .45)
       .fromTo(modeCopies[1], { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: .25 }, .45)
       .to('.mode-switch b', { x: 40, duration: .3 }, .42)
-      .to('.modes-video', { scale: 1.18, xPercent: -4, duration: 1, ease: 'none' }, 0);
+      .to('.modes-video', { scale: 1.02, xPercent: -2, duration: 1, ease: 'none' }, 0);
 
     const track = $('[data-cap-track]');
     const viewport = $('.cap-viewport');
@@ -192,9 +192,23 @@
           onUpdate: self => { $('[data-cap-current]').textContent = String(Math.min(5, Math.round(self.progress * 5))).padStart(2, '0'); }
         }
       });
+      $$('.cap-card>img').forEach(image => {
+        gsap.fromTo(image, { scale: 1.16 }, {
+          scale: 1,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: image.closest('.cap-card'),
+            containerAnimation: capTween,
+            start: 'left right',
+            end: 'center center',
+            scrub: true
+          }
+        });
+      });
       addEventListener('resize', () => capTween.scrollTrigger?.refresh(), { passive: true });
     }
-    gsap.to('[data-parallax]', { yPercent: 8, ease: 'none', scrollTrigger: { trigger: '.factoid', start: 'top bottom', end: 'bottom top', scrub: true } });
+    gsap.to('.roadmap-image img', { scale: 1, yPercent: 2, ease: 'none', scrollTrigger: { trigger: '.roadmap', start: 'top bottom', end: '55% top', scrub: true } });
+    gsap.to('[data-parallax]', { yPercent: 8, scale: 1, ease: 'none', scrollTrigger: { trigger: '.factoid', start: 'top bottom', end: 'bottom top', scrub: true } });
     gsap.to('.cta-bg img', { scale: 1, yPercent: 4, ease: 'none', scrollTrigger: { trigger: '.cta', start: 'top bottom', end: 'bottom top', scrub: true } });
     $$('.section-index').forEach(index => gsap.from(index, { opacity: 0, x: -20, duration: .7, scrollTrigger: { trigger: index, start: 'top 88%' } }));
     $$('[data-count]').forEach(node => {
@@ -206,13 +220,28 @@
   function initPackages() {
     const tabs = $$('[data-package-tab]');
     const panels = $$('[data-package-panel]');
+    let transitionId = 0;
     tabs.forEach(tab => tab.addEventListener('click', () => {
       if (tab.classList.contains('is-active')) return;
+      const requestId = ++transitionId;
       const next = panels.find(panel => panel.dataset.packagePanel === tab.dataset.packageTab);
       const current = panels.find(panel => !panel.hidden);
       tabs.forEach(item => { item.classList.toggle('is-active', item === tab); item.setAttribute('aria-selected', item === tab ? 'true' : 'false'); });
-      const reveal = () => { current.hidden = true; current.classList.remove('is-active'); next.hidden = false; next.classList.add('is-active'); if (hasGSAP) gsap.fromTo(next, { xPercent: 12, rotate: 2, opacity: 0 }, { xPercent: 0, rotate: 0, opacity: 1, duration: .75, ease: 'power3.out' }); };
-      if (hasGSAP) gsap.to(current, { xPercent: -12, rotate: -2, opacity: 0, duration: .45, ease: 'power2.in', onComplete: reveal });
+      const reveal = () => {
+        if (requestId !== transitionId) return;
+        panels.forEach(panel => {
+          panel.hidden = panel !== next;
+          panel.classList.toggle('is-active', panel === next);
+        });
+        if (hasGSAP) {
+          gsap.set(panels.filter(panel => panel !== next), { clearProps: 'transform,opacity' });
+          gsap.fromTo(next, { xPercent: 8, rotate: 1, opacity: 0 }, { xPercent: 0, rotate: 0, opacity: 1, duration: .65, ease: 'power3.out', clearProps: 'transform,opacity' });
+        }
+      };
+      if (hasGSAP && current) {
+        gsap.killTweensOf(panels);
+        gsap.to(current, { xPercent: -8, rotate: -1, opacity: 0, duration: .32, ease: 'power2.in', onComplete: reveal });
+      }
       else reveal();
     }));
   }
@@ -234,11 +263,29 @@
   function initDragRail() {
     $$('[data-drag-rail]').forEach(rail => {
       let down = false, startX = 0, startScroll = 0;
+      let depthFrame = 0;
+      const updateDepth = () => {
+        depthFrame = 0;
+        const railRect = rail.getBoundingClientRect();
+        const center = railRect.left + railRect.width / 2;
+        $$('figure', rail).forEach(figure => {
+          const rect = figure.getBoundingClientRect();
+          const distance = Math.abs(rect.left + rect.width / 2 - center);
+          const scale = 1 + Math.min(.14, distance / Math.max(1, railRect.width) * .15);
+          $('img', figure)?.style.setProperty('--gallery-scale', scale.toFixed(3));
+        });
+      };
+      const scheduleDepth = () => {
+        if (!depthFrame) depthFrame = requestAnimationFrame(updateDepth);
+      };
       rail.addEventListener('pointerdown', event => { down = true; startX = event.clientX; startScroll = rail.scrollLeft; rail.classList.add('is-dragging'); rail.setPointerCapture(event.pointerId); });
       rail.addEventListener('pointermove', event => { if (down) rail.scrollLeft = startScroll - (event.clientX - startX) * 1.45; });
       const end = event => { down = false; rail.classList.remove('is-dragging'); if (event.pointerId && rail.hasPointerCapture(event.pointerId)) rail.releasePointerCapture(event.pointerId); };
       rail.addEventListener('pointerup', end); rail.addEventListener('pointercancel', end);
       rail.addEventListener('keydown', event => { if (event.key === 'ArrowRight') rail.scrollBy({ left: 360, behavior: 'smooth' }); if (event.key === 'ArrowLeft') rail.scrollBy({ left: -360, behavior: 'smooth' }); });
+      rail.addEventListener('scroll', scheduleDepth, { passive: true });
+      addEventListener('resize', scheduleDepth, { passive: true });
+      updateDepth();
     });
   }
 

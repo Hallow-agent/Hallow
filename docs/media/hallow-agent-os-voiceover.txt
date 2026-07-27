@@ -1,0 +1,17 @@
+This is Hallow—not another AI tab, but an Agent OS installed on your PC.
+
+One command builds the private runtime, verifies every dependency, creates the workspace, starts the managed service, and opens the desktop. On Windows, macOS, Linux, or WSL, the agent comes to the machine where the work actually lives.
+
+Before the first mission, Hallow proves it is ready. The runtime is healthy. Memory is indexed. Model routes are connected. Tool policy is active. Skills are verified. Recovery is armed. No vague promise. A readiness check you can inspect.
+
+Now, give Hallow a concrete outcome. It recalls durable context, scopes the workspace, selects bounded tools, and turns one instruction into a mission that can continue beyond a single reply.
+
+Watch the work happen. Memory recall. Repository inspection. Controlled repair. Verification. Release preparation. Every important step becomes a trace. When the mission reaches an external action, policy stops it at the boundary.
+
+That is what makes Hallow different. The runtime lives on your PC. Memory persists beyond the conversation. Intelligence can route between local and cloud models. Tools, MCP, and tested skills operate inside explicit boundaries. Policy lives outside the prompt, and the operator stays in control.
+
+Before anything leaves the machine, you see the exact target, the proposed change, its evidence, and its risk. Autonomy moves quickly. Consent remains human.
+
+And when work fails, Hallow does not hide the error behind another answer. It captures the trace, isolates the cause, tests a repair, resumes from a checkpoint, and verifies readiness again. In dry-run mode, nothing unsafe is applied.
+
+Your machine. Your memory. Your agent. Hallow Agent OS. Install the intelligence that keeps working—and keeps you in control.

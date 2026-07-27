@@ -1,0 +1,112 @@
+1
+00:00:00,050 --> 00:00:02,490
+Most AI products begin with a chat box.
+
+2
+00:00:02,490 --> 00:00:07,632
+Hallow begins with a private runtime—and a rule: intelligence before action, proof after it.
+
+3
+00:00:07,632 --> 00:00:12,613
+Installation takes one terminal command on macOS, Linux, WSL, or Termux.
+
+4
+00:00:12,613 --> 00:00:15,189
+Windows has its own one-line PowerShell installer.
+
+5
+00:00:15,189 --> 00:00:21,979
+Hallow verifies dependencies, creates the private workspace, starts the managed service, and preserves existing data during updates.
+
+6
+00:00:21,979 --> 00:00:30,454
+Before doing real work, Hallow Doctor checks what is actually ready: the runtime, private model route, memory boundary, tool policy, installed skills, and chain connection.
+
+7
+00:00:30,454 --> 00:00:31,742
+Then define the mission.
+
+8
+00:00:31,742 --> 00:00:33,778
+Investigate AAPL on Robinhood Chain.
+
+9
+00:00:33,778 --> 00:00:36,325
+Show evidence, risk, and unknowns.
+
+10
+00:00:36,325 --> 00:00:39,185
+One request activates multiple bounded tools.
+
+11
+00:00:39,185 --> 00:00:44,933
+Hallow checks the network, official market data, token intelligence, and policy, then returns an inspectable answer.
+
+12
+00:00:44,933 --> 00:00:47,613
+For real-world assets, a ticker is not enough.
+
+13
+00:00:47,613 --> 00:00:53,693
+Hallow resolves the official deployment, checks market activity, public liquidity, holder distribution, and protocol readiness.
+
+14
+00:00:53,693 --> 00:00:59,460
+It also states what the evidence cannot prove, including future sellability, ownership rights, and legal eligibility.
+
+15
+00:00:59,460 --> 00:01:01,941
+For memecoins, the same discipline applies.
+
+16
+00:01:01,941 --> 00:01:07,244
+In this recorded snapshot, the deepest observed liquidity is only about eleven thousand dollars.
+
+17
+00:01:07,244 --> 00:01:08,607
+Guardian stops for review.
+
+18
+00:01:08,607 --> 00:01:11,903
+No swap, wallet, or private key is required.
+
+19
+00:01:11,903 --> 00:01:13,929
+Hallow is more than one blockchain scanner.
+
+20
+00:01:13,929 --> 00:01:24,659
+It provides private memory, bounded tools, reusable skills, long-running tasks, conversation gateways, traces, readiness checks, and controlled recovery—inside one installable agent operating system.
+
+21
+00:01:24,659 --> 00:01:27,054
+Research still does not grant permission to move money.
+
+22
+00:01:27,054 --> 00:01:31,723
+Guardian evaluates spending, reserve, slippage, asset identity, and risk policy.
+
+23
+00:01:31,723 --> 00:01:33,541
+A human approves one exact plan.
+
+24
+00:01:33,541 --> 00:01:39,535
+The dry run leaves a tamper-evident receipt while prompts, private memory, credentials, and wallet secrets remain excluded.
+
+25
+00:01:39,535 --> 00:01:42,556
+Typical agents connect a model directly to action.
+
+26
+00:01:42,556 --> 00:01:47,187
+Hallow builds a chain anyone can inspect: evidence, policy, consent, then proof.
+
+27
+00:01:47,187 --> 00:01:48,835
+Install the agent you can inspect.
+
+28
+00:01:48,835 --> 00:01:50,075
+Hallow Agent OS.
+

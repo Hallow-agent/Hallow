@@ -1,0 +1,25 @@
+schema: hallow.skill/v1
+id: robinhood-intelligence
+name: Robinhood Intelligence
+version: 0.1.0
+author: Hallow Agent
+license: MIT
+entry: SKILL.md
+required_tools:
+  - chain.read
+  - guardian.plan
+  - memory.read
+  - memory.write
+permissions:
+  internet: true
+  filesystem_write: scoped
+  external_send: false
+  terminal: false
+models:
+  recommended:
+    planning: deepseek:deepseek-v4-pro
+    execution: route:balanced
+    reflection: route:private
+promotion:
+  min_quality_score: 0.9
+  min_successful_runs: 5

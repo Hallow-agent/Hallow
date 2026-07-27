@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import { closeSync, openSync, readFileSync, unlinkSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { stdin as terminalInput, stdout as terminalOutput } from "node:process";
 import { createInterface } from "node:readline/promises";
-import { getHallowHome, hallowPath, loadEnvFile, pathExists, RiskLevel, writeText } from "@hallow/core";
+import { ensureDir, getHallowHome, hallowPath, loadEnvFile, pathExists, readTextIfExists, RiskLevel, writeText } from "@hallow/core";
 import { AddProviderOptions, ModelCatalogEntry, ModelCatalogProvider, ModelRegistry } from "@hallow/models";
 import {
   AgentInstallResult,
@@ -64,10 +65,10 @@ import {
   WebAuthStatusReport
 } from "@hallow/runtime";
 
-const HALLOW_CLI_VERSION = "0.0.1";
+const HALLOW_CLI_VERSION = "0.1.0";
 const HALLOW_RELEASE_LABEL = "001";
 
-const HALLOW_WINDOWS_INSTALL_COMMAND = 'powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"';
+const HALLOW_WINDOWS_INSTALL_COMMAND = "iex (irm https://hallow-agent.xyz/install.ps1)";
 
 const HALLOW_WORDMARK = String.raw`
 HH   HH   AAAAA   LL       LL        OOOOO   WW        WW
@@ -96,6 +97,7 @@ type CommandContext = {
   home: string;
   runtime: HallowRuntime;
   models: ModelRegistry;
+  activeSessionId?: string;
 };
 
 type DemoRunResult = {
@@ -131,6 +133,16 @@ type TerminalSnapshot = {
   usage?: Awaited<ReturnType<HallowRuntime["getUsageReport"]>>;
   security?: Awaited<ReturnType<HallowRuntime["runSecurityAudit"]>>;
   desktop?: DesktopShellStatus;
+};
+
+type RuntimeServiceRecord = {
+  pid: number;
+  host: string;
+  port: number;
+  url: string;
+  home: string;
+  started_at: string;
+  log_path: string;
 };
 
 async function main(): Promise<void> {
@@ -169,6 +181,11 @@ async function dispatch(context: CommandContext): Promise<void> {
 
   if (command === "version" || command === "--version" || command === "-v") {
     console.log(`Hallow ${HALLOW_RELEASE_LABEL} (${HALLOW_CLI_VERSION})`);
+    return;
+  }
+
+  if (command === "guardian" || command === "chain") {
+    await handleGuardian(context, subcommand, rest);
     return;
   }
 
@@ -229,9 +246,20 @@ async function dispatch(context: CommandContext): Promise<void> {
     const config = await context.runtime.readConfig();
     const selectedPort = Number.isFinite(port) && port > 0 ? port : config.gateway.local_console.port;
     const startUrl = `http://${config.gateway.local_console.host}:${selectedPort}/desktop`;
+
+    if (!commandArgs.includes("--foreground")) {
+      await startRuntimeInBackground(context, selectedPort, commandArgs.includes("--quiet"));
+      return;
+    }
+
     try {
       await context.runtime.startLocalApi(selectedPort, { quiet: true });
-      await printTerminalWelcome(context, { mode: "start", port: selectedPort, startUrl });
+      const service = createRuntimeServiceRecord(context.home, config.gateway.local_console.host, selectedPort);
+      await writeRuntimeServiceRecord(context.home, service);
+      registerRuntimeServiceCleanup(context.home, process.pid);
+      if (!commandArgs.includes("--quiet")) {
+        await printTerminalWelcome(context, { mode: "start", port: selectedPort, startUrl });
+      }
     } catch (error) {
       if (isAddressInUseError(error)) {
         const isHallow = await isLocalHallowRuntime(config.gateway.local_console.host, selectedPort);
@@ -256,16 +284,37 @@ async function dispatch(context: CommandContext): Promise<void> {
 
   if (command === "status") {
     await context.runtime.init();
+    const config = await context.runtime.readConfig();
+    const service = await readRuntimeServiceRecord(context.home);
+    const selectedPort = service?.port ?? config.gateway.local_console.port;
+    const online = await isLocalHallowRuntime(config.gateway.local_console.host, selectedPort, context.home);
     const checks = await context.runtime.doctor();
     const okCount = checks.filter((check) => check.ok).length;
     console.log(`Hallow home: ${context.home}`);
+    console.log(`Runtime: ${online ? "online" : "offline"} (http://${config.gateway.local_console.host}:${selectedPort}/desktop)`);
+    if (service) {
+      console.log(`Process: ${service.pid} | Log: ${service.log_path}`);
+    }
     console.log(`Health: ${okCount}/${checks.length} checks passing`);
+    if (context.args.includes("--strict") && !online) {
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  if (command === "open") {
+    await openRuntimeDesktop(context, context.args.slice(1));
+    return;
+  }
+
+  if (command === "stop") {
+    await stopRuntimeService(context);
     return;
   }
 
   if (command === "readiness") {
     const report = await context.runtime.getReadinessReport();
-    console.log(`Hallow readiness: ${report.score}% (${report.status})`);
+    console.log(`Hallow foundation readiness: ${report.score}% (${report.status})`);
     for (const check of report.checks) {
       console.log(`${check.ok ? "OK" : "GAP"} ${check.id}\t${check.weight}\t${check.detail}`);
     }
@@ -306,6 +355,16 @@ async function dispatch(context: CommandContext): Promise<void> {
 
   if (command === "agent") {
     await handleAgent(context, subcommand, rest);
+    return;
+  }
+
+  if (command === "chat") {
+    await handleChat(context, context.args.slice(1));
+    return;
+  }
+
+  if (command === "session" || command === "sessions") {
+    await handleSessions(context, subcommand, rest);
     return;
   }
 
@@ -419,6 +478,114 @@ async function dispatch(context: CommandContext): Promise<void> {
   process.exitCode = 1;
 }
 
+async function handleChat(context: CommandContext, args: string[]): Promise<void> {
+  await context.runtime.init();
+  await ensureFirstPartySkillSource(context);
+  let sessionId = readOption(args, "--session");
+  if (!sessionId && args.includes("--continue")) {
+    sessionId = (await context.runtime.listSessions({ limit: 1 }))[0]?.id;
+  }
+  const promptParts: string[] = [];
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] === "--continue") continue;
+    if (args[index] === "--session") {
+      index += 1;
+      continue;
+    }
+    promptParts.push(args[index]);
+  }
+  const prompt = promptParts.join(" ").trim();
+  if (!prompt) throw new Error('Usage: hallow chat "message" [--continue | --session id]');
+  const controller = new AbortController();
+  let streamed = false;
+  const cancel = () => controller.abort(new Error("Cancelled by Ctrl+C"));
+  process.once("SIGINT", cancel);
+  let result: Awaited<ReturnType<HallowRuntime["runAgent"]>>;
+  try {
+    result = await context.runtime.runAgent("hallow", prompt, {
+      sessionId,
+      signal: controller.signal,
+      onEvent: (event) => {
+        if (event.type === "assistant_delta") {
+          streamed = true;
+          process.stdout.write(event.delta);
+        }
+        if (event.type === "tool_start") {
+          if (streamed) process.stdout.write("\n");
+          console.log(`↳ ${event.call.name}`);
+          streamed = false;
+        }
+      }
+    });
+  } finally {
+    process.off("SIGINT", cancel);
+  }
+  if (streamed) console.log("");
+  else console.log(result.content);
+  console.log(`\nSession: ${result.session_id} | Model: ${result.usedModel} | Iterations: ${result.iterations}`);
+  if (result.simulated) console.log("Note: no configured model route was reachable; local fallback answered.");
+}
+
+async function handleSessions(
+  context: CommandContext,
+  subcommand: string | undefined,
+  rest: string[]
+): Promise<void> {
+  await context.runtime.init();
+  if (!subcommand || subcommand === "list") {
+    const sessions = await context.runtime.listSessions({
+      limit: Number(readOption(rest, "--limit") ?? "30")
+    });
+    if (sessions.length === 0) {
+      console.log("No conversations yet. Start one with: hallow chat \"hello\"");
+      return;
+    }
+    for (const session of sessions) {
+      console.log(`${session.id}\t${session.status}\t${session.message_count}\t${session.updated_at}\t${session.title}`);
+    }
+    return;
+  }
+  if (subcommand === "show") {
+    const id = rest[0];
+    if (!id) throw new Error("Usage: hallow sessions show <id>");
+    const session = await context.runtime.getSession(id);
+    console.log(`${session.title} (${session.id})`);
+    for (const message of await context.runtime.listSessionMessages(id)) {
+      if (message.role === "tool") console.log(`[tool:${message.tool_name ?? "unknown"}] ${message.content}`);
+      else console.log(`\n${message.role}> ${message.content}`);
+    }
+    return;
+  }
+  if (subcommand === "search") {
+    const query = rest.join(" ").trim();
+    if (!query) throw new Error('Usage: hallow sessions search "query"');
+    for (const session of await context.runtime.listSessions({ query, limit: 50 })) {
+      console.log(`${session.id}\t${session.message_count}\t${session.updated_at}\t${session.title}`);
+    }
+    return;
+  }
+  if (subcommand === "archive") {
+    const id = rest[0];
+    if (!id) throw new Error("Usage: hallow sessions archive <id>");
+    const session = await context.runtime.archiveSession(id);
+    console.log(`Session archived: ${session.id}`);
+    return;
+  }
+  if (subcommand === "branch") {
+    const id = rest[0];
+    if (!id) throw new Error("Usage: hallow sessions branch <id> [--through sequence] [--title text]");
+    const session = await context.runtime.branchSession(id, {
+      throughSequence: readNumberOption(rest, "--through"),
+      title: readOption(rest, "--title")
+    });
+    console.log(`Session branch created: ${session.id}`);
+    console.log(`Messages copied: ${session.message_count}`);
+    console.log(`Continue: hallow chat --session ${session.id} \"message\"`);
+    return;
+  }
+  throw new Error(`Unknown sessions command: ${subcommand}`);
+}
+
 async function handleAgent(
   context: CommandContext,
   subcommand: string | undefined,
@@ -483,7 +650,11 @@ async function handleAgent(
     }
 
     const result = await context.runtime.runAgent(agentId, prompt);
+    console.log(result.content);
+    console.log("");
     console.log(`Agent run complete: ${result.trace.status}`);
+    console.log(`Session: ${result.session_id}`);
+    console.log(`Iterations: ${result.iterations}`);
     console.log(`Model: ${result.usedModel}`);
     console.log(`Plan: ${result.plan.tools.length > 0 ? result.plan.tools.join(", ") : "no tools"}`);
     if (result.tool_uses.length > 0) {
@@ -1387,7 +1558,7 @@ async function handleHallowMcpMessage(context: CommandContext, message: CliJsonR
         },
         serverInfo: {
           name: "hallow",
-          version: "0.0.1"
+          version: "0.1.0"
         }
       });
       return;
@@ -2387,6 +2558,17 @@ async function handleGateway(
       text
     });
     printGatewayEvent(event);
+    if (rest.includes("--run") && event.task_id) {
+      const taskResult = await context.runtime.runTask(event.task_id);
+      if (taskResult.run) {
+        console.log("");
+        console.log(taskResult.run.content);
+        console.log(`\nSession: ${taskResult.run.session_id}`);
+      } else {
+        console.log(`Task ${taskResult.task.status}: ${taskResult.task.error ?? "no result"}`);
+        process.exitCode = 1;
+      }
+    }
     return;
   }
 
@@ -2780,12 +2962,405 @@ async function handleNotification(
   throw new Error(`Unknown notification command: ${subcommand}`);
 }
 
+async function handleGuardian(
+  context: CommandContext,
+  subcommand: string | undefined,
+  rest: string[]
+): Promise<void> {
+  await context.runtime.init();
+  const network = rest.includes("--testnet") || readOption(rest, "--network") === "testnet" ? "testnet" : "mainnet";
+
+  if (subcommand === "help" || subcommand === "--help" || subcommand === "-h") {
+    printHelp();
+    return;
+  }
+
+  if (!subcommand || subcommand === "status") {
+    const [status, policy] = await Promise.all([
+      context.runtime.getGuardianChainStatus(network),
+      context.runtime.getGuardianPolicy()
+    ]);
+    printGuardianStatus(status, policy);
+    if (!status.connected) process.exitCode = 1;
+    return;
+  }
+
+  if (subcommand === "brief" || subcommand === "market") {
+    const result = await context.runtime.getGuardianMarketBrief({
+      network,
+      limit: readNumberOption(rest, "--limit") ?? 12
+    });
+    printGuardianMarketBrief(result.brief);
+    return;
+  }
+
+  if (subcommand === "analyze" || subcommand === "scan") {
+    const query = rest[0];
+    if (!query) throw new Error("Usage: hallow guardian analyze <stock-symbol|contract> [--kind rwa|meme|auto] [--no-ai]");
+    const record = await context.runtime.inspectGuardianTokenIntelligence(query, {
+      network,
+      kind: readGuardianKind(readOption(rest, "--kind"))
+    });
+    const explanation = rest.includes("--no-ai")
+      ? undefined
+      : await context.runtime.explainGuardianIntelligence(record.intelligence, {
+          language: "en",
+          model: readOption(rest, "--model")
+        }).catch(() => undefined);
+    printGuardianIntelligence(record, explanation);
+    return;
+  }
+
+  if (subcommand === "demo") {
+    const query = rest.find((entry) => !entry.startsWith("--")) ?? "AAPL";
+    const [status, policy] = await Promise.all([
+      context.runtime.getGuardianChainStatus(network),
+      context.runtime.getGuardianPolicy()
+    ]);
+    printGuardianStatus(status, policy);
+    const brief = await context.runtime.getGuardianMarketBrief({ network, limit: 8 });
+    printGuardianMarketBrief(brief.brief);
+    const record = await context.runtime.inspectGuardianTokenIntelligence(query, { network, kind: "auto" });
+    const explanation = await context.runtime.explainGuardianIntelligence(record.intelligence, { language: "en" }).catch(() => undefined);
+    printGuardianIntelligence(record, explanation);
+    return;
+  }
+
+  if (subcommand === "policy") {
+    const action = rest[0] ?? "show";
+    if (action === "show") {
+      printGuardianPolicy(await context.runtime.getGuardianPolicy());
+      return;
+    }
+    if (action === "reset") {
+      printGuardianPolicy(await context.runtime.resetGuardianPolicy());
+      return;
+    }
+    if (action === "set") {
+      const current = await context.runtime.getGuardianPolicy();
+      const patch: Parameters<HallowRuntime["updateGuardianPolicy"]>[0] = {};
+      setNumberPatch(patch, "max_transaction_usd", readNumberOption(rest, "--max-transaction-usd"));
+      setNumberPatch(patch, "max_daily_usd", readNumberOption(rest, "--max-daily-usd"));
+      setNumberPatch(patch, "max_memecoin_allocation_percent", readNumberOption(rest, "--max-meme-percent"));
+      setNumberPatch(patch, "min_reserve_percent", readNumberOption(rest, "--min-reserve-percent"));
+      setNumberPatch(patch, "max_slippage_bps", readNumberOption(rest, "--max-slippage-bps"));
+      const protocol = readOption(rest, "--allow-protocol");
+      if (protocol) patch.allowed_protocols = Array.from(new Set([...current.allowed_protocols, protocol]));
+      const contract = readOption(rest, "--allow-contract");
+      if (contract) patch.allowed_contracts = Array.from(new Set([...current.allowed_contracts, contract.toLowerCase()]));
+      printGuardianPolicy(await context.runtime.updateGuardianPolicy(patch));
+      return;
+    }
+    throw new Error("Usage: hallow guardian policy show|reset|set [policy options]");
+  }
+
+  if (subcommand === "inspect") {
+    const address = rest[0];
+    if (!address) throw new Error("Usage: hallow guardian inspect <contract> [--kind rwa|meme|auto] [--testnet]");
+    const result = await context.runtime.inspectGuardianAsset(address, {
+      network,
+      kind: readGuardianKind(readOption(rest, "--kind")),
+      symbol: readOption(rest, "--symbol")
+    });
+    printGuardianPassport(result.passport, result.passport_path);
+    return;
+  }
+
+  if (subcommand === "plan") {
+    const action = readGuardianAction(rest[0]);
+    const assetQuery = rest[1];
+    if (!action || !assetQuery) throw new Error("Usage: hallow guardian plan <buy|sell|swap|lend|withdraw|inspect> <symbol|contract> --usd amount [options]");
+    const amountUsd = readNumberOption(rest, "--usd") ?? 0;
+    if (action !== "inspect" && amountUsd <= 0) throw new Error("Guardian financial plans require --usd with a value greater than zero.");
+    const kind = readGuardianKind(readOption(rest, "--kind"));
+    const asset = /^0x[a-fA-F0-9]{40}$/.test(assetQuery)
+      ? (await context.runtime.inspectGuardianAsset(assetQuery, { network, kind, symbol: readOption(rest, "--symbol") })).passport
+      : (await context.runtime.inspectGuardianTokenIntelligence(assetQuery, { network, kind })).intelligence.passport;
+    const record = await context.runtime.createGuardianTransactionPlan({
+      action,
+      asset,
+      amount_usd: amountUsd,
+      slippage_bps: readNumberOption(rest, "--slippage-bps"),
+      protocol: readOption(rest, "--protocol"),
+      projected_memecoin_allocation_percent: readNumberOption(rest, "--meme-percent"),
+      projected_reserve_percent: readNumberOption(rest, "--reserve-percent"),
+      daily_spend_before_usd: readNumberOption(rest, "--daily-spend"),
+      wallet_address: readOption(rest, "--wallet")
+    });
+    printGuardianPlan(record);
+    if (record.plan.state === "blocked") process.exitCode = 2;
+    return;
+  }
+
+  if (subcommand === "receipt") {
+    const planId = rest[0];
+    if (!planId) throw new Error("Usage: hallow guardian receipt <plan-id> [--approval approval-id]");
+    printGuardianReceipt(await context.runtime.createGuardianReceiptRecord(planId, readOption(rest, "--approval")));
+    return;
+  }
+
+  if (subcommand === "verify") {
+    const receiptId = rest[0];
+    if (!receiptId) throw new Error("Usage: hallow guardian verify <receipt-id>");
+    const record = await context.runtime.getGuardianReceipt(receiptId);
+    printGuardianReceipt(record);
+    if (!record.verified) process.exitCode = 2;
+    return;
+  }
+
+  throw new Error(`Unknown guardian command: ${subcommand}`);
+}
+
+function printGuardianStatus(
+  status: Awaited<ReturnType<HallowRuntime["getGuardianChainStatus"]>>,
+  policy: Awaited<ReturnType<HallowRuntime["getGuardianPolicy"]>>
+): void {
+  const width = terminalWidth();
+  prepareTerminalSurface();
+  printTerminalText("");
+  printTerminalFrame("HALLOW GUARDIAN", "PROOF BEFORE ACTION", width);
+  printTerminalSection("CHAIN", [
+    formatMetric("network", status.network.name),
+    formatMetric("connection", status.connected ? "online" : "unavailable"),
+    formatMetric("latest block", status.block_number?.toLocaleString() ?? "not observed"),
+    formatMetric("latency", status.latency_ms === undefined ? "-" : `${status.latency_ms} ms`)
+  ], width);
+  printTerminalSection("HARD LIMITS", [
+    formatMetric("per transaction", `$${policy.max_transaction_usd}`),
+    formatMetric("daily", `$${policy.max_daily_usd}`),
+    formatMetric("memecoin exposure", `${policy.max_memecoin_allocation_percent}% max`),
+    formatMetric("reserve", `${policy.min_reserve_percent}% minimum`),
+    formatMetric("human approval", policy.require_human_approval ? "always required" : "policy controlled"),
+    formatMetric("broadcasting", "disabled by default")
+  ], width);
+  printTerminalText(repeatChar("-", width), "90");
+  printTerminalText("No seed phrase requested. No funds moved. Chain activity is public.", "90");
+}
+
+function printGuardianMarketBrief(
+  brief: Awaited<ReturnType<HallowRuntime["getGuardianMarketBrief"]>>["brief"]
+): void {
+  const width = terminalWidth();
+  prepareTerminalSurface();
+  printTerminalText("");
+  printTerminalFrame("HALLOW MARKET PULSE", "LIVE EVIDENCE / NOT A BUY SIGNAL", width);
+  printTerminalSection("WHAT IS HAPPENING", [
+    formatMetric("official assets listed", brief.registered_assets.toLocaleString()),
+    formatMetric("assets checked now", brief.assets_checked.toLocaleString()),
+    formatMetric("active two-sided quotes", brief.active_quotes.toLocaleString()),
+    formatMetric("trading halts", brief.trading_halts.toLocaleString()),
+    formatMetric("stale / incomplete data", brief.stale_quotes.toLocaleString())
+  ], width);
+  const rows = brief.quotes.slice(0, 8).map((quote) => {
+    const bid = quote.token_bid === undefined ? "-" : guardianUsd(quote.token_bid);
+    const ask = quote.token_ask === undefined ? "-" : guardianUsd(quote.token_ask);
+    const spread = quote.spread_bps === undefined ? "-" : `${quote.spread_bps.toFixed(1)} bps`;
+    const state = quote.trading_halt ? "HALT" : quote.stale ? "STALE" : "LIVE";
+    return `${padRight(quote.symbol, 9)} ${padRight(state, 7)} bid ${padRight(bid, 12)} ask ${padRight(ask, 12)} spread ${spread}`;
+  });
+  printTerminalSection("RWA SNAPSHOT", rows.length ? rows : ["No quote is currently available."], width);
+  printTerminalSection("WHAT IT MEANS", brief.plain_language, width);
+  printTerminalText(repeatChar("-", width), "90");
+  printTerminalText("Hallow does not rank assets or promise returns. Evidence is stored privately for audit.", "90");
+}
+
+function printGuardianIntelligence(
+  record: Awaited<ReturnType<HallowRuntime["inspectGuardianTokenIntelligence"]>>,
+  explanation?: Awaited<ReturnType<HallowRuntime["explainGuardianIntelligence"]>>
+): void {
+  const item = record.intelligence;
+  const width = terminalWidth();
+  const symbol = item.passport.contract.symbol ?? item.passport.stock_token?.symbol ?? "UNKNOWN";
+  const verdict = item.attention === "normal" ? "OBSERVE" : item.attention === "review" ? "REVIEW" : "STOP & REVIEW";
+  prepareTerminalSurface();
+  printTerminalText("");
+  printTerminalFrame("BLOCKCHAIN INTELLIGENCE", `${symbol} / ${verdict}`, width);
+  printTerminalSection("IN PLAIN ENGLISH", [item.human_summary], width);
+  printTerminalSection("WHAT WE KNOW", [
+    formatMetric("asset type", item.passport.kind),
+    formatMetric("canonical contract", item.passport.canonical ? "yes, official registry match" : "not verified"),
+    formatMetric("observed price", item.market.price_usd === undefined ? "not available" : guardianUsd(item.market.price_usd)),
+    formatMetric("deepest liquidity", guardianUsd(item.market.deepest_liquidity_usd)),
+    formatMetric("24h volume", guardianUsd(item.market.volume_h24_usd)),
+    formatMetric("24h activity", `${item.market.buys_h24.toLocaleString()} buys / ${item.market.sells_h24.toLocaleString()} sells`),
+    formatMetric("Uniswap", item.uniswap.supported ? `${item.uniswap.active_pairs} observed pools / v4 contracts live` : "not verified")
+  ], width);
+  printTerminalSection("WHO HOLDS IT", [
+    formatMetric("holder count", item.holders.holder_count?.toLocaleString() ?? "unknown"),
+    formatMetric("largest holder", item.holders.largest_non_pool_percent === undefined ? "not measured" : `${item.holders.largest_non_pool_percent.toFixed(2)}% outside observed pools`),
+    formatMetric("top ten holders", item.holders.top_10_non_pool_percent === undefined ? "not measured" : `${item.holders.top_10_non_pool_percent.toFixed(2)}% outside observed pools`)
+  ], width);
+  printTerminalSection("WHAT CAN GO WRONG", item.warnings.length ? item.warnings : ["No major warning was found by this bounded inspection."], width);
+  printTerminalSection("WHAT IS NOT PROVEN", item.unknowns, width);
+  if (explanation) {
+    const lines = explanation.content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    printTerminalSection("AI ANALYST EXPLAINS", lines, width);
+    printTerminalText("Analysis route: configured privately", "90");
+  } else {
+    printTerminalSection("AI ANALYST", ["The model is unavailable; the deterministic evidence above remains valid and auditable."], width);
+  }
+  printTerminalText(repeatChar("-", width), "90");
+  printTerminalText(`GUARDIAN VERDICT: ${verdict}. No funds moved. Evidence is stored privately by Hallow.`, item.attention === "avoid-until-reviewed" ? "91" : "90");
+}
+
+function guardianUsd(value: number): string {
+  if (!Number.isFinite(value)) return "-";
+  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}m`;
+  if (Math.abs(value) >= 1_000) return `$${(value / 1_000).toFixed(1)}k`;
+  if (Math.abs(value) < 0.01 && value !== 0) return `$${value.toPrecision(3)}`;
+  return `$${value.toFixed(2)}`;
+}
+
+function printGuardianPolicy(policy: Awaited<ReturnType<HallowRuntime["getGuardianPolicy"]>>): void {
+  const width = terminalWidth();
+  prepareTerminalSurface();
+  printTerminalText("");
+  printTerminalFrame("GUARDIAN POLICY", `${policy.name.toUpperCase()} / V${policy.version}`, width);
+  printTerminalSection("SPENDING", [
+    formatMetric("transaction maximum", `$${policy.max_transaction_usd}`),
+    formatMetric("daily maximum", `$${policy.max_daily_usd}`),
+    formatMetric("memecoin maximum", `${policy.max_memecoin_allocation_percent}%`),
+    formatMetric("reserve minimum", `${policy.min_reserve_percent}%`),
+    formatMetric("slippage maximum", `${policy.max_slippage_bps} bps`)
+  ], width);
+  printTerminalSection("GUARDS", [
+    formatMetric("canonical RWA", policy.require_canonical_rwa ? "required" : "not required"),
+    formatMetric("trading halt", policy.block_on_trading_halt ? "blocks action" : "warning only"),
+    formatMetric("stale quote", policy.block_on_stale_quote ? "blocks action" : "warning only"),
+    formatMetric("high-risk signal", policy.block_high_risk_assets ? "blocks action" : "warning only"),
+    formatMetric("approval", policy.require_human_approval ? "required" : "policy controlled")
+  ], width);
+}
+
+function printGuardianPassport(
+  passport: Awaited<ReturnType<HallowRuntime["inspectGuardianAsset"]>>["passport"],
+  _artifactPath: string
+): void {
+  const width = terminalWidth();
+  prepareTerminalSurface();
+  printTerminalText("");
+  printTerminalFrame("ASSET PASSPORT", "EVIDENCE, NOT A PROMISE OF SAFETY", width);
+  printTerminalSection("IDENTITY", [
+    formatMetric("asset", passport.contract.symbol ?? passport.stock_token?.symbol ?? "unknown"),
+    formatMetric("kind", passport.kind),
+    formatMetric("canonical", passport.canonical ? "verified against official registry" : "not verified as canonical"),
+    formatMetric("contract code", passport.contract.code_present ? `${passport.contract.code_bytes.toLocaleString()} bytes observed` : "missing"),
+    formatMetric("observation block", passport.block_number?.toLocaleString() ?? "unknown")
+  ], width);
+  printTerminalSection("SIGNALS", [
+    formatMetric("risk band", passport.risk.band),
+    formatMetric("signal score", `${passport.risk.score}/100 (higher means more warning signals)`),
+    ...(passport.risk.signals.slice(0, 5).map((signal) => `${signal.severity.toUpperCase()}  ${signal.title}: ${signal.detail}`)),
+    ...(passport.risk.signals.length === 0 ? ["No major signal detected in this bounded inspection."] : [])
+  ], width);
+  if (passport.stock_token) {
+    printTerminalSection("RWA NOTICE", [passport.stock_token.holder_rights_notice], width);
+  }
+  printTerminalSection("PLAIN LANGUAGE", [passport.summary], width);
+  printTerminalText(repeatChar("-", width), "90");
+  printTerminalText("Evidence saved privately inside Hallow. No wallet secret was requested.", "90");
+}
+
+function printGuardianPlan(record: Awaited<ReturnType<HallowRuntime["createGuardianTransactionPlan"]>>): void {
+  const width = terminalWidth();
+  prepareTerminalSurface();
+  printTerminalText("");
+  printTerminalFrame("GUARDIAN PLAN", record.plan.state.replace(/_/g, " ").toUpperCase(), width);
+  printTerminalSection("INTENT", [
+    formatMetric("action", record.plan.action),
+    formatMetric("asset", record.plan.asset_symbol ?? record.plan.asset_address),
+    formatMetric("amount", `$${record.plan.amount_usd}`),
+    formatMetric("funds moved", "no — simulation only")
+  ], width);
+  printTerminalSection("POLICY CHECKS", record.plan.checks.map((entry) => {
+    const mark = entry.status === "pass" ? "PASS" : entry.status === "approval" ? "REVIEW" : "BLOCK";
+    return `${padRight(mark, 8)} ${entry.label} — ${entry.detail}`;
+  }), width);
+  printTerminalSection("RESULT", [record.plan.human_summary], width);
+  if (record.approval) {
+    printTerminalSection("NEXT STEP", [
+      `Review:  hallow approval list`,
+      `Approve: hallow approval approve ${record.approval.id}`,
+      `Receipt: hallow guardian receipt ${record.plan.id} --approval ${record.approval.id}`
+    ], width);
+  }
+  printTerminalText(repeatChar("-", width), "90");
+  printTerminalText("The exact plan and every check were saved privately for verification.", "90");
+}
+
+function printGuardianReceipt(record: Awaited<ReturnType<HallowRuntime["createGuardianReceiptRecord"]>>): void {
+  const width = terminalWidth();
+  prepareTerminalSurface();
+  printTerminalText("");
+  printTerminalFrame("EXECUTION RECEIPT", record.verified ? "VERIFIED" : "INVALID", width);
+  printTerminalSection("PROOF", [
+    formatMetric("receipt", record.receipt.id),
+    formatMetric("plan", record.receipt.plan_id),
+    formatMetric("approval", record.receipt.approval_status),
+    formatMetric("execution", record.receipt.execution_status),
+    formatMetric("verification", record.receipt.verification_hash)
+  ], width);
+  printTerminalSection("PRIVACY", [
+    "No prompt stored onchain.",
+    "No private memory stored onchain.",
+    "Only hashes and explicit transaction evidence are designed for anchoring."
+  ], width);
+  printTerminalText(repeatChar("-", width), "90");
+  printTerminalText("Verified receipt saved privately. No prompt or private memory was published.", "90");
+}
+
+function readGuardianKind(value: string | undefined): "auto" | "rwa" | "meme" | "stablecoin" | "wrapped" | "token" | "unknown" {
+  return value === "rwa" || value === "meme" || value === "stablecoin" || value === "wrapped" || value === "token" || value === "unknown" ? value : "auto";
+}
+
+function readGuardianAction(value: string | undefined): "buy" | "sell" | "swap" | "lend" | "withdraw" | "inspect" | undefined {
+  return value === "buy" || value === "sell" || value === "swap" || value === "lend" || value === "withdraw" || value === "inspect" ? value : undefined;
+}
+
+function setNumberPatch<T extends object, K extends keyof T>(target: T, key: K, value: number | undefined): void {
+  if (value !== undefined) target[key] = value as T[K];
+}
+
 async function handleModel(
   context: CommandContext,
   subcommand: string | undefined,
   rest: string[]
 ): Promise<void> {
   await context.runtime.init();
+
+  if (subcommand === "setup") {
+    const name = rest[0] ?? "openrouter";
+    const provider = await context.models.addProvider(name, {
+      type: readOption(rest, "--type") as AddProviderOptions["type"],
+      baseUrl: readOption(rest, "--base-url"),
+      apiKeyEnv: readOption(rest, "--api-key-env"),
+      defaultModel: readOption(rest, "--model") ?? readOption(rest, "--default-model")
+    });
+    if (!provider.default_model) throw new Error(`Provider ${name} needs --model <model-id>.`);
+    if (provider.api_key_env && !process.env[provider.api_key_env]) {
+      if (!terminalInput.isTTY || !terminalOutput.isTTY) {
+        throw new Error(`Set ${provider.api_key_env} in the environment, then rerun hallow model setup ${name}.`);
+      }
+      const secret = await readMaskedSecret(`${provider.api_key_env}  `);
+      if (!secret) throw new Error("Provider setup cancelled: API key was empty.");
+      await writeEnvValue(hallowPath(context.home, ".env"), provider.api_key_env, secret);
+      process.env[provider.api_key_env] = secret;
+    }
+    const modelRef = `${name}:${provider.default_model}`;
+    await context.models.setRoutePrimary("balanced", modelRef);
+    const testResult = rest.includes("--skip-test")
+      ? { ok: true, provider: name, message: "Connection test skipped." }
+      : await context.models.testProvider(name);
+    printRuntimeLifecycleCard(testResult.ok ? "MODEL READY" : "MODEL NEEDS ATTENTION", [
+      formatMetric("provider", name),
+      formatMetric("model", provider.default_model),
+      formatMetric("route", "balanced (default)"),
+      formatMetric("connection", testResult.message),
+      formatMetric("first chat", 'hallow chat "hello"')
+    ]);
+    if (!testResult.ok) process.exitCode = 1;
+    return;
+  }
 
   if (subcommand === "add") {
     const name = rest[0];
@@ -3225,6 +3800,58 @@ function readOption(args: string[], name: string): string | undefined {
   }
 
   return args[index + 1];
+}
+
+async function writeEnvValue(path: string, key: string, value: string): Promise<void> {
+  if (!/^[A-Z_][A-Z0-9_]*$/i.test(key)) throw new Error(`Invalid environment variable name: ${key}`);
+  if (/\r|\n/.test(value)) throw new Error("API key cannot contain a newline.");
+  const existing = await readTextIfExists(path);
+  const lines = (existing ?? "").split(/\r?\n/g).filter((line) => line.length > 0);
+  const prefix = `${key}=`;
+  const replacement = `${prefix}${value}`;
+  const index = lines.findIndex((line) => line.trimStart().startsWith(prefix));
+  if (index >= 0) lines[index] = replacement;
+  else lines.push(replacement);
+  await writeText(path, `${lines.join("\n")}\n`);
+}
+
+function readMaskedSecret(prompt: string): Promise<string> {
+  if (!terminalInput.isTTY || !terminalOutput.isTTY || typeof terminalInput.setRawMode !== "function") {
+    throw new Error("A TTY is required for masked secret entry.");
+  }
+  return new Promise((resolve, reject) => {
+    let value = "";
+    const wasRaw = terminalInput.isRaw;
+    const finish = (error?: Error) => {
+      terminalInput.off("data", onData);
+      terminalInput.setRawMode(Boolean(wasRaw));
+      terminalOutput.write("\n");
+      if (error) reject(error);
+      else resolve(value);
+    };
+    const onData = (chunk: Buffer | string) => {
+      const text = chunk.toString("utf8");
+      for (const character of text) {
+        if (character === "\u0003") return finish(new Error("Provider setup cancelled."));
+        if (character === "\r" || character === "\n") return finish();
+        if (character === "\u007f" || character === "\b") {
+          if (value.length > 0) {
+            value = value.slice(0, -1);
+            terminalOutput.write("\b \b");
+          }
+          continue;
+        }
+        if (character >= " ") {
+          value += character;
+          terminalOutput.write("•");
+        }
+      }
+    };
+    terminalOutput.write(prompt);
+    terminalInput.setRawMode(true);
+    terminalInput.resume();
+    terminalInput.on("data", onData);
+  });
 }
 
 function readNumberOption(args: string[], name: string): number | undefined {
@@ -4135,6 +4762,17 @@ async function runOperatorShellLine(context: CommandContext, line: string): Prom
     return;
   }
 
+  if (lower === "new" || lower === "/new") {
+    context.activeSessionId = undefined;
+    printTerminalText("new conversation ready", "1;92");
+    return;
+  }
+
+  if (lower === "sessions" || lower === "/sessions") {
+    await runDispatchFromShell(context, ["sessions", "list"]);
+    return;
+  }
+
   if (lower === "status" || lower === "dashboard" || lower === "home" || lower === "/status") {
     await printTerminalWelcome(context, { mode: "status" });
     return;
@@ -4211,6 +4849,7 @@ function isLikelyAgentPrompt(command: string, line: string): boolean {
     "approval",
     "autonomy",
     "browser",
+    "chat",
     "demo",
     "desktop",
     "doctor",
@@ -4226,14 +4865,18 @@ function isLikelyAgentPrompt(command: string, line: string): boolean {
     "model",
     "notification",
     "onboarding",
+    "open",
     "perfect",
     "readiness",
     "sandbox",
     "schedule",
     "security",
+    "session",
+    "sessions",
     "setup",
     "skill",
     "status",
+    "stop",
     "task",
     "terminal",
     "tool",
@@ -4262,10 +4905,38 @@ async function runDispatchFromShell(context: CommandContext, args: string[]): Pr
 
 async function runDefaultAgentFromShell(context: CommandContext, prompt: string): Promise<void> {
   printTerminalText(`agent:hallow > ${prompt}`, "1;97");
+  const controller = new AbortController();
+  const cancel = () => controller.abort(new Error("Cancelled by Ctrl+C"));
+  process.once("SIGINT", cancel);
+  let streamed = false;
   try {
-    const result = await context.runtime.runAgent("hallow", prompt);
+    const result = await context.runtime.runAgent("hallow", prompt, {
+      sessionId: context.activeSessionId,
+      signal: controller.signal,
+      onEvent: (event) => {
+        if (event.type === "assistant_delta") {
+          streamed = true;
+          process.stdout.write(event.delta);
+        }
+        if (event.type === "tool_start") {
+          if (streamed) process.stdout.write("\n");
+          printTerminalText(`tool       ${event.call.name}`, "36");
+          streamed = false;
+        }
+      }
+    });
+    context.activeSessionId = result.session_id;
+    if (streamed) {
+      process.stdout.write("\n");
+    } else if (result.content) {
+      printTerminalText("", "37");
+      console.log(result.content);
+      printTerminalText("", "37");
+    }
     printTerminalText(`status     ${result.trace.status}`, result.trace.status === "failed" ? "1;91" : "1;92");
     printTerminalText(`model      ${result.usedModel}`, "37");
+    printTerminalText(`session    ${result.session_id}`, "37");
+    printTerminalText(`iterations ${result.iterations}`, "37");
     printTerminalText(`tools      ${result.plan.tools.length > 0 ? result.plan.tools.join(", ") : "none"}`, "37");
     for (const toolUse of result.tool_uses.slice(0, 6)) {
       printTerminalText(`tool       ${toolUse.tool} ${toolUse.status} ${toolUse.target}`, "37");
@@ -4277,6 +4948,8 @@ async function runDefaultAgentFromShell(context: CommandContext, prompt: string)
     }
   } catch (error) {
     printTerminalText(error instanceof Error ? error.message : String(error), "1;91");
+  } finally {
+    process.off("SIGINT", cancel);
   }
 }
 
@@ -4285,30 +4958,7 @@ async function startRuntimeFromOperatorShell(context: CommandContext, args: stri
   const config = await context.runtime.readConfig();
   const requestedPort = readNumberOption(args, "--port");
   const selectedPort = requestedPort && requestedPort > 0 ? requestedPort : config.gateway.local_console.port;
-  const url = `http://${config.gateway.local_console.host}:${selectedPort}/desktop`;
-
-  if (await isLocalHallowRuntime(config.gateway.local_console.host, selectedPort)) {
-    printTerminalText(`runtime already active: ${url}`, "1;92");
-    return;
-  }
-
-  const cliEntry = process.argv[1];
-  const child = spawn(process.execPath, [cliEntry, "--home", context.home, "start", "--port", String(selectedPort)], {
-    detached: true,
-    stdio: "ignore",
-    env: { ...process.env, HALLOW_NO_INTERACTIVE: "1" }
-  });
-  child.unref();
-
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    await sleep(200);
-    if (await isLocalHallowRuntime(config.gateway.local_console.host, selectedPort)) {
-      printTerminalText(`runtime started: ${url}`, "1;92");
-      return;
-    }
-  }
-
-  printTerminalText(`runtime launch requested. Check: ${url}`, "90");
+  await startRuntimeInBackground(context, selectedPort, true);
 }
 
 async function printRuntimeUrl(context: CommandContext, args: string[]): Promise<void> {
@@ -4319,11 +4969,243 @@ async function printRuntimeUrl(context: CommandContext, args: string[]): Promise
   printTerminalText(`http://${config.gateway.local_console.host}:${selectedPort}/desktop`, "1;97");
 }
 
+async function startRuntimeInBackground(context: CommandContext, selectedPort: number, compact = false): Promise<RuntimeServiceRecord> {
+  await context.runtime.init();
+  const config = await context.runtime.readConfig();
+  const host = config.gateway.local_console.host;
+  const url = `http://${host}:${selectedPort}/desktop`;
+
+  const anyHallowRuntime = await isLocalHallowRuntime(host, selectedPort);
+  if (anyHallowRuntime && !(await isLocalHallowRuntime(host, selectedPort, context.home))) {
+    throw new Error(`Port ${selectedPort} belongs to a different Hallow home. Choose another port or stop that runtime from its own installation.`);
+  }
+
+  if (anyHallowRuntime) {
+    const existing = await readRuntimeServiceRecord(context.home);
+    if (compact) {
+      printTerminalText(`runtime already active: ${url}`, "1;92");
+    } else {
+      printRuntimeLifecycleCard("RUNTIME ALREADY ONLINE", [
+        formatMetric("desktop", url),
+        formatMetric("home", context.home),
+        formatMetric("process", existing ? String(existing.pid) : "external")
+      ]);
+    }
+    return existing ?? createRuntimeServiceRecord(context.home, host, selectedPort, 0);
+  }
+
+  const cliEntry = process.argv[1];
+  const logDir = hallowPath(context.home, "logs");
+  await ensureDir(logDir);
+  const logPath = hallowPath(logDir, "runtime.log");
+  const errorLogPath = hallowPath(logDir, "runtime.error.log");
+  const stdout = openSync(logPath, "a");
+  const stderr = openSync(errorLogPath, "a");
+  let child: ReturnType<typeof spawn>;
+  try {
+    child = spawn(process.execPath, [cliEntry, "--home", context.home, "start", "--foreground", "--quiet", "--port", String(selectedPort)], {
+      detached: true,
+      stdio: ["ignore", stdout, stderr],
+      windowsHide: true,
+      env: { ...process.env, HALLOW_NO_INTERACTIVE: "1" }
+    });
+  } finally {
+    closeSync(stdout);
+    closeSync(stderr);
+  }
+  child.unref();
+
+  const service = createRuntimeServiceRecord(context.home, host, selectedPort, child.pid ?? 0, logPath);
+  await writeRuntimeServiceRecord(context.home, service);
+
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    await sleep(250);
+    if (await isLocalHallowRuntime(host, selectedPort, context.home)) {
+      if (compact) {
+        printTerminalText(`runtime started: ${url}`, "1;92");
+      } else {
+        printRuntimeLifecycleCard("RUNTIME ONLINE", [
+          formatMetric("desktop", url),
+          formatMetric("process", String(service.pid)),
+          formatMetric("log", logPath),
+          formatMetric("stop", "hallow stop")
+        ]);
+      }
+      return service;
+    }
+  }
+
+  if (service.pid > 0) {
+    try { process.kill(service.pid, "SIGTERM"); } catch {}
+  }
+  removeRuntimeServiceRecord(context.home);
+  throw new Error(`Hallow runtime did not become ready on port ${selectedPort}. Inspect ${errorLogPath}`);
+}
+
+async function openRuntimeDesktop(context: CommandContext, args: string[]): Promise<void> {
+  await context.runtime.init();
+  const config = await context.runtime.readConfig();
+  const requestedPort = readNumberOption(args, "--port");
+  const selectedPort = requestedPort && requestedPort > 0 ? requestedPort : config.gateway.local_console.port;
+  const url = `http://${config.gateway.local_console.host}:${selectedPort}/desktop`;
+
+  if (!(await isLocalHallowRuntime(config.gateway.local_console.host, selectedPort, context.home))) {
+    if (args.includes("--no-start")) {
+      throw new Error(`Hallow runtime is offline. Start it with: hallow start --port ${selectedPort}`);
+    }
+    await startRuntimeInBackground(context, selectedPort, true);
+  }
+
+  if (args.includes("--print") || process.env.CI === "true") {
+    console.log(url);
+    return;
+  }
+
+  const launch = process.platform === "win32"
+    ? { command: "cmd", args: ["/c", "start", "", url] }
+    : process.platform === "darwin"
+      ? { command: "open", args: [url] }
+      : { command: "xdg-open", args: [url] };
+  const child = spawn(launch.command, launch.args, { detached: true, stdio: "ignore", windowsHide: true });
+  child.once("error", () => console.log(`Open this URL manually: ${url}`));
+  child.unref();
+  printRuntimeLifecycleCard("HALLOW DESKTOP", [formatMetric("open", url), formatMetric("runtime", "online")]);
+}
+
+async function stopRuntimeService(context: CommandContext): Promise<void> {
+  const service = await readRuntimeServiceRecord(context.home);
+  if (!service) {
+    const config = await context.runtime.readConfig();
+    const online = await isLocalHallowRuntime(config.gateway.local_console.host, config.gateway.local_console.port, context.home);
+    printRuntimeLifecycleCard(online ? "RUNTIME ONLINE / UNMANAGED" : "RUNTIME OFFLINE", [
+      formatMetric("home", context.home),
+      formatMetric("state", online ? "stop it from the terminal that launched --foreground" : "no managed process")
+    ]);
+    return;
+  }
+
+  const belongsToHome = await isLocalHallowRuntime(service.host, service.port, context.home);
+  if (!belongsToHome) {
+    removeRuntimeServiceRecord(context.home);
+    printRuntimeLifecycleCard("STALE SERVICE RECORD CLEARED", [
+      formatMetric("process", String(service.pid)),
+      formatMetric("reason", "no matching Hallow runtime responded")
+    ]);
+    return;
+  }
+
+  if (service.pid <= 0) {
+    throw new Error("The runtime was not launched by this Hallow installation. Stop it from its original terminal.");
+  }
+
+  try {
+    process.kill(service.pid, "SIGTERM");
+  } catch (error) {
+    if (!isMissingProcessError(error)) {
+      throw error;
+    }
+  }
+
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    await sleep(200);
+    if (!(await isLocalHallowRuntime(service.host, service.port, context.home))) {
+      removeRuntimeServiceRecord(context.home);
+      printRuntimeLifecycleCard("RUNTIME STOPPED", [formatMetric("process", String(service.pid)), formatMetric("home", context.home)]);
+      return;
+    }
+  }
+
+  throw new Error(`Runtime process ${service.pid} did not stop. Inspect ${service.log_path}`);
+}
+
+function createRuntimeServiceRecord(home: string, host: string, port: number, pid = process.pid, logPath = hallowPath(home, "logs", "runtime.log")): RuntimeServiceRecord {
+  return {
+    pid,
+    host,
+    port,
+    url: `http://${host}:${port}/desktop`,
+    home: resolve(home),
+    started_at: new Date().toISOString(),
+    log_path: logPath
+  };
+}
+
+function runtimeServicePath(home: string): string {
+  return hallowPath(home, "runtime", "service.json");
+}
+
+async function writeRuntimeServiceRecord(home: string, service: RuntimeServiceRecord): Promise<void> {
+  await writeText(runtimeServicePath(home), `${JSON.stringify(service, null, 2)}\n`);
+}
+
+async function readRuntimeServiceRecord(home: string): Promise<RuntimeServiceRecord | null> {
+  const content = await readTextIfExists(runtimeServicePath(home));
+  if (!content) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(content) as RuntimeServiceRecord;
+    return typeof parsed.pid === "number" && typeof parsed.port === "number" && typeof parsed.host === "string" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function registerRuntimeServiceCleanup(home: string, pid: number): void {
+  const cleanup = () => {
+    const path = runtimeServicePath(home);
+    try {
+      const content = requireRuntimeServiceRecordSync(path);
+      if (content?.pid === pid) {
+        unlinkSync(path);
+      }
+    } catch {
+      // Best effort only; stale records are safely cleared by status/start/stop.
+    }
+  };
+  process.once("exit", cleanup);
+  process.once("SIGINT", () => process.exit(0));
+  process.once("SIGTERM", () => process.exit(0));
+}
+
+function requireRuntimeServiceRecordSync(path: string): RuntimeServiceRecord | null {
+  try {
+    const content = readFileSync(path, "utf8");
+    return JSON.parse(content) as RuntimeServiceRecord;
+  } catch {
+    return null;
+  }
+}
+
+function removeRuntimeServiceRecord(home: string): void {
+  try {
+    unlinkSync(runtimeServicePath(home));
+  } catch {
+    // Missing record is already the desired state.
+  }
+}
+
+function isMissingProcessError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "ESRCH";
+}
+
+function printRuntimeLifecycleCard(title: string, rows: string[]): void {
+  const width = terminalWidth();
+  prepareTerminalSurface();
+  printTerminalText("");
+  printTerminalFrame(title, "HALLOW LOCAL RUNTIME", width);
+  for (const row of rows) {
+    printTerminalText(`  ${clipText(row, width - 2)}`, "97");
+  }
+  printTerminalText(repeatChar("-", width), "90");
+}
+
 function printOperatorShellHelp(compact: boolean): void {
   const rows = [
     "status              refresh the Hallow operator dashboard",
     "start               launch the local runtime in the background",
     "open                print the desktop runtime URL",
+    "stop                stop the managed local runtime",
     "doctor              run local health checks",
     "skills / skills hub list installed skills or indexed hub entries",
     "models              show model routes",
@@ -4357,12 +5239,11 @@ async function printTerminalWelcome(context: CommandContext, options: TerminalWe
   const installedSkills = snapshot.skillHub?.entries.filter((entry) => entry.installed).length ?? 0;
   const skillEntries = snapshot.skillHub?.entries.length ?? 0;
   const agentCount = snapshot.agents?.length ?? 0;
-  const startUrl = options.startUrl ?? snapshot.desktop?.start_url ?? "/desktop";
   const port = options.port ?? snapshot.desktop?.port ?? 4767;
 
   prepareTerminalSurface();
   printTerminalText("");
-  printTerminalFrame(`HALLOW AGENT OS ${HALLOW_RELEASE_LABEL}`, "LOCAL-FIRST AUTONOMOUS RUNTIME", width);
+  printTerminalFrame(`HALLOW AGENT OS ${HALLOW_RELEASE_LABEL}`, "PRIVATE AI AGENT / READY TO WORK", width);
   for (const line of HALLOW_WORDMARK) {
     printTerminalText(`  ${line}`, "1;97");
   }
@@ -4370,9 +5251,9 @@ async function printTerminalWelcome(context: CommandContext, options: TerminalWe
 
   const rightBlock = [
     `Hallow Agent OS ${HALLOW_RELEASE_LABEL} / v${HALLOW_CLI_VERSION}  ::  ${terminalModeLabel(options.mode)}`,
-    options.notice ? `state ${options.notice}` : `runtime http://127.0.0.1:${port}/desktop`,
-    `session ${session}  ::  local-first / private runtime`,
-    `readiness ${readiness ? `${readiness.score}% ${readiness.status}` : "collecting"}  ::  checks ${checkCount > 0 ? `${passingChecks}/${checkCount}` : "pending"}`,
+    options.notice ? `state ${options.notice}` : "workspace ready  ::  run hallow open",
+    `session ${session}  ::  your context stays with you`,
+    `foundation ${readiness ? `${readiness.score}% ${readiness.status}` : "collecting"}  ::  checks ${checkCount > 0 ? `${passingChecks}/${checkCount}` : "pending"}`,
     `memory ${snapshot.memory ? `${snapshot.memory.sqlite_items} item(s), ${snapshot.memory.index_items} indexed` : "vault pending"}`,
     `mcp ${mcpServers} server(s), ${mcpTools} registered tool(s)`,
     `models ${modelProviders} provider(s), ${modelRoutes} route(s)`,
@@ -4392,7 +5273,7 @@ async function printTerminalWelcome(context: CommandContext, options: TerminalWe
   }
 
   printTerminalSection("RUNTIME CHECKS", [
-    formatMetric("readiness", readiness ? `${readiness.score}% ${readiness.status}` : "pending"),
+    formatMetric("foundation", readiness ? `${readiness.score}% ${readiness.status}` : "pending"),
     formatMetric("doctor", checkCount > 0 ? `${passingChecks}/${checkCount} passing` : "pending"),
     formatMetric("security", snapshot.security?.status ?? "not scanned"),
     formatMetric("usage", snapshot.usage ? `${snapshot.usage.entry_count} run(s), $${snapshot.usage.total_cost_usd_estimate.toFixed(4)} est.` : "not scanned")
@@ -4402,7 +5283,7 @@ async function printTerminalWelcome(context: CommandContext, options: TerminalWe
   printTerminalSection("AVAILABLE SKILLS", terminalSkillRows(snapshot), width);
   printTerminalSection("MODEL ROUTES", terminalModelRows(snapshot), width);
   printTerminalSection("MCP SURFACE", terminalMcpRows(snapshot), width);
-  printTerminalSection("NEXT COMMANDS", terminalNextRows(context, options, startUrl, port), width);
+  printTerminalSection("NEXT COMMANDS", terminalNextRows(context, options, port), width);
 
   const nextActions = readiness?.next_actions.slice(0, 2) ?? [];
   if (nextActions.length > 0 && readiness?.status !== "strong") {
@@ -4410,7 +5291,7 @@ async function printTerminalWelcome(context: CommandContext, options: TerminalWe
   }
 
   printTerminalText(repeatChar("-", width), "90");
-  printTerminalText(`Type "hallow help" for commands. Open runtime: ${startUrl}`, "90");
+  printTerminalText('Type "hallow help" for commands. Open your workspace: hallow open', "90");
 }
 
 async function collectTerminalSnapshot(context: CommandContext, desktop?: DesktopShellStatus): Promise<TerminalSnapshot> {
@@ -4466,7 +5347,7 @@ function isAddressInUseError(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "EADDRINUSE";
 }
 
-async function isLocalHallowRuntime(host: string, port: number): Promise<boolean> {
+async function isLocalHallowRuntime(host: string, port: number, expectedHome?: string): Promise<boolean> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 800);
   try {
@@ -4474,8 +5355,11 @@ async function isLocalHallowRuntime(host: string, port: number): Promise<boolean
     if (!response.ok) {
       return false;
     }
-    const body = await response.json() as { ok?: unknown };
-    return body.ok === true;
+    const body = await response.json() as { ok?: unknown; home?: unknown };
+    if (body.ok !== true) {
+      return false;
+    }
+    return expectedHome === undefined || (typeof body.home === "string" && resolve(body.home) === resolve(expectedHome));
   } catch {
     return false;
   } finally {
@@ -4535,12 +5419,12 @@ function terminalMcpRows(snapshot: TerminalSnapshot): string[] {
   return rows.length > 0 ? rows : ["No MCP server registered yet. Try hallow mcp add filesystem --command npx --args ..."];
 }
 
-function terminalNextRows(context: CommandContext, options: TerminalWelcomeOptions, startUrl: string, port: number): string[] {
+function terminalNextRows(context: CommandContext, options: TerminalWelcomeOptions, port: number): string[] {
   const startCommand = formatStartCommand(context.home, port);
   if (options.mode === "setup") {
     return [
       formatMetric("start", startCommand),
-      formatMetric("open", startUrl),
+      formatMetric("open", "hallow open"),
       formatMetric("doctor", "hallow doctor"),
       formatMetric("agent", "hallow agent create research")
     ];
@@ -4548,7 +5432,7 @@ function terminalNextRows(context: CommandContext, options: TerminalWelcomeOptio
 
   if (options.mode === "start") {
     return [
-      formatMetric("open", startUrl),
+      formatMetric("open", "hallow open"),
       formatMetric("create", "hallow agent create research"),
       formatMetric("run", 'hallow agent run hallow "summarize this workspace"'),
       formatMetric("heartbeat", "hallow autonomy heartbeat --dry-run")
@@ -4716,8 +5600,17 @@ Usage:
   hallow terminal
   hallow shell
   hallow doctor [--home path]
-  hallow status [--home path]
+  hallow status [--home path] [--strict]
   hallow readiness [--strict]
+  hallow guardian status [--testnet]
+  hallow guardian brief [--limit 12]
+  hallow guardian analyze <stock-symbol|contract> [--kind rwa|meme|auto]
+  hallow guardian demo [stock-symbol]
+  hallow guardian inspect <contract> [--kind rwa|meme|auto] [--testnet]
+  hallow guardian policy show|reset|set [policy options]
+  hallow guardian plan <action> <symbol|contract> --usd amount [--kind type] [--testnet]
+  hallow guardian receipt <plan-id> [--approval approval-id]
+  hallow guardian verify <receipt-id>
   hallow demo setup [--skip-live-mcp] [--skip-browser]
   hallow demo run [--skip-live-mcp] [--skip-browser]
   hallow demo checklist
@@ -4728,7 +5621,15 @@ Usage:
   hallow desktop setup [--port 4767]
   hallow desktop status
   hallow desktop path
-  hallow start [--home path] [--port 4767]
+  hallow start [--home path] [--port 4767] [--foreground]
+  hallow open [--port 4767] [--print] [--no-start]
+  hallow stop
+  hallow chat "message" [--continue | --session id]
+  hallow sessions list [--limit 30]
+  hallow sessions show <id>
+  hallow sessions search "query"
+  hallow sessions archive <id>
+  hallow sessions branch <id> [--through sequence] [--title text]
   hallow agent create <id> [--name "Name"]
   hallow agent verify <path>
   hallow agent install <path> [--force]
@@ -4833,7 +5734,7 @@ Usage:
   hallow gateway enable <channel>
   hallow gateway send-mode <channel> --send auto|ask|deny
   hallow gateway allow <channel> --from sender1,sender2
-  hallow gateway ingest --channel local-webhook --from system [--pairing-token token] --text "message"
+  hallow gateway ingest --channel local-webhook --from system [--pairing-token token] --text "message" [--run]
   hallow gateway inbox [--limit 20]
   hallow gateway send --channel slack --to target --text "message" [--dry-run] [--approval id]
   hallow gateway outbox [--limit 20]
@@ -4862,6 +5763,7 @@ Usage:
   hallow notification list [--status unread|read|all] [--limit 20]
   hallow notification read <id>
   hallow model add <name> [--type openai_compatible] [--base-url url] [--api-key-env ENV] [--default-model model]
+  hallow model setup [deepseek|openrouter|openai|anthropic|ollama] [--model model-id]
   hallow model list
   hallow model catalog [--provider openai] [--query coding] [--providers]
   hallow model install-catalog [--providers openai,anthropic,google,ollama] [--overwrite]
@@ -4880,7 +5782,7 @@ Examples:
 
 Operator shell:
   status, start, open, doctor, skills, skills hub, models, tools
-  run "task prompt"
+  run "task prompt", new, sessions
   hallow <any normal command>
 `);
 }

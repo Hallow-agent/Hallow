@@ -8,8 +8,8 @@
   },
   "references": [
     { "path": "../core" },
-    { "path": "../models" }
+    { "path": "../models" },
+    { "path": "../chain" }
   ],
   "include": ["src/**/*.ts"]
 }
-

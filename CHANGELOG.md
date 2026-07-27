@@ -1,8 +1,21 @@
 # Changelog
 
-## Hallow 001 / 0.0.1 - First Public Preview
+## Hallow 0.1.0 - Operator Preview Upgrade
 
-Hallow's first public preview is the initial local-first agent OS release.
+This release turns the first prototype into a clearer installable Agent OS preview.
+
+- redesigned the public Hallow and Guardian product experience;
+- added the official eclipse mark, repository hero art, and terminal-led product film;
+- expanded persistent conversations, memory, tools, skills, tasks, schedules, gateways, approvals, traces, security checks, and recovery surfaces;
+- added Hallow Guardian for evidence-backed RWA and memecoin inspection, deterministic policy, exact consent, and receipts;
+- kept Guardian transaction broadcasting deliberately disabled;
+- documented shipped capability, current limits, contribution standards, and release verification.
+
+Read the [full 0.1.0 upgrade notes](./docs/RELEASE_0.1.0.md).
+
+## Hallow 001 / 0.0.1 - Public Preview
+
+Hallow 001 introduced the initial local agent OS preview.
 
 This version includes:
 

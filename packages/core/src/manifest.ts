@@ -247,7 +247,8 @@ export function createDefaultAgentManifest(id: string, name = titleize(id)): Age
       "filesystem.write": { enabled: true, approval: "ask" },
       "terminal.run": { enabled: false, approval: "ask" },
       "memory.read": { enabled: true, approval: "auto" },
-      "memory.write": { enabled: true, approval: "auto" }
+      "memory.write": { enabled: true, approval: "auto" },
+      "agent.delegate": { enabled: true, approval: "auto" }
     },
     autonomy: {
       level: "A2",
@@ -284,7 +285,7 @@ export function createDefaultSkillManifest(id: string, name = titleize(id)): Ski
     schema: "hallow.skill/v1",
     id,
     name,
-    version: "0.0.1",
+    version: "0.1.0",
     author: "local",
     license: "private",
     entry: "SKILL.md",
@@ -352,7 +353,7 @@ export function createDefaultModelProviders(): ModelProvidersConfig {
         type: "openai_compatible",
         base_url: "https://api.deepseek.com",
         api_key_env: "DEEPSEEK_API_KEY",
-        default_model: "deepseek-chat"
+        default_model: "deepseek-v4-pro"
       },
       xai: {
         type: "openai_compatible",
@@ -405,7 +406,7 @@ export function createDefaultModelRoutes(): ModelRoutesConfig {
       },
       cheap: {
         primary: "groq:llama-3.3-70b-versatile",
-        fallback: ["deepseek:deepseek-chat", "mistral:mistral-small-latest", "openrouter:meta-llama/llama-3.3-70b-instruct", "ollama:llama3.1"]
+        fallback: ["deepseek:deepseek-v4-flash", "mistral:mistral-small-latest", "openrouter:meta-llama/llama-3.3-70b-instruct", "ollama:llama3.1"]
       },
       private: {
         primary: "ollama:qwen2.5",

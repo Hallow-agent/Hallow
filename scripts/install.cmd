@@ -1,35 +1,25 @@
 @echo off
 setlocal EnableExtensions
+title Hallow Agent OS 001 Installer
+color 0F
 
-set "HALLOW_INSTALL_PS1_URL=%HALLOW_INSTALL_PS1_URL%"
 if "%HALLOW_INSTALL_PS1_URL%"=="" set "HALLOW_INSTALL_PS1_URL=https://hallow-agent.xyz/install.ps1"
 
 where powershell >nul 2>nul
 if errorlevel 1 (
-  echo error: PowerShell is required to install Hallow on Windows.
+  echo.
+  echo   HALLOW INSTALLATION STOPPED
+  echo   PowerShell is required on Windows.
   exit /b 1
 )
 
+echo.
+echo   HALLOW AGENT OS 001
+echo   -----------------------------------------------------
+echo   Securely loading the signed project installer...
+echo.
+
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; try { irm '%HALLOW_INSTALL_PS1_URL%' | iex } catch { Write-Error $_; exit 1 }"
 if errorlevel 1 exit /b %errorlevel%
-
-set "HALLOW_CMD=%LOCALAPPDATA%\hallow\bin\hallow.cmd"
-echo.
-if exist "%HALLOW_CMD%" (
-  echo Hallow is installed.
-  echo.
-  echo Same window:
-  echo   "%HALLOW_CMD%"
-  echo   "%HALLOW_CMD%" doctor
-  echo.
-  echo Later:
-  echo   hallow
-  echo   hallow doctor
-) else (
-  echo Hallow installer finished, but the launcher was not found at:
-  echo   "%HALLOW_CMD%"
-  echo Open a new terminal and try:
-  echo   hallow
-)
 
 exit /b 0

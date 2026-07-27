@@ -63,7 +63,7 @@ Score: 1 lemah, 5 kuat. Ini adalah penilaian arah produk, bukan benchmark formal
 Readiness lokal terakhir:
 
 ```txt
-Hallow readiness: 100% (strong)
+Hallow foundation readiness: 100% (strong)
 17/17 doctor checks passing
 2 agents installed
 4 skills installed

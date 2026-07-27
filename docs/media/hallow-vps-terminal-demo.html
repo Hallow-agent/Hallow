@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hallow Launch Sequence</title>
+  <style>
+    :root {
+      --paper: #d9caac;
+      --ink: #10100f;
+      --terminal: #080907;
+      --terminal-2: #11120f;
+      --white: #f3efe4;
+      --muted: #8f9188;
+      --cyan: #79dbe2;
+      --green: #8bea9d;
+      --amber: #e3c778;
+      --red: #e87979;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+    body {
+      background:
+        radial-gradient(circle at 84% 8%, rgba(255,255,255,.32), transparent 26%),
+        repeating-linear-gradient(0deg, transparent 0 47px, rgba(16,16,15,.045) 48px),
+        repeating-linear-gradient(90deg, transparent 0 47px, rgba(16,16,15,.045) 48px),
+        var(--paper);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .poster {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      padding: 56px 56px 48px;
+      overflow: hidden;
+    }
+
+    .poster::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: .15;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.25'/%3E%3C/svg%3E");
+      mix-blend-mode: multiply;
+    }
+
+    header { display: flex; justify-content: space-between; align-items: flex-start; height: 140px; }
+    .kicker, .index, .architecture, .terminal-bar, .terminal, footer {
+      font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
+    }
+    .kicker { font-size: 17px; letter-spacing: .14em; font-weight: 700; }
+    h1 { margin: 10px 0 0; font-family: Georgia, "Times New Roman", serif; font-size: 68px; line-height: .92; font-weight: 400; letter-spacing: -.045em; }
+    h1 em { display: block; font-weight: 400; }
+    .index { font-size: 16px; line-height: 1.45; text-align: right; letter-spacing: .08em; }
+
+    .architecture {
+      height: 74px;
+      display: grid;
+      grid-template-columns: 1fr 96px 1fr;
+      align-items: center;
+      border: 1px solid rgba(16,16,15,.55);
+      margin: 20px 0 26px;
+      background: rgba(240,231,210,.58);
+    }
+    .architecture .node { padding: 0 24px; }
+    .architecture .node:last-child { text-align: right; }
+    .architecture strong { display: block; font-size: 16px; letter-spacing: .08em; }
+    .architecture small { display: block; margin-top: 5px; color: rgba(16,16,15,.68); font-size: 12px; }
+    .arrow { text-align: center; font-size: 25px; }
+
+    .terminal-shell {
+      height: 860px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 22px 54px rgba(18,15,10,.28);
+      border: 1px solid #24251f;
+      background: var(--terminal);
+    }
+    .terminal-bar {
+      height: 50px;
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      color: #b8b9af;
+      background: #171815;
+      border-bottom: 1px solid #2b2c26;
+      font-size: 13px;
+      letter-spacing: .03em;
+    }
+    .lights { display: flex; gap: 8px; margin-right: 18px; }
+    .lights i { width: 9px; height: 9px; border-radius: 50%; display: block; background: #64665c; }
+    .lights i:first-child { background: var(--red); }
+    .lights i:nth-child(2) { background: var(--amber); }
+    .lights i:last-child { background: var(--green); }
+    .terminal-title { flex: 1; text-align: center; transform: translateX(-36px); }
+
+    .terminal {
+      position: relative;
+      height: 810px;
+      padding: 27px 30px;
+      color: var(--white);
+      background:
+        radial-gradient(circle at 90% 5%, rgba(121,219,226,.055), transparent 32%),
+        linear-gradient(135deg, var(--terminal), var(--terminal-2));
+      font-size: 16px;
+      line-height: 1.56;
+      letter-spacing: -.015em;
+    }
+    .scene { position: absolute; inset: 27px 30px; opacity: 0; pointer-events: none; }
+    .scene.active { opacity: 1; }
+    .scene .line { white-space: pre; min-height: 25px; }
+    .prompt { color: var(--white); }
+    .prompt::before { content: "$ "; color: var(--cyan); }
+    .dim { color: var(--muted); }
+    .cyan { color: var(--cyan); }
+    .green { color: var(--green); }
+    .amber { color: var(--amber); }
+    .big-mark { margin: 6px 0 18px; color: var(--white); font-weight: 800; line-height: 1.2; letter-spacing: .04em; }
+    .divider { color: #5f6158; }
+    .status-box {
+      border: 1px solid #44463e;
+      border-left: 3px solid var(--green);
+      margin: 16px 0;
+      padding: 16px 18px;
+      background: rgba(255,255,255,.018);
+    }
+    .status-head {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 13px;
+      color: var(--white);
+      font-weight: 700;
+      letter-spacing: .08em;
+    }
+    .status-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 34px; row-gap: 10px; }
+    .status-item { border-top: 1px solid #30322c; padding-top: 8px; }
+    .status-item span { display: block; }
+    .status-item .dim { margin-bottom: 3px; font-size: 12px; letter-spacing: .07em; text-transform: uppercase; }
+    .cursor { display: inline-block; width: 9px; height: 19px; vertical-align: -4px; background: var(--white); animation: blink .9s steps(2) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    footer {
+      height: 74px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      align-items: end;
+      padding-top: 21px;
+      font-size: 12px;
+      letter-spacing: .04em;
+    }
+    footer span { border-top: 1px solid rgba(16,16,15,.48); padding-top: 10px; }
+    footer b { display: block; font-size: 15px; margin-bottom: 2px; }
+
+    .video .scene .line { opacity: 0; transform: translateY(5px); }
+    .video .scene.active .line { animation: lineIn .28s forwards; }
+    @keyframes lineIn { to { opacity: 1; transform: translateY(0); } }
+    .video .architecture { animation: architecturePulse 20s ease-in-out both; }
+    @keyframes architecturePulse { 0%,100% { background: rgba(240,231,210,.58); } 34%,70% { background: rgba(121,219,226,.18); } }
+  </style>
+</head>
+<body>
+  <main class="poster" id="poster">
+    <header>
+      <div>
+        <div class="kicker">HALLOW / LAUNCH SEQUENCE 001</div>
+        <h1>From command.<br><em>To autonomous.</em></h1>
+      </div>
+      <div class="index">HALLOW 001<br>AGENT RUNTIME<br>LIVE</div>
+    </header>
+
+    <section class="architecture">
+      <div class="node"><strong>ONE COMMAND</strong><small>install &middot; verify &middot; launch</small></div>
+      <div class="arrow">&rarr;</div>
+      <div class="node"><strong>PRIVATE AGENT ONLINE</strong><small>persistent &middot; protected &middot; always ready</small></div>
+    </section>
+
+    <section class="terminal-shell">
+      <div class="terminal-bar">
+        <span class="lights"><i></i><i></i><i></i></span>
+        <span class="terminal-title">hallow &mdash; launch sequence</span>
+      </div>
+      <div class="terminal">
+        <div class="scene install" data-scene="install">
+          <div class="line prompt">curl -fsSL https://hallow-agent.xyz/install.sh | bash</div>
+          <div class="line"> </div>
+          <div class="line big-mark">H   H   AAAAA   L       L        OOOOO   W       W</div>
+          <div class="line cyan">AGENT OS 001  <span class="dim">/ AUTONOMOUS RUNTIME INSTALLER</span></div>
+          <div class="line divider">--------------------------------------------------------</div>
+          <div class="line"> </div>
+          <div class="line"><span class="dim">01</span>  <span class="cyan">SYSTEM</span>       Checking host compatibility...</div>
+          <div class="line green">    PASS  Secure prerequisites verified</div>
+          <div class="line"><span class="dim">02</span>  <span class="cyan">CORE</span>         Installing signed Hallow release...</div>
+          <div class="line green">    PASS  Release integrity verified</div>
+          <div class="line"><span class="dim">03</span>  <span class="cyan">WORKSPACE</span>    Creating private agent workspace...</div>
+          <div class="line green">    PASS  Persistent memory initialized</div>
+          <div class="line"><span class="dim">04</span>  <span class="cyan">POLICY</span>       Loading tool and approval guards...</div>
+          <div class="line green">    PASS  Execution policy active</div>
+          <div class="line"><span class="dim">05</span>  <span class="cyan">LAUNCH</span>       Starting managed runtime...</div>
+          <div class="line green">    PASS  Hallow is online and supervised</div>
+          <div class="line"> </div>
+          <div class="line green">+------------------------------------------------------+</div>
+          <div class="line green">|  HALLOW IS READY  /  RUN: hallow                     |</div>
+          <div class="line green">+------------------------------------------------------+</div>
+        </div>
+
+        <div class="scene runtime" data-scene="runtime">
+          <div class="line prompt">hallow</div>
+          <div class="line"> </div>
+          <div class="line big-mark">H A L L O W  /  CONTROL PLANE</div>
+          <div class="line green">&#9679; ONLINE  <span class="dim">YOUR AGENT IS READY</span></div>
+          <div class="status-box">
+            <div class="status-head"><span>PRIMARY AGENT</span><span class="green">HALLOW / READY</span></div>
+            <div class="status-grid">
+              <div class="status-item"><span class="dim">Memory</span><span>Persistent &amp; indexed</span></div>
+              <div class="status-item"><span class="dim">Models</span><span>Connected &amp; routed</span></div>
+              <div class="status-item"><span class="dim">Tools</span><span>Approval gates active</span></div>
+              <div class="status-item"><span class="dim">Recovery</span><span>Supervised &amp; armed</span></div>
+            </div>
+          </div>
+          <div class="line cyan">READINESS</div>
+          <div class="line green">  &#10003; 33 checks passed</div>
+          <div class="line green">  &#10003; security policy loaded</div>
+          <div class="line green">  &#10003; session memory mounted</div>
+          <div class="line green">  &#10003; automatic recovery verified</div>
+          <div class="line"> </div>
+          <div class="line dim">Awaiting your instruction <span class="cursor"></span></div>
+        </div>
+
+        <div class="scene chat" data-scene="chat">
+          <div class="line prompt">hallow chat "Audit this workspace. Propose the safest next move."</div>
+          <div class="line"> </div>
+          <div class="line cyan">&#9671; Restored project context</div>
+          <div class="line cyan">&#9671; Inspected runtime, policies, and recent sessions</div>
+          <div class="line cyan">&#9671; Built a guarded execution plan</div>
+          <div class="line"> </div>
+          <div class="line">I found three priority gaps. The safest first move is to</div>
+          <div class="line">tighten the tool boundary before expanding autonomy.</div>
+          <div class="line"> </div>
+          <div class="line amber">A patch plan is ready. No files were changed.</div>
+          <div class="line dim">Review required before write actions can run.</div>
+          <div class="line"> </div>
+          <div class="status-box">
+            <div class="status-head"><span>EXECUTION RECEIPT</span><span class="green">COMPLETE</span></div>
+            <div class="status-grid">
+              <div class="status-item"><span class="dim">Session</span><span>Checkpoint saved</span></div>
+              <div class="status-item"><span class="dim">Context</span><span>Ready to continue</span></div>
+              <div class="status-item"><span class="dim">Writes</span><span>0 / approval guarded</span></div>
+              <div class="status-item"><span class="dim">Result</span><span class="green">Safe handoff</span></div>
+            </div>
+          </div>
+          <div class="line prompt">hallow chat --continue "Prepare the patch" <span class="cursor"></span></div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <span><b>PRIVATE</b>by default</span>
+      <span><b>PERSISTENT</b>session memory</span>
+      <span><b>GUARDED</b>write approvals</span>
+      <span><b>RESILIENT</b>automatic recovery</span>
+    </footer>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const mode = params.get("scene") || "runtime";
+    const poster = document.getElementById("poster");
+    const scenes = [...document.querySelectorAll(".scene")];
+
+    function show(name, animate = false) {
+      scenes.forEach(scene => {
+        const active = scene.dataset.scene === name;
+        scene.classList.toggle("active", active);
+        if (active && animate) {
+          [...scene.querySelectorAll(".line")].forEach((line, index) => {
+            line.style.animationDelay = `${index * 0.075}s`;
+          });
+        }
+      });
+    }
+
+    if (mode === "video") {
+      poster.classList.add("video");
+      show("install", true);
+      setTimeout(() => show("runtime", true), 7000);
+      setTimeout(() => show("chat", true), 14000);
+    } else {
+      show(mode);
+    }
+  </script>
+</body>
+</html>

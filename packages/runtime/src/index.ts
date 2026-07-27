@@ -34,6 +34,23 @@ import {
   type ModelToolCall,
   type ModelToolDefinition
 } from "@hallow/models";
+import {
+  createDefaultGuardianPolicy,
+  createGuardianPlan as buildGuardianPlan,
+  createGuardianReceipt,
+  normalizeGuardianPolicy,
+  RobinhoodChainClient,
+  verifyGuardianReceipt,
+  type ChainStatus,
+  type GuardianAction,
+  type GuardianAssetKind,
+  type GuardianAssetPassport,
+  type GuardianNetwork,
+  type GuardianPlan as GuardianTransactionPlan,
+  type GuardianPolicy,
+  type GuardianReceipt
+} from "@hallow/chain";
+import { renderGuardianConsoleHtml } from "./guardian-console.js";
 
 type SqliteStatement = {
   all: (...parameters: unknown[]) => unknown[];
@@ -74,6 +91,19 @@ export type RunAgentResult = {
   session_id: string;
   iterations: number;
   cancelled: boolean;
+};
+
+export type GuardianPlanRecord = {
+  plan: GuardianTransactionPlan;
+  plan_path: string;
+  passport_path: string;
+  approval?: ApprovalRequest;
+};
+
+export type GuardianReceiptRecord = {
+  receipt: GuardianReceipt;
+  receipt_path: string;
+  verified: boolean;
 };
 
 export type AgentRunEvent =
@@ -1800,6 +1830,26 @@ export class HallowRuntime {
     return hallowPath(this.home, "observations");
   }
 
+  get guardianDir(): string {
+    return hallowPath(this.home, "guardian");
+  }
+
+  get guardianPolicyPath(): string {
+    return hallowPath(this.guardianDir, "policy.yaml");
+  }
+
+  get guardianPassportsDir(): string {
+    return hallowPath(this.guardianDir, "passports");
+  }
+
+  get guardianPlansDir(): string {
+    return hallowPath(this.guardianDir, "plans");
+  }
+
+  get guardianReceiptsDir(): string {
+    return hallowPath(this.guardianDir, "receipts");
+  }
+
   get integrationsDir(): string {
     return hallowPath(this.home, "integrations");
   }
@@ -1980,6 +2030,10 @@ export class HallowRuntime {
       hallowPath(this.observationsDir, "browser", "sessions"),
       hallowPath(this.observationsDir, "browser", "sessions", "html"),
       hallowPath(this.observationsDir, "browser", "sessions", "screenshots"),
+      this.guardianDir,
+      this.guardianPassportsDir,
+      this.guardianPlansDir,
+      this.guardianReceiptsDir,
       this.sandboxRunsDir,
       hallowPath(this.home, "approvals"),
       hallowPath(this.home, "notifications"),
@@ -2051,6 +2105,7 @@ export class HallowRuntime {
     await this.ensureMarketplaceSigningKeys();
     await this.writeMissingYaml(this.sandboxProfilePath, createDefaultSandboxProfile(), created, skipped);
     await this.writeMissingYaml(this.securityAuditPath, createDefaultSecurityAuditReport(), created, skipped);
+    await this.writeMissingYaml(this.guardianPolicyPath, createDefaultGuardianPolicy(), created, skipped);
     await this.writeMissingText(this.apiTokenPath, `${createApiToken()}\n`, created, skipped);
     await this.writeMissingYaml(this.fleetPath, createDefaultFleetState(), created, skipped);
     await this.writeMissingYaml(
@@ -6514,6 +6569,141 @@ export class HallowRuntime {
     };
   }
 
+  async getGuardianChainStatus(network: GuardianNetwork = "mainnet"): Promise<ChainStatus> {
+    return this.createGuardianClient(network).status();
+  }
+
+  async getGuardianPolicy(): Promise<GuardianPolicy> {
+    const raw = await readYaml<Partial<GuardianPolicy>>(this.guardianPolicyPath, createDefaultGuardianPolicy());
+    return normalizeGuardianPolicy(raw);
+  }
+
+  async updateGuardianPolicy(patch: Partial<GuardianPolicy>): Promise<GuardianPolicy> {
+    const current = await this.getGuardianPolicy();
+    const updated = normalizeGuardianPolicy({
+      ...current,
+      ...patch,
+      version: current.version + 1,
+      updated_at: new Date().toISOString()
+    });
+    await writeYaml(this.guardianPolicyPath, updated);
+    await this.createNotification({
+      level: "success",
+      title: "Guardian policy updated",
+      message: `${updated.name} v${updated.version}`,
+      source: "guardian",
+      target: this.guardianPolicyPath
+    });
+    return updated;
+  }
+
+  async resetGuardianPolicy(): Promise<GuardianPolicy> {
+    const policy = createDefaultGuardianPolicy();
+    await writeYaml(this.guardianPolicyPath, policy);
+    return policy;
+  }
+
+  async inspectGuardianAsset(
+    address: string,
+    options: { network?: GuardianNetwork; kind?: GuardianAssetKind | "auto"; symbol?: string } = {}
+  ): Promise<{ passport: GuardianAssetPassport; passport_path: string }> {
+    const decision = await this.checkTool("chain.read", address);
+    if (!decision.allowed) throw new Error(decision.reason);
+    const passport = await this.createGuardianClient(options.network ?? "mainnet").inspectAsset(address, {
+      kind: options.kind,
+      symbol: options.symbol
+    });
+    const passportPath = hallowPath(this.guardianPassportsDir, `${passport.id}.yaml`);
+    await writeYaml(passportPath, passport);
+    await this.recordToolEvent("chain.read", passport.address, `created ${passport.id}`);
+    return { passport, passport_path: passportPath };
+  }
+
+  async createGuardianTransactionPlan(input: {
+    action: GuardianAction;
+    asset: GuardianAssetPassport;
+    amount_usd: number;
+    slippage_bps?: number;
+    protocol?: string;
+    projected_memecoin_allocation_percent?: number;
+    projected_reserve_percent?: number;
+    daily_spend_before_usd?: number;
+    wallet_address?: string;
+    transaction?: { to: string; data?: string; value_wei?: string };
+  }): Promise<GuardianPlanRecord> {
+    const policy = await this.getGuardianPolicy();
+    const plan = buildGuardianPlan(input, policy);
+    const planPath = hallowPath(this.guardianPlansDir, `${plan.id}.yaml`);
+    const passportPath = hallowPath(this.guardianPassportsDir, `${input.asset.id}.yaml`);
+    await writeYaml(passportPath, input.asset);
+    await writeYaml(planPath, plan);
+    let approval: ApprovalRequest | undefined;
+    if (plan.state === "approval_required") {
+      approval = await this.createApproval({
+        agent: "hallow-guardian",
+        action: "guardian.transaction",
+        target: plan.id,
+        risk: "R4",
+        reason: `${plan.human_summary} Approval applies only to this immutable plan hash.`
+      });
+    }
+    await this.recordToolEvent("guardian.plan", plan.id, plan.state);
+    return { plan, plan_path: planPath, passport_path: passportPath, approval };
+  }
+
+  async getGuardianPlan(id: string): Promise<GuardianTransactionPlan> {
+    assertGuardianId(id, "plan");
+    const plan = await readYaml<GuardianTransactionPlan | null>(hallowPath(this.guardianPlansDir, `${id}.yaml`), null);
+    if (!plan) throw new Error(`Guardian plan not found: ${id}`);
+    return plan;
+  }
+
+  async getGuardianPassport(id: string): Promise<GuardianAssetPassport> {
+    assertGuardianId(id, "passport");
+    const passport = await readYaml<GuardianAssetPassport | null>(hallowPath(this.guardianPassportsDir, `${id}.yaml`), null);
+    if (!passport) throw new Error(`Guardian passport not found: ${id}`);
+    return passport;
+  }
+
+  async createGuardianReceiptRecord(planId: string, approvalId?: string): Promise<GuardianReceiptRecord> {
+    const plan = await this.getGuardianPlan(planId);
+    const passport = await this.getGuardianPassport(plan.asset_passport_id);
+    let approval: ApprovalRequest | undefined;
+    if (approvalId) {
+      approval = await this.getApproval(approvalId);
+      if (approval.action !== "guardian.transaction" || approval.target !== plan.id) {
+        throw new Error("Approval does not authorize this exact Guardian plan.");
+      }
+    }
+    const approvalStatus: GuardianReceipt["approval_status"] = approval?.status
+      ?? (plan.state === "approval_required" ? "pending" : "not_required");
+    const receipt = createGuardianReceipt(plan, passport, {
+      approval_id: approval?.id,
+      approval_status: approvalStatus
+    });
+    const receiptPath = hallowPath(this.guardianReceiptsDir, `${receipt.id}.yaml`);
+    await writeYaml(receiptPath, receipt);
+    await this.recordToolEvent("guardian.receipt", receipt.id, receipt.execution_status);
+    return { receipt, receipt_path: receiptPath, verified: verifyGuardianReceipt(receipt) };
+  }
+
+  async getGuardianReceipt(id: string): Promise<GuardianReceiptRecord> {
+    assertGuardianId(id, "receipt");
+    const receiptPath = hallowPath(this.guardianReceiptsDir, `${id}.yaml`);
+    const receipt = await readYaml<GuardianReceipt | null>(receiptPath, null);
+    if (!receipt) throw new Error(`Guardian receipt not found: ${id}`);
+    return { receipt, receipt_path: receiptPath, verified: verifyGuardianReceipt(receipt) };
+  }
+
+  private createGuardianClient(network: GuardianNetwork): RobinhoodChainClient {
+    const prefix = network === "mainnet" ? "ROBINHOOD_CHAIN" : "ROBINHOOD_CHAIN_TESTNET";
+    return new RobinhoodChainClient({
+      network,
+      rpc_url: process.env[`${prefix}_RPC_URL`],
+      stock_api_url: process.env.ROBINHOOD_STOCK_TOKEN_API_URL
+    });
+  }
+
   async listTools(): Promise<Record<string, ToolDefinition>> {
     return (await this.readToolRegistry()).tools;
   }
@@ -8103,6 +8293,10 @@ export class HallowRuntime {
         return html(response, 200, page ?? renderMissingDesktopShell(this.home));
       }
 
+      if (url.pathname === "/guardian") {
+        return html(response, 200, await this.renderGuardianConsole());
+      }
+
       if (url.pathname.startsWith("/docs/assets/")) {
         const target = resolve(this.desktopDocsDir, url.pathname.slice("/docs/".length));
         if (!isWithinPath(this.desktopDocsDir, target) || !(await pathExists(target))) {
@@ -8146,6 +8340,69 @@ export class HallowRuntime {
       if (url.pathname === "/desktop/status" || url.pathname === "/api/desktop/status") {
         return json(response, 200, { desktop: await this.getDesktopShellStatus() });
       }
+
+      if (url.pathname === "/guardian/status" || url.pathname === "/api/guardian/status") {
+        const network = url.searchParams.get("network") === "testnet" ? "testnet" : "mainnet";
+        const [status, policy] = await Promise.all([this.getGuardianChainStatus(network), this.getGuardianPolicy()]);
+        return json(response, 200, { status, policy });
+      }
+
+      if (url.pathname === "/guardian/policy" || url.pathname === "/api/guardian/policy") {
+        if (request.method === "GET") return json(response, 200, { policy: await this.getGuardianPolicy() });
+        if (request.method !== "POST") return json(response, 405, { error: "Method not allowed" });
+        const body = await readJsonObject(request);
+        return json(response, 200, { policy: await this.updateGuardianPolicy(recordValue(body.policy) ?? body) });
+      }
+
+      if (url.pathname === "/guardian/inspect" || url.pathname === "/api/guardian/inspect") {
+        const address = url.searchParams.get("address") ?? "";
+        if (!address) throw new Error("Guardian inspection requires an address query parameter.");
+        const network = url.searchParams.get("network") === "testnet" ? "testnet" : "mainnet";
+        const kindValue = url.searchParams.get("kind") ?? "auto";
+        const kind: GuardianAssetKind | "auto" = isGuardianAssetKind(kindValue) ? kindValue : "auto";
+        return json(response, 200, await this.inspectGuardianAsset(address, {
+          network,
+          kind,
+          symbol: url.searchParams.get("symbol") ?? undefined
+        }));
+      }
+
+      if (url.pathname === "/guardian/plan" || url.pathname === "/api/guardian/plan") {
+        if (request.method !== "POST") return json(response, 405, { error: "Method not allowed" });
+        const body = await readJsonObject(request);
+        const address = optionalStringValue(body.address) ?? "";
+        const actionValue = optionalStringValue(body.action) ?? "";
+        if (!address || !isGuardianAction(actionValue)) throw new Error("Guardian plan requires a valid action and contract address.");
+        const network = body.network === "testnet" ? "testnet" : "mainnet";
+        const kindValue = optionalStringValue(body.kind) ?? "auto";
+        const inspected = await this.inspectGuardianAsset(address, {
+          network,
+          kind: isGuardianAssetKind(kindValue) ? kindValue : "auto",
+          symbol: optionalStringValue(body.symbol) ?? undefined
+        });
+        return json(response, 200, await this.createGuardianTransactionPlan({
+          action: actionValue,
+          asset: inspected.passport,
+          amount_usd: nonNegativeNumberValue(body.amount_usd, 0),
+          slippage_bps: nonNegativeNumberValue(body.slippage_bps, 50),
+          protocol: optionalStringValue(body.protocol) ?? undefined,
+          projected_memecoin_allocation_percent: optionalNumberValue(body.projected_memecoin_allocation_percent),
+          projected_reserve_percent: optionalNumberValue(body.projected_reserve_percent),
+          daily_spend_before_usd: optionalNumberValue(body.daily_spend_before_usd),
+          wallet_address: optionalStringValue(body.wallet_address) ?? undefined
+        }));
+      }
+
+      if (url.pathname === "/guardian/receipt" || url.pathname === "/api/guardian/receipt") {
+        if (request.method !== "POST") return json(response, 405, { error: "Method not allowed" });
+        const body = await readJsonObject(request);
+        const planId = optionalStringValue(body.plan_id) ?? "";
+        if (!planId) throw new Error("Guardian receipt requires plan_id.");
+        return json(response, 200, await this.createGuardianReceiptRecord(planId, optionalStringValue(body.approval_id) ?? undefined));
+      }
+
+      const guardianReceiptMatch = url.pathname.match(/^\/(?:api\/)?guardian\/receipts\/([^/]+)$/);
+      if (guardianReceiptMatch) return json(response, 200, await this.getGuardianReceipt(guardianReceiptMatch[1]));
 
       if (url.pathname === "/desktop/setup" || url.pathname === "/api/desktop/setup") {
         if (request.method !== "POST") {
@@ -9691,6 +9948,78 @@ export class HallowRuntime {
       content: JSON.stringify({ ok: false, error: summary })
     });
     try {
+      if (call.name === "guardian_chain_status") {
+        const network = readToolString(call.arguments, "network") === "testnet" ? "testnet" : "mainnet";
+        const status = await this.getGuardianChainStatus(network);
+        return {
+          toolUse: {
+            tool: "chain.read",
+            target: status.network.name,
+            status: status.connected ? "success" : "denied",
+            summary: status.connected ? `Connected at block ${status.block_number}.` : status.error ?? "Robinhood Chain unavailable."
+          },
+          content: JSON.stringify({ ok: status.connected, status })
+        };
+      }
+
+      if (call.name === "guardian_asset_inspect") {
+        const address = readToolString(call.arguments, "address");
+        if (!address) return denied("", "guardian_asset_inspect requires a contract address.");
+        const network = readToolString(call.arguments, "network") === "testnet" ? "testnet" : "mainnet";
+        const requestedKind = readToolString(call.arguments, "kind");
+        const kind: GuardianAssetKind | "auto" = isGuardianAssetKind(requestedKind) ? requestedKind : "auto";
+        const result = await this.inspectGuardianAsset(address, {
+          network,
+          kind,
+          symbol: readToolString(call.arguments, "symbol") || undefined
+        });
+        return {
+          toolUse: {
+            tool: "chain.read",
+            target: result.passport.address,
+            status: "success",
+            summary: result.passport.summary,
+            artifact: result.passport_path
+          },
+          content: JSON.stringify({ ok: true, passport: result.passport, artifact_path: result.passport_path })
+        };
+      }
+
+      if (call.name === "guardian_plan_action") {
+        const address = readToolString(call.arguments, "address");
+        if (!address) return denied("", "guardian_plan_action requires a contract address.");
+        const requestedAction = readToolString(call.arguments, "action");
+        const action: GuardianAction = isGuardianAction(requestedAction) ? requestedAction : "inspect";
+        const amountUsd = readToolNumber(call.arguments, "amount_usd", 0);
+        const network = readToolString(call.arguments, "network") === "testnet" ? "testnet" : "mainnet";
+        const requestedKind = readToolString(call.arguments, "kind");
+        const inspected = await this.inspectGuardianAsset(address, {
+          network,
+          kind: isGuardianAssetKind(requestedKind) ? requestedKind : "auto",
+          symbol: readToolString(call.arguments, "symbol") || undefined
+        });
+        const record = await this.createGuardianTransactionPlan({
+          action,
+          asset: inspected.passport,
+          amount_usd: amountUsd,
+          slippage_bps: readToolNumber(call.arguments, "slippage_bps", 50),
+          protocol: readToolString(call.arguments, "protocol") || undefined,
+          projected_memecoin_allocation_percent: readToolOptionalNumber(call.arguments, "projected_memecoin_allocation_percent"),
+          projected_reserve_percent: readToolOptionalNumber(call.arguments, "projected_reserve_percent"),
+          daily_spend_before_usd: readToolOptionalNumber(call.arguments, "daily_spend_before_usd")
+        });
+        return {
+          toolUse: {
+            tool: "guardian.plan",
+            target: record.plan.id,
+            status: record.plan.state === "blocked" ? "denied" : record.plan.state === "approval_required" ? "needs_approval" : "success",
+            summary: record.plan.human_summary,
+            artifact: record.plan_path
+          },
+          content: JSON.stringify({ ok: record.plan.state !== "blocked", plan: record.plan, approval: record.approval, artifact_path: record.plan_path })
+        };
+      }
+
       if (call.name === "memory_search") {
         const query = readToolString(call.arguments, "query");
         if (!query) return denied("", "memory_search requires a non-empty query.");
@@ -10065,6 +10394,10 @@ export class HallowRuntime {
     });
 
     return updated;
+  }
+
+  private async renderGuardianConsole(): Promise<string> {
+    return renderGuardianConsoleHtml((await this.readApiToken()) ?? "");
   }
 
   private async renderConsole(): Promise<string> {
@@ -10742,6 +11075,10 @@ function createDefaultToolRegistry(): ToolRegistry {
       "web.fetch": { enabled: true, risk: "R1", approval: "auto" },
       "memory.read": { enabled: true, risk: "R0", approval: "auto" },
       "memory.write": { enabled: true, risk: "R1", approval: "auto" },
+      "chain.read": { enabled: true, risk: "R1", approval: "auto" },
+      "guardian.plan": { enabled: true, risk: "R2", approval: "auto" },
+      "guardian.receipt": { enabled: true, risk: "R1", approval: "auto" },
+      "guardian.execute": { enabled: false, risk: "R4", approval: "deny" },
       "mcp.call": { enabled: true, risk: "R2", approval: "auto" },
       "agent.delegate": { enabled: true, risk: "R2", approval: "auto" },
       "browser.observe": { enabled: true, risk: "R2", approval: "auto" },
@@ -13657,6 +13994,52 @@ function createPlanGoals(prompt: string, tools: string[]): string[] {
 
 const HALLOW_AGENT_TOOLS: ModelToolDefinition[] = [
   {
+    name: "guardian_chain_status",
+    description: "Check Robinhood Chain connectivity and the latest observed block without requesting wallet access.",
+    input_schema: {
+      type: "object",
+      properties: { network: { type: "string", enum: ["mainnet", "testnet"] } },
+      additionalProperties: false
+    }
+  },
+  {
+    name: "guardian_asset_inspect",
+    description: "Create a bounded Hallow Asset Passport from Robinhood Chain contract evidence and the official Stock Token registry. The result is evidence, not financial advice or a promise of safety.",
+    input_schema: {
+      type: "object",
+      properties: {
+        address: { type: "string", description: "EVM token contract address." },
+        network: { type: "string", enum: ["mainnet", "testnet"] },
+        kind: { type: "string", enum: ["auto", "rwa", "meme", "stablecoin", "wrapped", "token"] },
+        symbol: { type: "string" }
+      },
+      required: ["address"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "guardian_plan_action",
+    description: "Inspect an asset and create a non-custodial, no-funds-moved transaction simulation checked against the user's Guardian policy. Financial actions always require explicit human approval and broadcasting is disabled by default.",
+    input_schema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["buy", "sell", "swap", "lend", "withdraw", "inspect"] },
+        address: { type: "string" },
+        network: { type: "string", enum: ["mainnet", "testnet"] },
+        kind: { type: "string", enum: ["auto", "rwa", "meme", "stablecoin", "wrapped", "token"] },
+        symbol: { type: "string" },
+        amount_usd: { type: "number", minimum: 0 },
+        slippage_bps: { type: "number", minimum: 0, maximum: 10000 },
+        protocol: { type: "string" },
+        projected_memecoin_allocation_percent: { type: "number", minimum: 0, maximum: 100 },
+        projected_reserve_percent: { type: "number", minimum: 0, maximum: 100 },
+        daily_spend_before_usd: { type: "number", minimum: 0 }
+      },
+      required: ["action", "address", "amount_usd"],
+      additionalProperties: false
+    }
+  },
+  {
     name: "delegate_task",
     description: "Delegate a focused independent task to a child agent with its own bounded conversation session and trace. Nested delegation is disabled.",
     input_schema: {
@@ -13860,6 +14243,25 @@ function readToolString(args: Record<string, unknown>, key: string): string {
 function readToolObject(args: Record<string, unknown>, key: string): Record<string, unknown> {
   const value = args[key];
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function readToolNumber(args: Record<string, unknown>, key: string, fallback: number): number {
+  const value = Number(args[key]);
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
+function readToolOptionalNumber(args: Record<string, unknown>, key: string): number | undefined {
+  if (args[key] === undefined || args[key] === null || args[key] === "") return undefined;
+  const value = Number(args[key]);
+  return Number.isFinite(value) && value >= 0 ? value : undefined;
+}
+
+function isGuardianAssetKind(value: string): value is GuardianAssetKind | "auto" {
+  return value === "auto" || value === "rwa" || value === "meme" || value === "stablecoin" || value === "wrapped" || value === "token" || value === "unknown";
+}
+
+function isGuardianAction(value: string): value is GuardianAction {
+  return value === "buy" || value === "sell" || value === "swap" || value === "lend" || value === "withdraw" || value === "inspect";
 }
 
 function readToolLimit(
@@ -14311,6 +14713,17 @@ function optionalPositiveIntegerValue(value: unknown): number | undefined {
 
 function positiveIntegerValue(value: unknown, fallback: number): number {
   return optionalPositiveIntegerValue(value) ?? fallback;
+}
+
+function optionalNumberValue(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function nonNegativeNumberValue(value: unknown, fallback: number): number {
+  const parsed = optionalNumberValue(value);
+  return parsed !== undefined && parsed >= 0 ? parsed : fallback;
 }
 
 function optionalDateValue(value: unknown): Date | undefined {
@@ -18967,6 +19380,17 @@ function renderRunOutput(
 
 function createId(prefix: string): string {
   return `${prefix}_${new Date().toISOString().replace(/[:.]/g, "-")}_${randomUUID().slice(0, 8)}`;
+}
+
+function assertGuardianId(id: string, kind: "plan" | "passport" | "receipt"): void {
+  const prefixes = {
+    plan: "guardian_plan_",
+    passport: "asset_passport_",
+    receipt: "guardian_receipt_"
+  } as const;
+  if (!new RegExp(`^${prefixes[kind]}[a-f0-9]{16}$`).test(id)) {
+    throw new Error(`Invalid Guardian ${kind} id.`);
+  }
 }
 
 function json(response: ServerResponse, status: number, body: unknown): void {

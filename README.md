@@ -6,6 +6,18 @@
 
 It is not a chatbot wrapper, not a landing-page demo, and not a cloud account that owns your memory. Hallow installs a private runtime on the user's machine, then gives agents one standard for memory, tools, model routing, signed skills, gateway lanes, traces, readiness checks, and self-healing loops.
 
+## Hallow Guardian / Robinhood Chain
+
+Guardian gives Hallow a safer way to reason about RWAs and memecoins: inspect a contract, produce an evidence-backed Asset Passport, enforce hard spending and exposure limits, simulate the intended action, request human approval, and create a tamper-evident receipt. Transaction broadcasting is deliberately disabled in this preview.
+
+```bash
+hallow guardian status
+hallow guardian inspect 0xCONTRACT --kind rwa
+hallow guardian plan buy 0xCONTRACT --usd 50 --slippage-bps 30
+```
+
+Read [the Guardian architecture and safety model](docs/GUARDIAN.md). This software provides technical controls and bounded evidence, not financial, legal, or investment advice.
+
 ## Install Hallow 001
 
 Windows PowerShell:

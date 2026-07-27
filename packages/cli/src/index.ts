@@ -184,6 +184,11 @@ async function dispatch(context: CommandContext): Promise<void> {
     return;
   }
 
+  if (command === "guardian" || command === "chain") {
+    await handleGuardian(context, subcommand, rest);
+    return;
+  }
+
   if (command === "shell" || command === "operator") {
     await context.runtime.init();
     await ensureFirstPartySkillSource(context);
@@ -2957,6 +2962,251 @@ async function handleNotification(
   throw new Error(`Unknown notification command: ${subcommand}`);
 }
 
+async function handleGuardian(
+  context: CommandContext,
+  subcommand: string | undefined,
+  rest: string[]
+): Promise<void> {
+  await context.runtime.init();
+  const network = rest.includes("--testnet") || readOption(rest, "--network") === "testnet" ? "testnet" : "mainnet";
+
+  if (subcommand === "help" || subcommand === "--help" || subcommand === "-h") {
+    printHelp();
+    return;
+  }
+
+  if (!subcommand || subcommand === "status") {
+    const [status, policy] = await Promise.all([
+      context.runtime.getGuardianChainStatus(network),
+      context.runtime.getGuardianPolicy()
+    ]);
+    printGuardianStatus(status, policy);
+    if (!status.connected) process.exitCode = 1;
+    return;
+  }
+
+  if (subcommand === "policy") {
+    const action = rest[0] ?? "show";
+    if (action === "show") {
+      printGuardianPolicy(await context.runtime.getGuardianPolicy());
+      return;
+    }
+    if (action === "reset") {
+      printGuardianPolicy(await context.runtime.resetGuardianPolicy());
+      return;
+    }
+    if (action === "set") {
+      const current = await context.runtime.getGuardianPolicy();
+      const patch: Parameters<HallowRuntime["updateGuardianPolicy"]>[0] = {};
+      setNumberPatch(patch, "max_transaction_usd", readNumberOption(rest, "--max-transaction-usd"));
+      setNumberPatch(patch, "max_daily_usd", readNumberOption(rest, "--max-daily-usd"));
+      setNumberPatch(patch, "max_memecoin_allocation_percent", readNumberOption(rest, "--max-meme-percent"));
+      setNumberPatch(patch, "min_reserve_percent", readNumberOption(rest, "--min-reserve-percent"));
+      setNumberPatch(patch, "max_slippage_bps", readNumberOption(rest, "--max-slippage-bps"));
+      const protocol = readOption(rest, "--allow-protocol");
+      if (protocol) patch.allowed_protocols = Array.from(new Set([...current.allowed_protocols, protocol]));
+      const contract = readOption(rest, "--allow-contract");
+      if (contract) patch.allowed_contracts = Array.from(new Set([...current.allowed_contracts, contract.toLowerCase()]));
+      printGuardianPolicy(await context.runtime.updateGuardianPolicy(patch));
+      return;
+    }
+    throw new Error("Usage: hallow guardian policy show|reset|set [policy options]");
+  }
+
+  if (subcommand === "inspect") {
+    const address = rest[0];
+    if (!address) throw new Error("Usage: hallow guardian inspect <contract> [--kind rwa|meme|auto] [--testnet]");
+    const result = await context.runtime.inspectGuardianAsset(address, {
+      network,
+      kind: readGuardianKind(readOption(rest, "--kind")),
+      symbol: readOption(rest, "--symbol")
+    });
+    printGuardianPassport(result.passport, result.passport_path);
+    return;
+  }
+
+  if (subcommand === "plan") {
+    const action = readGuardianAction(rest[0]);
+    const address = rest[1];
+    if (!action || !address) throw new Error("Usage: hallow guardian plan <buy|sell|swap|lend|withdraw|inspect> <contract> --usd amount [options]");
+    const amountUsd = readNumberOption(rest, "--usd") ?? 0;
+    if (action !== "inspect" && amountUsd <= 0) throw new Error("Guardian financial plans require --usd with a value greater than zero.");
+    const inspected = await context.runtime.inspectGuardianAsset(address, {
+      network,
+      kind: readGuardianKind(readOption(rest, "--kind")),
+      symbol: readOption(rest, "--symbol")
+    });
+    const record = await context.runtime.createGuardianTransactionPlan({
+      action,
+      asset: inspected.passport,
+      amount_usd: amountUsd,
+      slippage_bps: readNumberOption(rest, "--slippage-bps"),
+      protocol: readOption(rest, "--protocol"),
+      projected_memecoin_allocation_percent: readNumberOption(rest, "--meme-percent"),
+      projected_reserve_percent: readNumberOption(rest, "--reserve-percent"),
+      daily_spend_before_usd: readNumberOption(rest, "--daily-spend"),
+      wallet_address: readOption(rest, "--wallet")
+    });
+    printGuardianPlan(record);
+    if (record.plan.state === "blocked") process.exitCode = 2;
+    return;
+  }
+
+  if (subcommand === "receipt") {
+    const planId = rest[0];
+    if (!planId) throw new Error("Usage: hallow guardian receipt <plan-id> [--approval approval-id]");
+    printGuardianReceipt(await context.runtime.createGuardianReceiptRecord(planId, readOption(rest, "--approval")));
+    return;
+  }
+
+  if (subcommand === "verify") {
+    const receiptId = rest[0];
+    if (!receiptId) throw new Error("Usage: hallow guardian verify <receipt-id>");
+    const record = await context.runtime.getGuardianReceipt(receiptId);
+    printGuardianReceipt(record);
+    if (!record.verified) process.exitCode = 2;
+    return;
+  }
+
+  throw new Error(`Unknown guardian command: ${subcommand}`);
+}
+
+function printGuardianStatus(
+  status: Awaited<ReturnType<HallowRuntime["getGuardianChainStatus"]>>,
+  policy: Awaited<ReturnType<HallowRuntime["getGuardianPolicy"]>>
+): void {
+  const width = terminalWidth();
+  prepareTerminalSurface();
+  printTerminalText("");
+  printTerminalFrame("HALLOW GUARDIAN", "PROOF BEFORE ACTION", width);
+  printTerminalSection("CHAIN", [
+    formatMetric("network", status.network.name),
+    formatMetric("connection", status.connected ? "online" : "unavailable"),
+    formatMetric("latest block", status.block_number?.toLocaleString() ?? "not observed"),
+    formatMetric("latency", status.latency_ms === undefined ? "-" : `${status.latency_ms} ms`)
+  ], width);
+  printTerminalSection("HARD LIMITS", [
+    formatMetric("per transaction", `$${policy.max_transaction_usd}`),
+    formatMetric("daily", `$${policy.max_daily_usd}`),
+    formatMetric("memecoin exposure", `${policy.max_memecoin_allocation_percent}% max`),
+    formatMetric("reserve", `${policy.min_reserve_percent}% minimum`),
+    formatMetric("human approval", policy.require_human_approval ? "always required" : "policy controlled"),
+    formatMetric("broadcasting", "disabled by default")
+  ], width);
+  printTerminalText(repeatChar("-", width), "90");
+  printTerminalText("No seed phrase requested. No funds moved. Chain activity is public.", "90");
+}
+
+function printGuardianPolicy(policy: Awaited<ReturnType<HallowRuntime["getGuardianPolicy"]>>): void {
+  const width = terminalWidth();
+  prepareTerminalSurface();
+  printTerminalText("");
+  printTerminalFrame("GUARDIAN POLICY", `${policy.name.toUpperCase()} / V${policy.version}`, width);
+  printTerminalSection("SPENDING", [
+    formatMetric("transaction maximum", `$${policy.max_transaction_usd}`),
+    formatMetric("daily maximum", `$${policy.max_daily_usd}`),
+    formatMetric("memecoin maximum", `${policy.max_memecoin_allocation_percent}%`),
+    formatMetric("reserve minimum", `${policy.min_reserve_percent}%`),
+    formatMetric("slippage maximum", `${policy.max_slippage_bps} bps`)
+  ], width);
+  printTerminalSection("GUARDS", [
+    formatMetric("canonical RWA", policy.require_canonical_rwa ? "required" : "not required"),
+    formatMetric("trading halt", policy.block_on_trading_halt ? "blocks action" : "warning only"),
+    formatMetric("stale quote", policy.block_on_stale_quote ? "blocks action" : "warning only"),
+    formatMetric("high-risk signal", policy.block_high_risk_assets ? "blocks action" : "warning only"),
+    formatMetric("approval", policy.require_human_approval ? "required" : "policy controlled")
+  ], width);
+}
+
+function printGuardianPassport(
+  passport: Awaited<ReturnType<HallowRuntime["inspectGuardianAsset"]>>["passport"],
+  artifactPath: string
+): void {
+  const width = terminalWidth();
+  prepareTerminalSurface();
+  printTerminalText("");
+  printTerminalFrame("ASSET PASSPORT", "EVIDENCE, NOT A PROMISE OF SAFETY", width);
+  printTerminalSection("IDENTITY", [
+    formatMetric("asset", passport.contract.symbol ?? passport.stock_token?.symbol ?? "unknown"),
+    formatMetric("kind", passport.kind),
+    formatMetric("canonical", passport.canonical ? "verified against official registry" : "not verified as canonical"),
+    formatMetric("contract code", passport.contract.code_present ? `${passport.contract.code_bytes.toLocaleString()} bytes observed` : "missing"),
+    formatMetric("observation block", passport.block_number?.toLocaleString() ?? "unknown")
+  ], width);
+  printTerminalSection("SIGNALS", [
+    formatMetric("risk band", passport.risk.band),
+    formatMetric("signal score", `${passport.risk.score}/100 (higher means more warning signals)`),
+    ...(passport.risk.signals.slice(0, 5).map((signal) => `${signal.severity.toUpperCase()}  ${signal.title}: ${signal.detail}`)),
+    ...(passport.risk.signals.length === 0 ? ["No major signal detected in this bounded inspection."] : [])
+  ], width);
+  if (passport.stock_token) {
+    printTerminalSection("RWA NOTICE", [passport.stock_token.holder_rights_notice], width);
+  }
+  printTerminalSection("PLAIN LANGUAGE", [passport.summary], width);
+  printTerminalText(repeatChar("-", width), "90");
+  printTerminalText(`Receipt-ready artifact: ${artifactPath}`, "90");
+}
+
+function printGuardianPlan(record: Awaited<ReturnType<HallowRuntime["createGuardianTransactionPlan"]>>): void {
+  const width = terminalWidth();
+  prepareTerminalSurface();
+  printTerminalText("");
+  printTerminalFrame("GUARDIAN PLAN", record.plan.state.replace(/_/g, " ").toUpperCase(), width);
+  printTerminalSection("INTENT", [
+    formatMetric("action", record.plan.action),
+    formatMetric("asset", record.plan.asset_symbol ?? record.plan.asset_address),
+    formatMetric("amount", `$${record.plan.amount_usd}`),
+    formatMetric("funds moved", "no — simulation only")
+  ], width);
+  printTerminalSection("POLICY CHECKS", record.plan.checks.map((entry) => {
+    const mark = entry.status === "pass" ? "PASS" : entry.status === "approval" ? "REVIEW" : "BLOCK";
+    return `${padRight(mark, 8)} ${entry.label} — ${entry.detail}`;
+  }), width);
+  printTerminalSection("RESULT", [record.plan.human_summary], width);
+  if (record.approval) {
+    printTerminalSection("NEXT STEP", [
+      `Review:  hallow approval list`,
+      `Approve: hallow approval approve ${record.approval.id}`,
+      `Receipt: hallow guardian receipt ${record.plan.id} --approval ${record.approval.id}`
+    ], width);
+  }
+  printTerminalText(repeatChar("-", width), "90");
+  printTerminalText(`Plan artifact: ${record.plan_path}`, "90");
+}
+
+function printGuardianReceipt(record: Awaited<ReturnType<HallowRuntime["createGuardianReceiptRecord"]>>): void {
+  const width = terminalWidth();
+  prepareTerminalSurface();
+  printTerminalText("");
+  printTerminalFrame("EXECUTION RECEIPT", record.verified ? "VERIFIED" : "INVALID", width);
+  printTerminalSection("PROOF", [
+    formatMetric("receipt", record.receipt.id),
+    formatMetric("plan", record.receipt.plan_id),
+    formatMetric("approval", record.receipt.approval_status),
+    formatMetric("execution", record.receipt.execution_status),
+    formatMetric("verification", record.receipt.verification_hash)
+  ], width);
+  printTerminalSection("PRIVACY", [
+    "No prompt stored onchain.",
+    "No private memory stored onchain.",
+    "Only hashes and explicit transaction evidence are designed for anchoring."
+  ], width);
+  printTerminalText(repeatChar("-", width), "90");
+  printTerminalText(`Receipt artifact: ${record.receipt_path}`, "90");
+}
+
+function readGuardianKind(value: string | undefined): "auto" | "rwa" | "meme" | "stablecoin" | "wrapped" | "token" | "unknown" {
+  return value === "rwa" || value === "meme" || value === "stablecoin" || value === "wrapped" || value === "token" || value === "unknown" ? value : "auto";
+}
+
+function readGuardianAction(value: string | undefined): "buy" | "sell" | "swap" | "lend" | "withdraw" | "inspect" | undefined {
+  return value === "buy" || value === "sell" || value === "swap" || value === "lend" || value === "withdraw" || value === "inspect" ? value : undefined;
+}
+
+function setNumberPatch<T extends object, K extends keyof T>(target: T, key: K, value: number | undefined): void {
+  if (value !== undefined) target[key] = value as T[K];
+}
+
 async function handleModel(
   context: CommandContext,
   subcommand: string | undefined,
@@ -5238,6 +5488,12 @@ Usage:
   hallow doctor [--home path]
   hallow status [--home path] [--strict]
   hallow readiness [--strict]
+  hallow guardian status [--testnet]
+  hallow guardian inspect <contract> [--kind rwa|meme|auto] [--testnet]
+  hallow guardian policy show|reset|set [policy options]
+  hallow guardian plan <action> <contract> --usd amount [--kind type] [--testnet]
+  hallow guardian receipt <plan-id> [--approval approval-id]
+  hallow guardian verify <receipt-id>
   hallow demo setup [--skip-live-mcp] [--skip-browser]
   hallow demo run [--skip-live-mcp] [--skip-browser]
   hallow demo checklist

@@ -8,6 +8,7 @@
     ".": "./dist/index.js"
   },
   "dependencies": {
+    "@hallow/chain": "workspace:*",
     "@hallow/core": "workspace:*",
     "@hallow/models": "workspace:*"
   }

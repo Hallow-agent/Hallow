@@ -26,7 +26,7 @@ PowerShell-native fallback:
 irm https://hallow-agent.xyz/install.ps1 | iex
 ```
 
-After install, `hallow` is written into the user path as the global launcher.
+The installer downloads into a staging directory, builds against the lockfile, runs `hallow doctor`, writes the global launcher, starts the managed local runtime, and opens the desktop. It does not require Git or Corepack. Existing runtime data under `~/.hallow/` is preserved during updates.
 
 ## Why Hallow Exists
 
@@ -48,7 +48,7 @@ Hallow tries to make those lanes feel like one installable agent OS. The platfor
 ```bash
 hallow
 hallow doctor
-hallow start
+hallow open
 ```
 
 `hallow` opens the operator shell. From inside the shell:
@@ -72,6 +72,23 @@ Direct commands still work outside the shell:
 ```bash
 hallow version
 hallow start
+hallow status
+hallow open
+hallow stop
+```
+
+`hallow start` launches a managed background process. Use `hallow start --foreground` when debugging. Installer lifecycle commands are `hallow update` and `hallow uninstall`; uninstall keeps `~/.hallow/` by default.
+
+To inspect the installation without changing the machine:
+
+```powershell
+irm https://hallow-agent.xyz/install.ps1 -OutFile install.ps1
+.\install.ps1 -DryRun
+```
+
+```bash
+curl -fsSL https://hallow-agent.xyz/install.sh -o install.sh
+bash install.sh --dry-run
 ```
 
 ![Hallow terminal preview](./docs/assets/hallow-terminal-preview.svg)
@@ -119,6 +136,8 @@ hallow
 hallow doctor
 hallow readiness
 hallow start
+hallow open
+hallow stop
 hallow terminal
 hallow agent create research
 hallow skill hub

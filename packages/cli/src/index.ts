@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import { closeSync, openSync, readFileSync, unlinkSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { stdin as terminalInput, stdout as terminalOutput } from "node:process";
 import { createInterface } from "node:readline/promises";
-import { getHallowHome, hallowPath, loadEnvFile, pathExists, RiskLevel, writeText } from "@hallow/core";
+import { ensureDir, getHallowHome, hallowPath, loadEnvFile, pathExists, readTextIfExists, RiskLevel, writeText } from "@hallow/core";
 import { AddProviderOptions, ModelCatalogEntry, ModelCatalogProvider, ModelRegistry } from "@hallow/models";
 import {
   AgentInstallResult,
@@ -133,6 +134,16 @@ type TerminalSnapshot = {
   desktop?: DesktopShellStatus;
 };
 
+type RuntimeServiceRecord = {
+  pid: number;
+  host: string;
+  port: number;
+  url: string;
+  home: string;
+  started_at: string;
+  log_path: string;
+};
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const home = readOption(args, "--home") ?? getHallowHome();
@@ -229,9 +240,20 @@ async function dispatch(context: CommandContext): Promise<void> {
     const config = await context.runtime.readConfig();
     const selectedPort = Number.isFinite(port) && port > 0 ? port : config.gateway.local_console.port;
     const startUrl = `http://${config.gateway.local_console.host}:${selectedPort}/desktop`;
+
+    if (!commandArgs.includes("--foreground")) {
+      await startRuntimeInBackground(context, selectedPort, commandArgs.includes("--quiet"));
+      return;
+    }
+
     try {
       await context.runtime.startLocalApi(selectedPort, { quiet: true });
-      await printTerminalWelcome(context, { mode: "start", port: selectedPort, startUrl });
+      const service = createRuntimeServiceRecord(context.home, config.gateway.local_console.host, selectedPort);
+      await writeRuntimeServiceRecord(context.home, service);
+      registerRuntimeServiceCleanup(context.home, process.pid);
+      if (!commandArgs.includes("--quiet")) {
+        await printTerminalWelcome(context, { mode: "start", port: selectedPort, startUrl });
+      }
     } catch (error) {
       if (isAddressInUseError(error)) {
         const isHallow = await isLocalHallowRuntime(config.gateway.local_console.host, selectedPort);
@@ -256,10 +278,31 @@ async function dispatch(context: CommandContext): Promise<void> {
 
   if (command === "status") {
     await context.runtime.init();
+    const config = await context.runtime.readConfig();
+    const service = await readRuntimeServiceRecord(context.home);
+    const selectedPort = service?.port ?? config.gateway.local_console.port;
+    const online = await isLocalHallowRuntime(config.gateway.local_console.host, selectedPort, context.home);
     const checks = await context.runtime.doctor();
     const okCount = checks.filter((check) => check.ok).length;
     console.log(`Hallow home: ${context.home}`);
+    console.log(`Runtime: ${online ? "online" : "offline"} (http://${config.gateway.local_console.host}:${selectedPort}/desktop)`);
+    if (service) {
+      console.log(`Process: ${service.pid} | Log: ${service.log_path}`);
+    }
     console.log(`Health: ${okCount}/${checks.length} checks passing`);
+    if (context.args.includes("--strict") && !online) {
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  if (command === "open") {
+    await openRuntimeDesktop(context, context.args.slice(1));
+    return;
+  }
+
+  if (command === "stop") {
+    await stopRuntimeService(context);
     return;
   }
 
@@ -4226,6 +4269,7 @@ function isLikelyAgentPrompt(command: string, line: string): boolean {
     "model",
     "notification",
     "onboarding",
+    "open",
     "perfect",
     "readiness",
     "sandbox",
@@ -4234,6 +4278,7 @@ function isLikelyAgentPrompt(command: string, line: string): boolean {
     "setup",
     "skill",
     "status",
+    "stop",
     "task",
     "terminal",
     "tool",
@@ -4285,30 +4330,7 @@ async function startRuntimeFromOperatorShell(context: CommandContext, args: stri
   const config = await context.runtime.readConfig();
   const requestedPort = readNumberOption(args, "--port");
   const selectedPort = requestedPort && requestedPort > 0 ? requestedPort : config.gateway.local_console.port;
-  const url = `http://${config.gateway.local_console.host}:${selectedPort}/desktop`;
-
-  if (await isLocalHallowRuntime(config.gateway.local_console.host, selectedPort)) {
-    printTerminalText(`runtime already active: ${url}`, "1;92");
-    return;
-  }
-
-  const cliEntry = process.argv[1];
-  const child = spawn(process.execPath, [cliEntry, "--home", context.home, "start", "--port", String(selectedPort)], {
-    detached: true,
-    stdio: "ignore",
-    env: { ...process.env, HALLOW_NO_INTERACTIVE: "1" }
-  });
-  child.unref();
-
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    await sleep(200);
-    if (await isLocalHallowRuntime(config.gateway.local_console.host, selectedPort)) {
-      printTerminalText(`runtime started: ${url}`, "1;92");
-      return;
-    }
-  }
-
-  printTerminalText(`runtime launch requested. Check: ${url}`, "90");
+  await startRuntimeInBackground(context, selectedPort, true);
 }
 
 async function printRuntimeUrl(context: CommandContext, args: string[]): Promise<void> {
@@ -4319,11 +4341,243 @@ async function printRuntimeUrl(context: CommandContext, args: string[]): Promise
   printTerminalText(`http://${config.gateway.local_console.host}:${selectedPort}/desktop`, "1;97");
 }
 
+async function startRuntimeInBackground(context: CommandContext, selectedPort: number, compact = false): Promise<RuntimeServiceRecord> {
+  await context.runtime.init();
+  const config = await context.runtime.readConfig();
+  const host = config.gateway.local_console.host;
+  const url = `http://${host}:${selectedPort}/desktop`;
+
+  const anyHallowRuntime = await isLocalHallowRuntime(host, selectedPort);
+  if (anyHallowRuntime && !(await isLocalHallowRuntime(host, selectedPort, context.home))) {
+    throw new Error(`Port ${selectedPort} belongs to a different Hallow home. Choose another port or stop that runtime from its own installation.`);
+  }
+
+  if (anyHallowRuntime) {
+    const existing = await readRuntimeServiceRecord(context.home);
+    if (compact) {
+      printTerminalText(`runtime already active: ${url}`, "1;92");
+    } else {
+      printRuntimeLifecycleCard("RUNTIME ALREADY ONLINE", [
+        formatMetric("desktop", url),
+        formatMetric("home", context.home),
+        formatMetric("process", existing ? String(existing.pid) : "external")
+      ]);
+    }
+    return existing ?? createRuntimeServiceRecord(context.home, host, selectedPort, 0);
+  }
+
+  const cliEntry = process.argv[1];
+  const logDir = hallowPath(context.home, "logs");
+  await ensureDir(logDir);
+  const logPath = hallowPath(logDir, "runtime.log");
+  const errorLogPath = hallowPath(logDir, "runtime.error.log");
+  const stdout = openSync(logPath, "a");
+  const stderr = openSync(errorLogPath, "a");
+  let child: ReturnType<typeof spawn>;
+  try {
+    child = spawn(process.execPath, [cliEntry, "--home", context.home, "start", "--foreground", "--quiet", "--port", String(selectedPort)], {
+      detached: true,
+      stdio: ["ignore", stdout, stderr],
+      windowsHide: true,
+      env: { ...process.env, HALLOW_NO_INTERACTIVE: "1" }
+    });
+  } finally {
+    closeSync(stdout);
+    closeSync(stderr);
+  }
+  child.unref();
+
+  const service = createRuntimeServiceRecord(context.home, host, selectedPort, child.pid ?? 0, logPath);
+  await writeRuntimeServiceRecord(context.home, service);
+
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    await sleep(250);
+    if (await isLocalHallowRuntime(host, selectedPort, context.home)) {
+      if (compact) {
+        printTerminalText(`runtime started: ${url}`, "1;92");
+      } else {
+        printRuntimeLifecycleCard("RUNTIME ONLINE", [
+          formatMetric("desktop", url),
+          formatMetric("process", String(service.pid)),
+          formatMetric("log", logPath),
+          formatMetric("stop", "hallow stop")
+        ]);
+      }
+      return service;
+    }
+  }
+
+  if (service.pid > 0) {
+    try { process.kill(service.pid, "SIGTERM"); } catch {}
+  }
+  removeRuntimeServiceRecord(context.home);
+  throw new Error(`Hallow runtime did not become ready on port ${selectedPort}. Inspect ${errorLogPath}`);
+}
+
+async function openRuntimeDesktop(context: CommandContext, args: string[]): Promise<void> {
+  await context.runtime.init();
+  const config = await context.runtime.readConfig();
+  const requestedPort = readNumberOption(args, "--port");
+  const selectedPort = requestedPort && requestedPort > 0 ? requestedPort : config.gateway.local_console.port;
+  const url = `http://${config.gateway.local_console.host}:${selectedPort}/desktop`;
+
+  if (!(await isLocalHallowRuntime(config.gateway.local_console.host, selectedPort, context.home))) {
+    if (args.includes("--no-start")) {
+      throw new Error(`Hallow runtime is offline. Start it with: hallow start --port ${selectedPort}`);
+    }
+    await startRuntimeInBackground(context, selectedPort, true);
+  }
+
+  if (args.includes("--print") || process.env.CI === "true") {
+    console.log(url);
+    return;
+  }
+
+  const launch = process.platform === "win32"
+    ? { command: "cmd", args: ["/c", "start", "", url] }
+    : process.platform === "darwin"
+      ? { command: "open", args: [url] }
+      : { command: "xdg-open", args: [url] };
+  const child = spawn(launch.command, launch.args, { detached: true, stdio: "ignore", windowsHide: true });
+  child.once("error", () => console.log(`Open this URL manually: ${url}`));
+  child.unref();
+  printRuntimeLifecycleCard("HALLOW DESKTOP", [formatMetric("open", url), formatMetric("runtime", "online")]);
+}
+
+async function stopRuntimeService(context: CommandContext): Promise<void> {
+  const service = await readRuntimeServiceRecord(context.home);
+  if (!service) {
+    const config = await context.runtime.readConfig();
+    const online = await isLocalHallowRuntime(config.gateway.local_console.host, config.gateway.local_console.port, context.home);
+    printRuntimeLifecycleCard(online ? "RUNTIME ONLINE / UNMANAGED" : "RUNTIME OFFLINE", [
+      formatMetric("home", context.home),
+      formatMetric("state", online ? "stop it from the terminal that launched --foreground" : "no managed process")
+    ]);
+    return;
+  }
+
+  const belongsToHome = await isLocalHallowRuntime(service.host, service.port, context.home);
+  if (!belongsToHome) {
+    removeRuntimeServiceRecord(context.home);
+    printRuntimeLifecycleCard("STALE SERVICE RECORD CLEARED", [
+      formatMetric("process", String(service.pid)),
+      formatMetric("reason", "no matching Hallow runtime responded")
+    ]);
+    return;
+  }
+
+  if (service.pid <= 0) {
+    throw new Error("The runtime was not launched by this Hallow installation. Stop it from its original terminal.");
+  }
+
+  try {
+    process.kill(service.pid, "SIGTERM");
+  } catch (error) {
+    if (!isMissingProcessError(error)) {
+      throw error;
+    }
+  }
+
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    await sleep(200);
+    if (!(await isLocalHallowRuntime(service.host, service.port, context.home))) {
+      removeRuntimeServiceRecord(context.home);
+      printRuntimeLifecycleCard("RUNTIME STOPPED", [formatMetric("process", String(service.pid)), formatMetric("home", context.home)]);
+      return;
+    }
+  }
+
+  throw new Error(`Runtime process ${service.pid} did not stop. Inspect ${service.log_path}`);
+}
+
+function createRuntimeServiceRecord(home: string, host: string, port: number, pid = process.pid, logPath = hallowPath(home, "logs", "runtime.log")): RuntimeServiceRecord {
+  return {
+    pid,
+    host,
+    port,
+    url: `http://${host}:${port}/desktop`,
+    home: resolve(home),
+    started_at: new Date().toISOString(),
+    log_path: logPath
+  };
+}
+
+function runtimeServicePath(home: string): string {
+  return hallowPath(home, "runtime", "service.json");
+}
+
+async function writeRuntimeServiceRecord(home: string, service: RuntimeServiceRecord): Promise<void> {
+  await writeText(runtimeServicePath(home), `${JSON.stringify(service, null, 2)}\n`);
+}
+
+async function readRuntimeServiceRecord(home: string): Promise<RuntimeServiceRecord | null> {
+  const content = await readTextIfExists(runtimeServicePath(home));
+  if (!content) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(content) as RuntimeServiceRecord;
+    return typeof parsed.pid === "number" && typeof parsed.port === "number" && typeof parsed.host === "string" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function registerRuntimeServiceCleanup(home: string, pid: number): void {
+  const cleanup = () => {
+    const path = runtimeServicePath(home);
+    try {
+      const content = requireRuntimeServiceRecordSync(path);
+      if (content?.pid === pid) {
+        unlinkSync(path);
+      }
+    } catch {
+      // Best effort only; stale records are safely cleared by status/start/stop.
+    }
+  };
+  process.once("exit", cleanup);
+  process.once("SIGINT", () => process.exit(0));
+  process.once("SIGTERM", () => process.exit(0));
+}
+
+function requireRuntimeServiceRecordSync(path: string): RuntimeServiceRecord | null {
+  try {
+    const content = readFileSync(path, "utf8");
+    return JSON.parse(content) as RuntimeServiceRecord;
+  } catch {
+    return null;
+  }
+}
+
+function removeRuntimeServiceRecord(home: string): void {
+  try {
+    unlinkSync(runtimeServicePath(home));
+  } catch {
+    // Missing record is already the desired state.
+  }
+}
+
+function isMissingProcessError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "ESRCH";
+}
+
+function printRuntimeLifecycleCard(title: string, rows: string[]): void {
+  const width = terminalWidth();
+  prepareTerminalSurface();
+  printTerminalText("");
+  printTerminalFrame(title, "HALLOW LOCAL RUNTIME", width);
+  for (const row of rows) {
+    printTerminalText(`  ${clipText(row, width - 2)}`, "97");
+  }
+  printTerminalText(repeatChar("-", width), "90");
+}
+
 function printOperatorShellHelp(compact: boolean): void {
   const rows = [
     "status              refresh the Hallow operator dashboard",
     "start               launch the local runtime in the background",
     "open                print the desktop runtime URL",
+    "stop                stop the managed local runtime",
     "doctor              run local health checks",
     "skills / skills hub list installed skills or indexed hub entries",
     "models              show model routes",
@@ -4466,7 +4720,7 @@ function isAddressInUseError(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "EADDRINUSE";
 }
 
-async function isLocalHallowRuntime(host: string, port: number): Promise<boolean> {
+async function isLocalHallowRuntime(host: string, port: number, expectedHome?: string): Promise<boolean> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 800);
   try {
@@ -4474,8 +4728,11 @@ async function isLocalHallowRuntime(host: string, port: number): Promise<boolean
     if (!response.ok) {
       return false;
     }
-    const body = await response.json() as { ok?: unknown };
-    return body.ok === true;
+    const body = await response.json() as { ok?: unknown; home?: unknown };
+    if (body.ok !== true) {
+      return false;
+    }
+    return expectedHome === undefined || (typeof body.home === "string" && resolve(body.home) === resolve(expectedHome));
   } catch {
     return false;
   } finally {
@@ -4716,7 +4973,7 @@ Usage:
   hallow terminal
   hallow shell
   hallow doctor [--home path]
-  hallow status [--home path]
+  hallow status [--home path] [--strict]
   hallow readiness [--strict]
   hallow demo setup [--skip-live-mcp] [--skip-browser]
   hallow demo run [--skip-live-mcp] [--skip-browser]
@@ -4728,7 +4985,9 @@ Usage:
   hallow desktop setup [--port 4767]
   hallow desktop status
   hallow desktop path
-  hallow start [--home path] [--port 4767]
+  hallow start [--home path] [--port 4767] [--foreground]
+  hallow open [--port 4767] [--print] [--no-start]
+  hallow stop
   hallow agent create <id> [--name "Name"]
   hallow agent verify <path>
   hallow agent install <path> [--force]

@@ -402,17 +402,16 @@
 
       <section id="installation">
         <h2>Quickstart</h2>
-        <p class="section-lead">The public flow stays small: one Windows command that works from CMD or PowerShell, then <code>hallow</code>. Everything advanced lives behind the terminal.</p>
+        <p class="section-lead">One command installs dependencies, verifies the build, starts a managed local runtime, and opens the desktop. Git and Corepack are not required.</p>
         <figure class="visual-card section-visual">
           <img src="/docs/assets/hallow-install-flow.svg" alt="Four step Hallow boot sequence: install, setup, doctor, start.">
           <figcaption>The first-run path stays simple before deeper runtime controls appear.</figcaption>
         </figure>
         <pre><code>powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"
-hallow
-hallow> status
-hallow> start
-hallow> run "summarize this workspace"</code></pre>
-        <div class="note">Use the command above directly in CMD or PowerShell. macOS/Linux commands are listed below for shell-specific installs.</div>
+ hallow
+ hallow&gt; status
+ hallow&gt; run "summarize this workspace"</code></pre>
+        <div class="note">The installer stages upgrades before replacing the active source, preserves <code>~/.hallow/</code>, records a full install log, and opens the local desktop automatically.</div>
       </section>
 
       <section id="windows">
@@ -421,16 +420,18 @@ hallow> run "summarize this workspace"</code></pre>
           <article class="step"><span>01</span><div><strong>Windows CMD / PowerShell</strong><pre><code>powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"</code></pre></div></article>
           <article class="step"><span>02</span><div><strong>macOS / Linux / WSL2</strong><pre><code>curl -fsSL https://hallow-agent.xyz/install.sh | bash</code></pre></div></article>
           <article class="step"><span>03</span><div><strong>PowerShell-native fallback</strong><pre><code>irm https://hallow-agent.xyz/install.ps1 | iex</code></pre></div></article>
-          <article class="step" id="android"><span>04</span><div><strong>Android / Termux</strong><p>Use the Linux installer inside Termux after Node and Git are available. Mobile support is a runtime target, not the recommended first install path.</p></div></article>
+          <article class="step" id="android"><span>04</span><div><strong>Verify before installing</strong><pre><code>irm https://hallow-agent.xyz/install.ps1 -OutFile install.ps1
+.\install.ps1 -DryRun</code></pre><p>The Bash installer supports <code>--dry-run</code>, <code>--no-start</code>, <code>--no-open</code>, and <code>--verify</code>. PowerShell exposes equivalent switches.</p></div></article>
         </div>
       </section>
 
       <section id="updating">
         <h2>Updating & Uninstalling</h2>
         <div class="table">
-          <div class="row"><strong>Update</strong><p>Pull the newest project version, rebuild packages, then run <code>hallow setup</code> to regenerate desktop artifacts.</p></div>
+          <div class="row"><strong>Runtime lifecycle</strong><p><code>hallow start</code> runs in the background, <code>hallow open</code> starts if needed and opens the desktop, <code>hallow status</code> verifies it, and <code>hallow stop</code> closes it.</p></div>
+          <div class="row"><strong>Update</strong><p>Run <code>hallow update</code>. The installer builds in staging, retains the previous source as a rollback copy, and preserves private runtime data.</p></div>
           <div class="row"><strong>Backup</strong><p>Keep a copy of the Hallow home folder before destructive changes. It contains memory, traces, config, packages, and audits.</p></div>
-          <div class="row"><strong>Uninstall</strong><p>Stop the runtime process, remove the installed command, then archive or delete the Hallow home folder.</p></div>
+          <div class="row"><strong>Uninstall</strong><p>Run <code>hallow uninstall</code>. Application files and the launcher are removed; private runtime data stays under <code>~/.hallow/</code> unless explicitly purged.</p></div>
         </div>
       </section>
 

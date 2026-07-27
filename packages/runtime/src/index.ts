@@ -17873,19 +17873,19 @@ function renderDocsFallbackHtml(): string {
 }
 
 function renderDesktopLaunchBat(input: { workspacePath: string; home: string; port: number }): string {
+  const cliPath = resolve(input.workspacePath, "packages", "cli", "dist", "index.js");
   return [
     "@echo off",
-    `cd /d ${quoteWindowsCliValue(input.workspacePath)}`,
-    `corepack pnpm hallow --home ${quoteWindowsCliValue(input.home)} start --port ${input.port}`,
+    `node ${quoteWindowsCliValue(cliPath)} --home ${quoteWindowsCliValue(input.home)} start --port ${input.port}`,
     ""
   ].join("\r\n");
 }
 
 function renderDesktopLaunchSh(input: { workspacePath: string; home: string; port: number }): string {
+  const cliPath = resolve(input.workspacePath, "packages", "cli", "dist", "index.js");
   return [
     "#!/usr/bin/env sh",
-    `cd ${quotePosixShellValue(input.workspacePath)}`,
-    `exec corepack pnpm hallow --home ${quotePosixShellValue(input.home)} start --port ${input.port}`,
+    `exec node ${quotePosixShellValue(cliPath)} --home ${quotePosixShellValue(input.home)} start --port ${input.port}`,
     ""
   ].join("\n");
 }

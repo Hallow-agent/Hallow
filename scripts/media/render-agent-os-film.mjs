@@ -17,7 +17,7 @@ const browser = await chromium.launch({ headless: true });
 try {
   const still = await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
   const stillPage = await still.newPage();
-  await stillPage.goto(`${pageUrl}?poster=1&t=15`, { waitUntil: "load" });
+  await stillPage.goto(`${pageUrl}?poster=1&t=7`, { waitUntil: "load" });
   await stillPage.waitForTimeout(900);
   await stillPage.screenshot({ path: join(mediaDir, "hallow-agent-os-poster.png") });
   await still.close();
@@ -26,7 +26,7 @@ try {
   const page = await context.newPage();
   const video = page.video();
   await page.goto(pageUrl, { waitUntil: "load" });
-  await page.waitForTimeout(120_400);
+  await page.waitForTimeout(116_400);
   await page.close();
   await context.close();
   await rename(await video.path(), join(mediaDir, "hallow-agent-os-commercial.webm"));

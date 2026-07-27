@@ -1,19 +1,17 @@
-Most AI agents still live in a tab. Their memory expires with the session. Their tools feel disconnected. And their decisions disappear behind an answer.
+This is Hallow—not another AI tab, but an Agent OS installed on your PC.
 
-Hallow changes where the agent lives. It is an open-source Agent OS installed directly on your PC, with a private runtime, a durable workspace, and an operator in control.
+One command builds the private runtime, verifies every dependency, creates the workspace, starts the managed service, and opens the desktop. On Windows, macOS, Linux, or WSL, the agent comes to the machine where the work actually lives.
 
-One command builds the runtime, verifies its dependencies, starts the managed service, and opens the desktop. No Git ritual. No maze of services. From a clean machine to a living agent.
+Before the first mission, Hallow proves it is ready. The runtime is healthy. Memory is indexed. Model routes are connected. Tool policy is active. Skills are verified. Recovery is armed. No vague promise. A readiness check you can inspect.
 
-Ask for an outcome in plain English. Hallow recalls the right context, scopes the workspace, selects bounded tools, and turns the request into a mission that can keep working beyond a single reply.
+Now, ask for the outcome in plain English. Hallow recalls durable context, scopes the workspace, selects bounded tools, and turns one instruction into a mission that can continue beyond a single reply.
 
-Intelligence becomes a system. Route between local and cloud models. Connect MCP tools. Reuse tested skills. Keep memory close—and keep policy outside the prompt.
+Watch the work happen. Memory recall. Repository inspection. Controlled repair. Verification. Release preparation. Every important step becomes a trace. When the mission reaches an external action, policy stops it at the boundary.
 
-Long-running work gets a queue, checkpoints, retries, evidence, and history. Schedule it. Resume it. Inspect every stage without rebuilding the context from zero.
+That is what makes Hallow different. The runtime lives on your PC. Memory persists beyond the conversation. Intelligence can route between local and cloud models. Tools, MCP, and tested skills operate inside explicit boundaries. Policy lives outside the prompt, and the operator stays in control.
 
-When an action crosses a sensitive boundary, Hallow stops. You see the exact target, change, evidence, and risk before anything leaves the machine. Autonomy moves quickly. Consent stays human.
+Before anything leaves the machine, you see the exact target, the proposed change, its evidence, and its risk. Autonomy moves quickly. Consent remains human.
 
-And when work fails, failure becomes evidence. Doctor checks, readiness proofs, traces, reflection, and controlled recovery help the agent explain what broke, repair safely, and verify again.
-
-This is the difference. Not a temporary chat session. An installable runtime. Not rented context. Durable local memory. Not one model locked to one workflow. Routing, tools, MCP, and tested skills. Not action without accountability. Approvals, traces, readiness, and recovery.
+And when work fails, Hallow does not hide the error behind another answer. It captures the trace, isolates the cause, tests a repair, resumes from a checkpoint, and verifies readiness again. In dry-run mode, nothing unsafe is applied.
 
 Your machine. Your memory. Your agent. Hallow Agent OS. Install the intelligence that keeps working—and keeps you in control.

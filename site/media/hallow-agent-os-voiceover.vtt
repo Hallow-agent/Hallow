@@ -1,164 +1,156 @@
 1
-00:00:00,050 --> 00:00:02,210
-Most AI agents still live in a tab.
+00:00:00,050 --> 00:00:04,866
+This is Hallow—not another AI tab, but an Agent OS installed on your PC.
 
 2
-00:00:02,210 --> 00:00:04,513
-Their memory expires with the session.
+00:00:04,866 --> 00:00:13,828
+One command builds the private runtime, verifies every dependency, creates the workspace, starts the managed service, and opens the desktop.
 
 3
-00:00:04,513 --> 00:00:06,180
-Their tools feel disconnected.
+00:00:13,828 --> 00:00:20,747
+On Windows, macOS, Linux, or WSL, the agent comes to the machine where the work actually lives.
 
 4
-00:00:06,180 --> 00:00:08,819
-And their decisions disappear behind an answer.
+00:00:20,747 --> 00:00:23,671
+Before the first mission, Hallow proves it is ready.
 
 5
-00:00:08,819 --> 00:00:10,995
-Hallow changes where the agent lives.
+00:00:23,671 --> 00:00:25,401
+The runtime is healthy.
 
 6
-00:00:10,995 --> 00:00:19,513
-It is an open-source Agent OS installed directly on your PC, with a private runtime, a durable workspace, and an operator in control.
+00:00:25,401 --> 00:00:27,020
+Memory is indexed.
 
 7
-00:00:19,513 --> 00:00:26,689
-One command builds the runtime, verifies its dependencies, starts the managed service, and opens the desktop.
+00:00:27,020 --> 00:00:28,448
+Model routes are connected.
 
 8
-00:00:26,689 --> 00:00:27,939
-No Git ritual.
+00:00:28,448 --> 00:00:30,055
+Tool policy is active.
 
 9
-00:00:27,939 --> 00:00:29,560
-No maze of services.
+00:00:30,055 --> 00:00:31,339
+Skills are verified.
 
 10
-00:00:29,560 --> 00:00:31,782
-From a clean machine to a living agent.
+00:00:31,339 --> 00:00:32,578
+Recovery is armed.
 
 11
-00:00:31,782 --> 00:00:33,784
-Ask for an outcome in plain English.
+00:00:32,578 --> 00:00:33,783
+No vague promise.
 
 12
-00:00:33,784 --> 00:00:42,719
-Hallow recalls the right context, scopes the workspace, selects bounded tools, and turns the request into a mission that can keep working beyond a single reply.
+00:00:33,783 --> 00:00:35,513
+A readiness check you can inspect.
 
 13
-00:00:42,719 --> 00:00:44,560
-Intelligence becomes a system.
+00:00:35,513 --> 00:00:37,946
+Now, ask for the outcome in plain English.
 
 14
-00:00:44,560 --> 00:00:46,886
-Route between local and cloud models.
+00:00:37,946 --> 00:00:46,863
+Hallow recalls durable context, scopes the workspace, selects bounded tools, and turns one instruction into a mission that can continue beyond a single reply.
 
 15
-00:00:46,886 --> 00:00:48,993
-Connect MCP tools.
+00:00:46,863 --> 00:00:48,013
+Watch the work happen.
 
 16
-00:00:48,993 --> 00:00:50,752
-Reuse tested skills.
+00:00:48,013 --> 00:00:49,118
+Memory recall.
 
 17
-00:00:50,752 --> 00:00:54,282
-Keep memory close—and keep policy outside the prompt.
+00:00:49,118 --> 00:00:50,714
+Repository inspection.
 
 18
-00:00:54,282 --> 00:00:59,687
-Long-running work gets a queue, checkpoints, retries, evidence, and history.
+00:00:50,714 --> 00:00:51,863
+Controlled repair.
 
 19
-00:00:59,687 --> 00:01:00,601
-Schedule it.
+00:00:51,863 --> 00:00:52,979
+Verification.
 
 20
-00:01:00,601 --> 00:01:01,539
-Resume it.
+00:00:52,979 --> 00:00:54,263
+Release preparation.
 
 21
-00:01:01,539 --> 00:01:05,601
-Inspect every stage without rebuilding the context from zero.
+00:00:54,263 --> 00:00:56,607
+Every important step becomes a trace.
 
 22
-00:01:05,601 --> 00:01:09,085
-When an action crosses a sensitive boundary, Hallow stops.
+00:00:56,607 --> 00:01:01,160
+When the mission reaches an external action, policy stops it at the boundary.
 
 23
-00:01:09,085 --> 00:01:14,583
-You see the exact target, change, evidence, and risk before anything leaves the machine.
+00:01:01,160 --> 00:01:02,633
+That is what makes Hallow different.
 
 24
-00:01:14,583 --> 00:01:16,122
-Autonomy moves quickly.
+00:01:02,633 --> 00:01:04,453
+The runtime lives on your PC.
 
 25
-00:01:16,122 --> 00:01:17,638
-Consent stays human.
+00:01:04,453 --> 00:01:06,930
+Memory persists beyond the conversation.
 
 26
-00:01:17,638 --> 00:01:21,018
-And when work fails, failure becomes evidence.
+00:01:06,930 --> 00:01:10,055
+Intelligence can route between local and cloud models.
 
 27
-00:01:21,018 --> 00:01:30,555
-Doctor checks, readiness proofs, traces, reflection, and controlled recovery help the agent explain what broke, repair safely, and verify again.
+00:01:10,055 --> 00:01:14,888
+Tools, MCP, and tested skills operate inside explicit boundaries.
 
 28
-00:01:30,555 --> 00:01:31,909
-This is the difference.
+00:01:14,888 --> 00:01:19,040
+Policy lives outside the prompt, and the operator stays in control.
 
 29
-00:01:31,909 --> 00:01:33,599
-Not a temporary chat session.
+00:01:19,040 --> 00:01:26,015
+Before anything leaves the machine, you see the exact target, the proposed change, its evidence, and its risk.
 
 30
-00:01:33,599 --> 00:01:35,162
-An installable runtime.
+00:01:26,015 --> 00:01:27,578
+Autonomy moves quickly.
 
 31
-00:01:35,162 --> 00:01:36,655
-Not rented context.
+00:01:27,578 --> 00:01:29,274
+Consent remains human.
 
 32
-00:01:36,655 --> 00:01:38,043
-Durable local memory.
+00:01:29,274 --> 00:01:33,058
+And when work fails, Hallow does not hide the error behind another answer.
 
 33
-00:01:38,043 --> 00:01:40,381
-Not one model locked to one workflow.
+00:01:33,058 --> 00:01:40,390
+It captures the trace, isolates the cause, tests a repair, resumes from a checkpoint, and verifies readiness again.
 
 34
-00:01:40,381 --> 00:01:44,062
-Routing, tools, MCP, and tested skills.
+00:01:40,390 --> 00:01:43,716
+In dry-run mode, nothing unsafe is applied.
 
 35
-00:01:44,062 --> 00:01:46,180
-Not action without accountability.
-
-36
-00:01:46,180 --> 00:01:49,918
-Approvals, traces, readiness, and recovery.
-
-37
-00:01:49,918 --> 00:01:50,821
+00:01:43,716 --> 00:01:44,598
 Your machine.
 
-38
-00:01:50,821 --> 00:01:51,701
+36
+00:01:44,598 --> 00:01:45,468
 Your memory.
 
-39
-00:01:51,701 --> 00:01:52,604
+37
+00:01:45,468 --> 00:01:46,339
 Your agent.
 
-40
-00:01:52,604 --> 00:01:54,120
+38
+00:01:46,339 --> 00:01:47,756
 Hallow Agent OS.
 
-41
-00:01:54,120 --> 00:01:58,923
+39
+00:01:47,756 --> 00:01:52,232
 Install the intelligence that keeps working—and keeps you in control.
 

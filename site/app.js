@@ -12,37 +12,53 @@
   function initLoader() {
     const loader = $('[data-preloader]');
     if (!loader) return Promise.resolve();
+    const percent = $('[data-load-percent]', loader);
+    const status = $('[data-load-status]', loader);
+    const scene = $('.preloader-scene', loader);
+    const sceneImage = $('.preloader-scene img', loader);
+    const titleLetters = $$('.preloader-title span', loader);
     const failSafe = setTimeout(() => {
       if (loader.isConnected) {
         loader.remove();
         lock(false);
       }
-    }, 5200);
-    const grid = $('.preloader-grid', loader);
-    const percent = $('[data-load-percent]', loader);
-    for (let i = 0; i < 96; i++) {
-      const cell = document.createElement('i');
-      cell.className = 'preloader-cell';
-      grid.appendChild(cell);
+    }, 6500);
+
+    if (hasGSAP && !reduced) {
+      gsap.timeline()
+        .fromTo(scene, { clipPath: 'inset(0 49% 0 49% round 999px)' }, { clipPath: 'inset(0 0% 0 0% round 999px 999px 18px 18px)', duration: 1.05, ease: 'power4.inOut' })
+        .from(titleLetters, { yPercent: 125, opacity: 0, duration: .8, stagger: .045, ease: 'power4.out' }, .18)
+        .from('.preloader-top,.preloader-intro,.preloader-foot', { opacity: 0, y: 12, duration: .65, stagger: .08, ease: 'power3.out' }, .35);
     }
+
     let value = 0;
+    const phases = [
+      [26, 'Awakening the runtime'],
+      [52, 'Mounting private memory'],
+      [76, 'Mapping tools and models'],
+      [101, 'Runtime ready']
+    ];
     const interval = setInterval(() => {
-      value = Math.min(88, value + Math.ceil(Math.random() * 8));
+      value = Math.min(92, value + Math.ceil(Math.random() * 6));
       percent.textContent = String(value).padStart(2, '0') + '%';
-    }, 90);
+      loader.style.setProperty('--load-progress', value + '%');
+      status.textContent = phases.find(([limit]) => value < limit)?.[1] || 'Runtime ready';
+    }, 110);
     const hero = new Image();
     const imageReady = new Promise(resolve => {
       hero.onload = hero.onerror = resolve;
       hero.src = '/assets/hallow-portal.jpg';
     });
     const fontReady = document.fonts?.ready || Promise.resolve();
-    const timeReady = new Promise(resolve => setTimeout(resolve, 900));
+    const timeReady = new Promise(resolve => setTimeout(resolve, 1250));
     return Promise.race([
       Promise.all([imageReady, fontReady, timeReady]),
       new Promise(resolve => setTimeout(resolve, 4200))
     ]).then(() => {
       clearInterval(interval);
       percent.textContent = '100%';
+      status.textContent = 'Runtime ready';
+      loader.style.setProperty('--load-progress', '100%');
       if (!hasGSAP || reduced) {
         clearTimeout(failSafe);
         loader.remove();
@@ -51,10 +67,13 @@
       }
       return new Promise(resolve => {
         gsap.timeline({ onComplete: () => { clearTimeout(failSafe); loader.remove(); lock(false); resolve(); } })
-          .to('.preloader-cell', { scaleX: 1, duration: .42, ease: 'power3.inOut', stagger: { each: .008, from: 'random', grid: [8,12] } })
-          .to('.preloader-mark,.preloader-foot', { opacity: 0, duration: .25 }, '<.12')
-          .to('.preloader-cell', { scaleX: 0, transformOrigin: 'right', duration: .55, ease: 'power3.inOut', stagger: { each: .008, from: 'end', grid: [8,12] } })
-          .set(loader, { display: 'none' });
+          .to(titleLetters, { yPercent: -125, opacity: 0, duration: .6, stagger: .025, ease: 'power3.in' }, 0)
+          .to('.preloader-top,.preloader-intro,.preloader-foot', { opacity: 0, y: -10, duration: .38, stagger: .035, ease: 'power2.in' }, .04)
+          .to(scene, { width: innerWidth, height: innerHeight, borderRadius: 0, duration: 1.18, ease: 'power4.inOut' }, .16)
+          .to(sceneImage, { scale: 1, filter: 'saturate(.68) brightness(.78)', duration: 1.18, ease: 'power4.inOut' }, .16)
+          .to(loader, { backgroundColor: 'rgba(13,12,10,0)', duration: .6, ease: 'power2.out' }, .65)
+          .to(scene, { opacity: 0, duration: .3, ease: 'power2.out' }, 1.12)
+          .to(loader, { opacity: 0, duration: .3, ease: 'power2.out' }, 1.14);
       });
     });
   }

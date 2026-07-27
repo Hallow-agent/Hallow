@@ -40,6 +40,24 @@ function mockFetch(url, init = {}) {
       generatedAt: "2026-07-27T11:59:30.000Z"
     }));
   }
+  if (String(url).includes("api.dexscreener.com")) {
+    return Promise.resolve(Response.json([{
+      chainId: "robinhood", dexId: "uniswap", pairAddress: "0x3333333333333333333333333333333333333333",
+      url: "https://dex.example/pair", baseToken: { symbol: "DEMOx" }, quoteToken: { symbol: "USDG" },
+      priceUsd: "100.05", liquidity: { usd: 750000 }, volume: { h24: 225000 },
+      txns: { h24: { buys: 120, sells: 100 } }, priceChange: { h24: 2.5 }, marketCap: 10000000,
+      fdv: 10000000, pairCreatedAt: 1_753_000_000_000
+    }]));
+  }
+  if (String(url).endsWith("/holders")) {
+    return Promise.resolve(Response.json({ items: [
+      { address: { hash: "0x4444444444444444444444444444444444444444" }, value: "100000" },
+      { address: { hash: "0x5555555555555555555555555555555555555555" }, value: "50000" }
+    ] }));
+  }
+  if (String(url).includes("/api/v2/tokens/")) {
+    return Promise.resolve(Response.json({ holders_count: "2500" }));
+  }
   const request = JSON.parse(init.body);
   const selector = request.params?.[0]?.data;
   const results = {
@@ -74,6 +92,28 @@ test("official USDG system contract is recognized as canonical", async () => {
   const passport = await client.inspectAsset("0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168", { kind: "stablecoin", now: NOW });
   assert.equal(passport.canonical, true);
   assert.ok(passport.evidence.some((entry) => entry.claim === "Canonical system contract" && entry.value === "USDG"));
+});
+
+test("token intelligence combines registry, liquidity, holders, and Uniswap readiness", async () => {
+  const client = new RobinhoodChainClient({ fetch: mockFetch, network: "mainnet" });
+  const report = await client.inspectTokenIntelligence("DEMOx", { now: NOW });
+  assert.equal(report.passport.canonical, true);
+  assert.equal(report.market.deepest_liquidity_usd, 750000);
+  assert.equal(report.market.volume_h24_usd, 225000);
+  assert.equal(report.holders.holder_count, 2500);
+  assert.equal(report.holders.largest_non_pool_percent, 10);
+  assert.equal(report.uniswap.supported, true);
+  assert.equal(report.uniswap.active_pairs, 1);
+  assert.equal(report.attention, "review");
+});
+
+test("market brief applies the official corporate-action multiplier", async () => {
+  const client = new RobinhoodChainClient({ fetch: mockFetch, network: "mainnet" });
+  const brief = await client.marketBrief(5, NOW);
+  assert.equal(brief.registered_assets, 1);
+  assert.equal(brief.active_quotes, 1);
+  assert.equal(brief.quotes[0].token_bid, 100);
+  assert.equal(brief.quotes[0].spread_bps.toFixed(2), "10.00");
 });
 
 test("Guardian policy blocks oversized, high-slippage memecoin actions", async () => {

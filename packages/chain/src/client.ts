@@ -1,11 +1,15 @@
 import { stableHash } from "./guardian.js";
 import type {
   ChainStatus,
+  GuardianDexPair,
   GuardianAssetKind,
   GuardianAssetPassport,
   GuardianEvidence,
+  GuardianMarketBrief,
   GuardianNetwork,
   GuardianRiskSignal,
+  GuardianTokenIntelligence,
+  GuardianUniswapReadiness,
   RobinhoodNetworkConfig,
   StockTokenAsset,
   StockTokenDeployment,
@@ -216,6 +220,176 @@ export class RobinhoodChainClient {
     };
   }
 
+  async resolveStockToken(query: string): Promise<{ asset: StockTokenAsset; address: string } | undefined> {
+    const normalized = query.trim().toLowerCase();
+    const assets = await this.fetchStockTokenAssets();
+    const asset = assets.find((entry) => entry.symbol.toLowerCase() === normalized || entry.uid?.toLowerCase() === normalized);
+    const deployment = asset?.deployments.find((entry) => entry.chain_id === this.network.chain_id);
+    return asset && deployment ? { asset, address: deployment.contract_address } : undefined;
+  }
+
+  async marketBrief(limit = 12, now = new Date()): Promise<GuardianMarketBrief> {
+    const assets = await this.fetchStockTokenAssets();
+    const selected = assets
+      .filter((asset) => asset.deployments.some((deployment) => deployment.chain_id === this.network.chain_id))
+      .slice(0, Math.max(1, Math.min(30, Math.round(limit))));
+    const quotes = (await Promise.all(selected.map(async (asset) => {
+      const deployment = asset.deployments.find((entry) => entry.chain_id === this.network.chain_id);
+      if (!deployment) return undefined;
+      const quote = await this.fetchStockTokenQuote(asset.symbol).catch(() => undefined);
+      const bid = finiteNumber(quote?.bid);
+      const ask = finiteNumber(quote?.ask);
+      const multiplier = finiteNumber(asset.current_multiplier);
+      const mid = bid !== undefined && ask !== undefined ? (bid + ask) / 2 : undefined;
+      const generated = quote?.generated_at ? Date.parse(quote.generated_at) : Number.NaN;
+      return {
+        symbol: asset.symbol,
+        name: asset.name,
+        address: deployment.contract_address,
+        raw_bid: bid,
+        raw_ask: ask,
+        multiplier,
+        token_bid: bid !== undefined && multiplier !== undefined ? bid * multiplier : undefined,
+        token_ask: ask !== undefined && multiplier !== undefined ? ask * multiplier : undefined,
+        spread_bps: bid !== undefined && ask !== undefined && mid ? ((ask - bid) / mid) * 10_000 : undefined,
+        trading_halt: quote?.is_trading_halt ?? false,
+        stale: !Number.isFinite(generated) || generated < now.getTime() - 120_000,
+        generated_at: quote?.generated_at
+      };
+    }))).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+    const activeQuotes = quotes.filter((entry) => entry.raw_bid !== undefined && entry.raw_ask !== undefined).length;
+    const halts = quotes.filter((entry) => entry.trading_halt).length;
+    const stale = quotes.filter((entry) => entry.stale).length;
+    return {
+      schema: "hallow.market_brief/v1",
+      network: this.network.network,
+      registered_assets: assets.length,
+      assets_checked: quotes.length,
+      active_quotes: activeQuotes,
+      trading_halts: halts,
+      stale_quotes: stale,
+      quotes,
+      plain_language: [
+        `${assets.length} official Stock Token records are currently visible; this brief checked ${quotes.length}.`,
+        `${activeQuotes} checked assets returned a two-sided quote; ${halts} reported a trading halt and ${stale} had stale or missing timestamps.`,
+        "Displayed token-equivalent prices apply the official corporate-action multiplier. This is market evidence, not a recommendation."
+      ],
+      observed_at: now.toISOString()
+    };
+  }
+
+  async inspectTokenIntelligence(
+    query: string,
+    options: InspectAssetOptions = {}
+  ): Promise<GuardianTokenIntelligence> {
+    const resolved = /^0x[a-fA-F0-9]{40}$/.test(query.trim()) ? undefined : await this.resolveStockToken(query);
+    const address = resolved?.address ?? query;
+    const inferredKind = resolved ? "rwa" : options.kind;
+    const passport = await this.inspectAsset(address, { ...options, kind: inferredKind });
+    const [pairs, tokenInfo, holders, uniswap] = await Promise.all([
+      this.fetchDexPairs(passport.address).catch(() => []),
+      this.fetchBlockscoutTokenInfo(passport.address).catch(() => undefined),
+      this.fetchBlockscoutHolders(passport.address).catch(() => []),
+      this.checkUniswapReadiness(passport.address).catch(() => createEmptyUniswapReadiness(passport.address))
+    ]);
+    const poolAddresses = new Set(pairs.map((pair) => pair.pair_address.toLowerCase()));
+    const totalSupply = safeBigInt(passport.contract.total_supply);
+    const nonPoolHolders = holders.filter((holder) => !poolAddresses.has(holder.address.toLowerCase()) && holder.address.toLowerCase() !== ZERO_ADDRESS);
+    const largest = holderPercent(nonPoolHolders[0]?.value, totalSupply);
+    const top10 = holderPercent(nonPoolHolders.slice(0, 10).reduce((sum, holder) => sum + safeBigInt(holder.value), 0n), totalSupply);
+    const deepest = pairs[0];
+    const totalLiquidity = pairs.reduce((sum, pair) => sum + pair.liquidity_usd, 0);
+    const volume = pairs.reduce((sum, pair) => sum + pair.volume_h24_usd, 0);
+    const buys = pairs.reduce((sum, pair) => sum + pair.buys_h24, 0);
+    const sells = pairs.reduce((sum, pair) => sum + pair.sells_h24, 0);
+    const warnings = createIntelligenceWarnings({ passport, deepest, totalLiquidity, largest, top10, holderCount: finiteNumber(tokenInfo?.holders_count), buys, sells });
+    const unknowns = [
+      "A public pool snapshot cannot prove future liquidity or whether a token will remain sellable.",
+      "Holder addresses do not reveal common ownership across wallets.",
+      "Social credibility, issuer promises, and legal eligibility require separate verification."
+    ];
+    const attention = warnings.some((warning) => /critical|no observed liquidity|largest non-pool holder/i.test(warning))
+      ? "avoid-until-reviewed" as const
+      : warnings.length > 0 ? "review" as const : "normal" as const;
+    const base = {
+      schema: "hallow.token_intelligence/v1" as const,
+      passport,
+      market: {
+        price_usd: deepest?.price_usd,
+        market_cap_usd: deepest?.market_cap_usd,
+        fdv_usd: deepest?.fdv_usd,
+        price_change_h24_percent: deepest?.price_change_h24_percent,
+        deepest_liquidity_usd: deepest?.liquidity_usd ?? 0,
+        total_observed_liquidity_usd: totalLiquidity,
+        volume_h24_usd: volume,
+        buys_h24: buys,
+        sells_h24: sells,
+        pairs
+      },
+      holders: {
+        holder_count: finiteNumber(tokenInfo?.holders_count),
+        holders_observed: holders.length,
+        pool_addresses_excluded: holders.length - nonPoolHolders.length,
+        largest_non_pool_percent: largest,
+        top_10_non_pool_percent: top10,
+        method: "Top holders from the open Blockscout API, excluding observed DEX pool and zero addresses."
+      },
+      uniswap: {
+        ...uniswap,
+        active_pairs: pairs.filter((pair) => pair.dex.toLowerCase().includes("uniswap")).length,
+        deepest_pair_liquidity_usd: deepest?.liquidity_usd ?? 0,
+        total_observed_liquidity_usd: totalLiquidity,
+        volume_h24_usd: volume,
+        quote_mode: pairs.length ? "public-market-observation" as const : "no-route-observed" as const
+      },
+      warnings,
+      unknowns,
+      attention,
+      human_summary: createIntelligenceSummary(passport, deepest, warnings, largest, top10),
+      observed_at: new Date().toISOString()
+    };
+    return { ...base, id: `token_intelligence_${stableHash(base).slice(2, 18)}` };
+  }
+
+  async fetchDexPairs(address: string): Promise<GuardianDexPair[]> {
+    if (this.network.network !== "mainnet") return [];
+    const payload = await this.getJson(`https://api.dexscreener.com/token-pairs/v1/robinhood/${normalizeAddress(address)}`);
+    if (!Array.isArray(payload)) return [];
+    return payload.filter(isRecord).map(normalizeDexPair).filter((entry): entry is GuardianDexPair => Boolean(entry))
+      .sort((left, right) => right.liquidity_usd - left.liquidity_usd);
+  }
+
+  async checkUniswapReadiness(tokenAddress: string): Promise<GuardianUniswapReadiness> {
+    const contracts = await Promise.all(Object.entries(UNISWAP_V4_CONTRACTS).map(async ([name, address]) => {
+      const code = await this.rpc<string>("eth_getCode", [address, "latest"]).catch(() => "0x");
+      return { name, address, code_present: stripHex(code).length > 0 };
+    }));
+    return {
+      supported: this.network.network === "mainnet" && contracts.every((contract) => contract.code_present),
+      active_pairs: 0,
+      deepest_pair_liquidity_usd: 0,
+      total_observed_liquidity_usd: 0,
+      volume_h24_usd: 0,
+      v4_contracts: contracts,
+      trade_url: `https://app.uniswap.org/explore/tokens/robinhood/${normalizeAddress(tokenAddress)}`,
+      quote_mode: "no-route-observed"
+    };
+  }
+
+  private async fetchBlockscoutTokenInfo(address: string): Promise<Record<string, unknown> | undefined> {
+    const payload = await this.getJson(`${this.network.explorer_url}/api/v2/tokens/${normalizeAddress(address)}`);
+    return isRecord(payload) ? payload : undefined;
+  }
+
+  private async fetchBlockscoutHolders(address: string): Promise<Array<{ address: string; value: string }>> {
+    const payload = await this.getJson(`${this.network.explorer_url}/api/v2/tokens/${normalizeAddress(address)}/holders`);
+    return arrayField(payload, ["items"]).flatMap((entry) => {
+      const holderAddress = isRecord(entry.address) ? stringField(entry.address, ["hash"]) : stringField(entry, ["address"]);
+      const value = stringField(entry, ["value"]);
+      return holderAddress && value ? [{ address: holderAddress, value }] : [];
+    });
+  }
+
   async rpc<T>(method: string, params: unknown[]): Promise<T> {
     const response = await this.fetchWithTimeout(this.network.rpc_url, {
       method: "POST",
@@ -262,6 +436,13 @@ export class RobinhoodChainClient {
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const USDG_ADDRESS = "0x5fc5360d0400a0fd4f2af552add042d716f1d168";
 const WETH_ADDRESS = "0x0bd7d308f8e1639fab988df18a8011f41eacad73";
+const UNISWAP_V4_CONTRACTS = {
+  pool_manager: "0x33620f62c5b9b2086dd6b62f4a297a9f30347029",
+  quoter: "0x20e6487c371a2086f841ef453f85378223df4f4e",
+  state_view: "0x21b954fba3f5ddebe77ef2d47a3100c066908b2a",
+  universal_router: "0xa2dc7d0266f0cc50b3eeaf36c9bfcecff1beea91",
+  permit2: "0x000000000022d473030f116ddee9f6b43ac78ba3"
+} as const;
 
 function normalizeAddress(value: string): string {
   const trimmed = value.trim();
@@ -346,7 +527,7 @@ function normalizeStockTokenAsset(value: Record<string, unknown>): StockTokenAss
   return {
     uid: stringField(value, ["id", "uid"]),
     symbol,
-    name: stringField(value, ["name", "displayName", "display_name"]),
+    name: stringField(value, ["tokenName", "name", "displayName", "display_name"]),
     current_multiplier: stringField(value, ["currentMultiplier", "current_multiplier"]),
     deployments
   };
@@ -376,6 +557,113 @@ function numberField(value: Record<string, unknown>, keys: string[]): number | u
 function booleanField(value: Record<string, unknown>, keys: string[]): boolean {
   for (const key of keys) if (typeof value[key] === "boolean") return value[key] as boolean;
   return false;
+}
+
+function finiteNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) return Number(value);
+  return undefined;
+}
+
+function safeBigInt(value: unknown): bigint {
+  try { return typeof value === "bigint" ? value : BigInt(typeof value === "string" && value.trim() ? value : "0"); }
+  catch { return 0n; }
+}
+
+function holderPercent(value: unknown, totalSupply: bigint): number | undefined {
+  const amount = safeBigInt(value);
+  if (amount <= 0n || totalSupply <= 0n) return undefined;
+  return Number((amount * 1_000_000n) / totalSupply) / 10_000;
+}
+
+function nestedRecord(value: Record<string, unknown>, key: string): Record<string, unknown> {
+  return isRecord(value[key]) ? value[key] as Record<string, unknown> : {};
+}
+
+function normalizeDexPair(value: Record<string, unknown>): GuardianDexPair | undefined {
+  const pairAddress = stringField(value, ["pairAddress", "pair_address"]);
+  const dex = stringField(value, ["dexId", "dex_id"]);
+  if (!pairAddress || !dex) return undefined;
+  const base = nestedRecord(value, "baseToken");
+  const quote = nestedRecord(value, "quoteToken");
+  const liquidity = nestedRecord(value, "liquidity");
+  const volume = nestedRecord(value, "volume");
+  const change = nestedRecord(value, "priceChange");
+  const txns = nestedRecord(nestedRecord(value, "txns"), "h24");
+  const createdAt = finiteNumber(value.pairCreatedAt);
+  return {
+    dex,
+    pair_address: pairAddress.toLowerCase(),
+    url: stringField(value, ["url"]),
+    base_symbol: stringField(base, ["symbol"]),
+    quote_symbol: stringField(quote, ["symbol"]),
+    price_usd: finiteNumber(value.priceUsd),
+    liquidity_usd: finiteNumber(liquidity.usd) ?? 0,
+    volume_h24_usd: finiteNumber(volume.h24) ?? 0,
+    buys_h24: Math.max(0, Math.round(finiteNumber(txns.buys) ?? 0)),
+    sells_h24: Math.max(0, Math.round(finiteNumber(txns.sells) ?? 0)),
+    price_change_h24_percent: finiteNumber(change.h24),
+    market_cap_usd: finiteNumber(value.marketCap),
+    fdv_usd: finiteNumber(value.fdv),
+    created_at: createdAt ? new Date(createdAt).toISOString() : undefined
+  };
+}
+
+function createEmptyUniswapReadiness(tokenAddress: string): GuardianUniswapReadiness {
+  return {
+    supported: false,
+    active_pairs: 0,
+    deepest_pair_liquidity_usd: 0,
+    total_observed_liquidity_usd: 0,
+    volume_h24_usd: 0,
+    v4_contracts: [],
+    trade_url: `https://app.uniswap.org/explore/tokens/robinhood/${tokenAddress.toLowerCase()}`,
+    quote_mode: "no-route-observed"
+  };
+}
+
+function createIntelligenceWarnings(input: {
+  passport: GuardianAssetPassport;
+  deepest?: GuardianDexPair;
+  totalLiquidity: number;
+  largest?: number;
+  top10?: number;
+  holderCount?: number;
+  buys: number;
+  sells: number;
+}): string[] {
+  const warnings: string[] = [];
+  if (!input.passport.contract.code_present) warnings.push("CRITICAL: no contract code was observed.");
+  if (input.passport.kind === "rwa" && !input.passport.canonical) warnings.push("CRITICAL: this RWA address is not in the official Robinhood registry.");
+  if (input.totalLiquidity <= 0) warnings.push("No observed liquidity route was found; do not assume the token can be sold.");
+  else if (input.totalLiquidity < 50_000) warnings.push("CRITICAL: observed liquidity is below $50,000 and price impact may be extreme.");
+  else if (input.totalLiquidity < 250_000) warnings.push("Observed liquidity is thin; small trades may move the price materially.");
+  if (input.largest !== undefined && input.largest >= 20) warnings.push(`Largest non-pool holder controls about ${input.largest.toFixed(1)}% of supply.`);
+  if (input.top10 !== undefined && input.top10 >= 50) warnings.push(`Top ten observed non-pool holders control about ${input.top10.toFixed(1)}% of supply.`);
+  if (input.holderCount !== undefined && input.holderCount < 100) warnings.push(`Only ${input.holderCount} holder addresses are reported by the explorer.`);
+  const trades = input.buys + input.sells;
+  if (trades >= 20 && Math.min(input.buys, input.sells) / Math.max(input.buys, input.sells, 1) < 0.2)
+    warnings.push(`24-hour order flow is highly imbalanced (${input.buys} buys / ${input.sells} sells).`);
+  const change = input.deepest?.price_change_h24_percent;
+  if (change !== undefined && Math.abs(change) >= 50) warnings.push(`Price changed ${change.toFixed(1)}% in 24 hours; volatility is extreme.`);
+  for (const signal of input.passport.risk.signals.filter((entry) => entry.severity === "critical" || entry.severity === "high"))
+    warnings.push(`${signal.severity.toUpperCase()}: ${signal.title}.`);
+  return Array.from(new Set(warnings));
+}
+
+function createIntelligenceSummary(
+  passport: GuardianAssetPassport,
+  deepest: GuardianDexPair | undefined,
+  warnings: string[],
+  largest?: number,
+  top10?: number
+): string {
+  const symbol = passport.contract.symbol ?? passport.stock_token?.symbol ?? "This token";
+  const liquidity = deepest ? `$${Math.round(deepest.liquidity_usd).toLocaleString("en-US")}` : "no observed public liquidity";
+  const concentration = largest === undefined
+    ? "holder concentration could not be measured"
+    : `the largest observed non-pool holder has about ${largest.toFixed(1)}%${top10 === undefined ? "" : ` and the top ten have ${top10.toFixed(1)}%`}`;
+  return `${symbol} has ${liquidity} in its deepest observed pool; ${concentration}. Hallow found ${warnings.length} warning${warnings.length === 1 ? "" : "s"}. Review the evidence before creating any plan.`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

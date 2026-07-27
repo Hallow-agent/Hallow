@@ -2985,6 +2985,47 @@ async function handleGuardian(
     return;
   }
 
+  if (subcommand === "brief" || subcommand === "market") {
+    const result = await context.runtime.getGuardianMarketBrief({
+      network,
+      limit: readNumberOption(rest, "--limit") ?? 12
+    });
+    printGuardianMarketBrief(result.brief);
+    return;
+  }
+
+  if (subcommand === "analyze" || subcommand === "scan") {
+    const query = rest[0];
+    if (!query) throw new Error("Usage: hallow guardian analyze <stock-symbol|contract> [--kind rwa|meme|auto] [--no-ai]");
+    const record = await context.runtime.inspectGuardianTokenIntelligence(query, {
+      network,
+      kind: readGuardianKind(readOption(rest, "--kind"))
+    });
+    const explanation = rest.includes("--no-ai")
+      ? undefined
+      : await context.runtime.explainGuardianIntelligence(record.intelligence, {
+          language: rest.includes("--english") ? "en" : "id",
+          model: readOption(rest, "--model")
+        }).catch(() => undefined);
+    printGuardianIntelligence(record, explanation);
+    return;
+  }
+
+  if (subcommand === "demo") {
+    const query = rest.find((entry) => !entry.startsWith("--")) ?? "AAPL";
+    const [status, policy] = await Promise.all([
+      context.runtime.getGuardianChainStatus(network),
+      context.runtime.getGuardianPolicy()
+    ]);
+    printGuardianStatus(status, policy);
+    const brief = await context.runtime.getGuardianMarketBrief({ network, limit: 8 });
+    printGuardianMarketBrief(brief.brief);
+    const record = await context.runtime.inspectGuardianTokenIntelligence(query, { network, kind: "auto" });
+    const explanation = await context.runtime.explainGuardianIntelligence(record.intelligence, { language: "id" }).catch(() => undefined);
+    printGuardianIntelligence(record, explanation);
+    return;
+  }
+
   if (subcommand === "policy") {
     const action = rest[0] ?? "show";
     if (action === "show") {
@@ -3027,18 +3068,17 @@ async function handleGuardian(
 
   if (subcommand === "plan") {
     const action = readGuardianAction(rest[0]);
-    const address = rest[1];
-    if (!action || !address) throw new Error("Usage: hallow guardian plan <buy|sell|swap|lend|withdraw|inspect> <contract> --usd amount [options]");
+    const assetQuery = rest[1];
+    if (!action || !assetQuery) throw new Error("Usage: hallow guardian plan <buy|sell|swap|lend|withdraw|inspect> <symbol|contract> --usd amount [options]");
     const amountUsd = readNumberOption(rest, "--usd") ?? 0;
     if (action !== "inspect" && amountUsd <= 0) throw new Error("Guardian financial plans require --usd with a value greater than zero.");
-    const inspected = await context.runtime.inspectGuardianAsset(address, {
-      network,
-      kind: readGuardianKind(readOption(rest, "--kind")),
-      symbol: readOption(rest, "--symbol")
-    });
+    const kind = readGuardianKind(readOption(rest, "--kind"));
+    const asset = /^0x[a-fA-F0-9]{40}$/.test(assetQuery)
+      ? (await context.runtime.inspectGuardianAsset(assetQuery, { network, kind, symbol: readOption(rest, "--symbol") })).passport
+      : (await context.runtime.inspectGuardianTokenIntelligence(assetQuery, { network, kind })).intelligence.passport;
     const record = await context.runtime.createGuardianTransactionPlan({
       action,
-      asset: inspected.passport,
+      asset,
       amount_usd: amountUsd,
       slippage_bps: readNumberOption(rest, "--slippage-bps"),
       protocol: readOption(rest, "--protocol"),
@@ -3097,6 +3137,80 @@ function printGuardianStatus(
   printTerminalText("No seed phrase requested. No funds moved. Chain activity is public.", "90");
 }
 
+function printGuardianMarketBrief(
+  brief: Awaited<ReturnType<HallowRuntime["getGuardianMarketBrief"]>>["brief"]
+): void {
+  const width = terminalWidth();
+  prepareTerminalSurface();
+  printTerminalText("");
+  printTerminalFrame("HALLOW MARKET PULSE", "BUKTI LIVE / BUKAN SINYAL BELI", width);
+  printTerminalSection("APA YANG TERJADI", [
+    formatMetric("aset resmi terdaftar", brief.registered_assets.toLocaleString()),
+    formatMetric("aset diperiksa sekarang", brief.assets_checked.toLocaleString()),
+    formatMetric("quote dua arah aktif", brief.active_quotes.toLocaleString()),
+    formatMetric("perdagangan dihentikan", brief.trading_halts.toLocaleString()),
+    formatMetric("data basi / tidak lengkap", brief.stale_quotes.toLocaleString())
+  ], width);
+  const rows = brief.quotes.slice(0, 8).map((quote) => {
+    const bid = quote.token_bid === undefined ? "-" : guardianUsd(quote.token_bid);
+    const ask = quote.token_ask === undefined ? "-" : guardianUsd(quote.token_ask);
+    const spread = quote.spread_bps === undefined ? "-" : `${quote.spread_bps.toFixed(1)} bps`;
+    const state = quote.trading_halt ? "HALT" : quote.stale ? "STALE" : "LIVE";
+    return `${padRight(quote.symbol, 9)} ${padRight(state, 7)} bid ${padRight(bid, 12)} ask ${padRight(ask, 12)} spread ${spread}`;
+  });
+  printTerminalSection("SNAPSHOT RWA", rows.length ? rows : ["Belum ada quote yang dapat ditampilkan."], width);
+  printTerminalSection("ARTINYA", brief.plain_language, width);
+  printTerminalText(repeatChar("-", width), "90");
+  printTerminalText("Hallow tidak merangking aset dan tidak menjanjikan keuntungan. Data disimpan privat untuk audit.", "90");
+}
+
+function printGuardianIntelligence(
+  record: Awaited<ReturnType<HallowRuntime["inspectGuardianTokenIntelligence"]>>,
+  explanation?: Awaited<ReturnType<HallowRuntime["explainGuardianIntelligence"]>>
+): void {
+  const item = record.intelligence;
+  const width = terminalWidth();
+  const symbol = item.passport.contract.symbol ?? item.passport.stock_token?.symbol ?? "UNKNOWN";
+  const verdict = item.attention === "normal" ? "OBSERVE" : item.attention === "review" ? "REVIEW" : "STOP & REVIEW";
+  prepareTerminalSurface();
+  printTerminalText("");
+  printTerminalFrame("BLOCKCHAIN INTELLIGENCE", `${symbol} / ${verdict}`, width);
+  printTerminalSection("DALAM BAHASA MANUSIA", [item.human_summary], width);
+  printTerminalSection("APA YANG KITA TAHU", [
+    formatMetric("jenis", item.passport.kind),
+    formatMetric("kontrak resmi", item.passport.canonical ? "ya, cocok dengan registry" : "belum terverifikasi"),
+    formatMetric("harga teramati", item.market.price_usd === undefined ? "belum tersedia" : guardianUsd(item.market.price_usd)),
+    formatMetric("likuiditas terdalam", guardianUsd(item.market.deepest_liquidity_usd)),
+    formatMetric("volume 24 jam", guardianUsd(item.market.volume_h24_usd)),
+    formatMetric("aktivitas 24 jam", `${item.market.buys_h24.toLocaleString()} beli / ${item.market.sells_h24.toLocaleString()} jual`),
+    formatMetric("Uniswap", item.uniswap.supported ? `${item.uniswap.active_pairs} pool teramati / kontrak v4 aktif` : "belum dapat diverifikasi")
+  ], width);
+  printTerminalSection("SIAPA YANG MEMEGANG", [
+    formatMetric("jumlah holder", item.holders.holder_count?.toLocaleString() ?? "tidak diketahui"),
+    formatMetric("holder terbesar", item.holders.largest_non_pool_percent === undefined ? "tidak terukur" : `${item.holders.largest_non_pool_percent.toFixed(2)}% di luar pool`),
+    formatMetric("10 holder terbesar", item.holders.top_10_non_pool_percent === undefined ? "tidak terukur" : `${item.holders.top_10_non_pool_percent.toFixed(2)}% di luar pool`)
+  ], width);
+  printTerminalSection("YANG BISA SALAH", item.warnings.length ? item.warnings : ["Tidak ada peringatan besar dari pemeriksaan terbatas ini."], width);
+  printTerminalSection("YANG BELUM BISA DIBUKTIKAN", item.unknowns, width);
+  if (explanation) {
+    const lines = explanation.content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    printTerminalSection("DEEPSEEK MENJELASKAN", lines, width);
+    printTerminalText(`Model aktif: ${explanation.provider}:${explanation.model}`, "90");
+  } else {
+    printTerminalSection("AI ANALYST", ["Model belum tersedia; bukti deterministik di atas tetap valid dan dapat diaudit."], width);
+  }
+  printTerminalText(repeatChar("-", width), "90");
+  printTerminalText(`GUARDIAN VERDICT: ${verdict}. Tidak ada dana dipindahkan. Bukti disimpan privat di Hallow.`, item.attention === "avoid-until-reviewed" ? "91" : "90");
+}
+
+function guardianUsd(value: number): string {
+  if (!Number.isFinite(value)) return "-";
+  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}m`;
+  if (Math.abs(value) >= 1_000) return `$${(value / 1_000).toFixed(1)}k`;
+  if (Math.abs(value) < 0.01 && value !== 0) return `$${value.toPrecision(3)}`;
+  return `$${value.toFixed(2)}`;
+}
+
 function printGuardianPolicy(policy: Awaited<ReturnType<HallowRuntime["getGuardianPolicy"]>>): void {
   const width = terminalWidth();
   prepareTerminalSurface();
@@ -3120,7 +3234,7 @@ function printGuardianPolicy(policy: Awaited<ReturnType<HallowRuntime["getGuardi
 
 function printGuardianPassport(
   passport: Awaited<ReturnType<HallowRuntime["inspectGuardianAsset"]>>["passport"],
-  artifactPath: string
+  _artifactPath: string
 ): void {
   const width = terminalWidth();
   prepareTerminalSurface();
@@ -3144,7 +3258,7 @@ function printGuardianPassport(
   }
   printTerminalSection("PLAIN LANGUAGE", [passport.summary], width);
   printTerminalText(repeatChar("-", width), "90");
-  printTerminalText(`Receipt-ready artifact: ${artifactPath}`, "90");
+  printTerminalText("Evidence saved privately inside Hallow. No wallet secret was requested.", "90");
 }
 
 function printGuardianPlan(record: Awaited<ReturnType<HallowRuntime["createGuardianTransactionPlan"]>>): void {
@@ -3171,7 +3285,7 @@ function printGuardianPlan(record: Awaited<ReturnType<HallowRuntime["createGuard
     ], width);
   }
   printTerminalText(repeatChar("-", width), "90");
-  printTerminalText(`Plan artifact: ${record.plan_path}`, "90");
+  printTerminalText("The exact plan and every check were saved privately for verification.", "90");
 }
 
 function printGuardianReceipt(record: Awaited<ReturnType<HallowRuntime["createGuardianReceiptRecord"]>>): void {
@@ -3192,7 +3306,7 @@ function printGuardianReceipt(record: Awaited<ReturnType<HallowRuntime["createGu
     "Only hashes and explicit transaction evidence are designed for anchoring."
   ], width);
   printTerminalText(repeatChar("-", width), "90");
-  printTerminalText(`Receipt artifact: ${record.receipt_path}`, "90");
+  printTerminalText("Verified receipt saved privately. No prompt or private memory was published.", "90");
 }
 
 function readGuardianKind(value: string | undefined): "auto" | "rwa" | "meme" | "stablecoin" | "wrapped" | "token" | "unknown" {
@@ -5489,9 +5603,12 @@ Usage:
   hallow status [--home path] [--strict]
   hallow readiness [--strict]
   hallow guardian status [--testnet]
+  hallow guardian brief [--limit 12]
+  hallow guardian analyze <stock-symbol|contract> [--kind rwa|meme|auto]
+  hallow guardian demo [stock-symbol]
   hallow guardian inspect <contract> [--kind rwa|meme|auto] [--testnet]
   hallow guardian policy show|reset|set [policy options]
-  hallow guardian plan <action> <contract> --usd amount [--kind type] [--testnet]
+  hallow guardian plan <action> <symbol|contract> --usd amount [--kind type] [--testnet]
   hallow guardian receipt <plan-id> [--approval approval-id]
   hallow guardian verify <receipt-id>
   hallow demo setup [--skip-live-mcp] [--skip-browser]
@@ -5646,7 +5763,7 @@ Usage:
   hallow notification list [--status unread|read|all] [--limit 20]
   hallow notification read <id>
   hallow model add <name> [--type openai_compatible] [--base-url url] [--api-key-env ENV] [--default-model model]
-  hallow model setup [openrouter|openai|anthropic|ollama] [--model model-id]
+  hallow model setup [deepseek|openrouter|openai|anthropic|ollama] [--model model-id]
   hallow model list
   hallow model catalog [--provider openai] [--query coding] [--providers]
   hallow model install-catalog [--providers openai,anthropic,google,ollama] [--overwrite]

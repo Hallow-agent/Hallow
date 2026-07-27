@@ -46,9 +46,11 @@ import {
   type GuardianAssetKind,
   type GuardianAssetPassport,
   type GuardianNetwork,
+  type GuardianMarketBrief,
   type GuardianPlan as GuardianTransactionPlan,
   type GuardianPolicy,
-  type GuardianReceipt
+  type GuardianReceipt,
+  type GuardianTokenIntelligence
 } from "@hallow/chain";
 import { renderGuardianConsoleHtml } from "./guardian-console.js";
 
@@ -104,6 +106,17 @@ export type GuardianReceiptRecord = {
   receipt: GuardianReceipt;
   receipt_path: string;
   verified: boolean;
+};
+
+export type GuardianIntelligenceRecord = {
+  intelligence: GuardianTokenIntelligence;
+  intelligence_path: string;
+};
+
+export type GuardianExplanation = {
+  content: string;
+  provider: string;
+  model: string;
 };
 
 export type AgentRunEvent =
@@ -1850,6 +1863,14 @@ export class HallowRuntime {
     return hallowPath(this.guardianDir, "receipts");
   }
 
+  get guardianIntelligenceDir(): string {
+    return hallowPath(this.guardianDir, "intelligence");
+  }
+
+  get guardianBriefsDir(): string {
+    return hallowPath(this.guardianDir, "briefs");
+  }
+
   get integrationsDir(): string {
     return hallowPath(this.home, "integrations");
   }
@@ -2034,6 +2055,8 @@ export class HallowRuntime {
       this.guardianPassportsDir,
       this.guardianPlansDir,
       this.guardianReceiptsDir,
+      this.guardianIntelligenceDir,
+      this.guardianBriefsDir,
       this.sandboxRunsDir,
       hallowPath(this.home, "approvals"),
       hallowPath(this.home, "notifications"),
@@ -6619,6 +6642,76 @@ export class HallowRuntime {
     return { passport, passport_path: passportPath };
   }
 
+  async getGuardianMarketBrief(
+    options: { network?: GuardianNetwork; limit?: number } = {}
+  ): Promise<{ brief: GuardianMarketBrief; brief_path: string }> {
+    const network = options.network ?? "mainnet";
+    const decision = await this.checkTool("chain.read", `market-brief:${network}`);
+    if (!decision.allowed) throw new Error(decision.reason);
+    const brief = await this.createGuardianClient(network).marketBrief(options.limit ?? 12);
+    const briefPath = hallowPath(this.guardianBriefsDir, `market_brief_${Date.now()}.yaml`);
+    await writeYaml(briefPath, brief);
+    await this.recordToolEvent("chain.read", `market-brief:${network}`, `${brief.active_quotes}/${brief.assets_checked} active quotes`);
+    return { brief, brief_path: briefPath };
+  }
+
+  async inspectGuardianTokenIntelligence(
+    query: string,
+    options: { network?: GuardianNetwork; kind?: GuardianAssetKind | "auto"; symbol?: string } = {}
+  ): Promise<GuardianIntelligenceRecord> {
+    const network = options.network ?? "mainnet";
+    const decision = await this.checkTool("chain.read", query);
+    if (!decision.allowed) throw new Error(decision.reason);
+    const intelligence = await this.createGuardianClient(network).inspectTokenIntelligence(query, {
+      kind: options.kind,
+      symbol: options.symbol
+    });
+    const intelligencePath = hallowPath(this.guardianIntelligenceDir, `${intelligence.id}.yaml`);
+    await writeYaml(intelligencePath, intelligence);
+    await this.recordToolEvent("chain.read", intelligence.passport.address, `created ${intelligence.id}`);
+    return { intelligence, intelligence_path: intelligencePath };
+  }
+
+  async explainGuardianIntelligence(
+    intelligence: GuardianTokenIntelligence,
+    options: { language?: "id" | "en"; model?: string } = {}
+  ): Promise<GuardianExplanation> {
+    const language = options.language ?? "id";
+    const evidence = {
+      identity: {
+        symbol: intelligence.passport.contract.symbol ?? intelligence.passport.stock_token?.symbol,
+        kind: intelligence.passport.kind,
+        canonical: intelligence.passport.canonical,
+        risk_band: intelligence.passport.risk.band
+      },
+      market: intelligence.market,
+      holders: intelligence.holders,
+      uniswap: {
+        supported: intelligence.uniswap.supported,
+        active_pairs: intelligence.uniswap.active_pairs,
+        deepest_pair_liquidity_usd: intelligence.uniswap.deepest_pair_liquidity_usd,
+        volume_h24_usd: intelligence.uniswap.volume_h24_usd
+      },
+      warnings: intelligence.warnings,
+      unknowns: intelligence.unknowns,
+      attention: intelligence.attention
+    };
+    const result = await this.models.generateText({
+      model: options.model ?? "deepseek:deepseek-v4-pro",
+      temperature: 0.1,
+      system: [
+        "You are Hallow's blockchain intelligence analyst.",
+        "Use only the supplied evidence. Never invent a price, risk score, catalyst, social trend, or expected return.",
+        "Explain for a non-technical person. Separate what is known, what can go wrong, and what Hallow should do next.",
+        "Do not recommend buying or selling. Do not claim that an asset is safe. Never request a seed phrase or private key.",
+        "End with a clear Guardian verdict: OBSERVE, REVIEW, or AVOID UNTIL REVIEWED.",
+        language === "id" ? "Write in natural Indonesian with short sentences." : "Write in plain English with short sentences."
+      ].join(" "),
+      prompt: `Explain this live evidence:\n${JSON.stringify(evidence)}`
+    });
+    return { content: result.content, provider: result.provider, model: result.model };
+  }
+
   async createGuardianTransactionPlan(input: {
     action: GuardianAction;
     asset: GuardianAssetPassport;
@@ -8354,6 +8447,27 @@ export class HallowRuntime {
         return json(response, 200, { policy: await this.updateGuardianPolicy(recordValue(body.policy) ?? body) });
       }
 
+      if (url.pathname === "/guardian/brief" || url.pathname === "/api/guardian/brief") {
+        const network = url.searchParams.get("network") === "testnet" ? "testnet" : "mainnet";
+        const limit = Number(url.searchParams.get("limit") ?? 12);
+        return json(response, 200, await this.getGuardianMarketBrief({ network, limit: Number.isFinite(limit) ? limit : 12 }));
+      }
+
+      if (url.pathname === "/guardian/intelligence" || url.pathname === "/api/guardian/intelligence") {
+        const query = url.searchParams.get("query") ?? url.searchParams.get("address") ?? "";
+        if (!query) throw new Error("Guardian intelligence requires a Stock Token symbol or contract address.");
+        const network = url.searchParams.get("network") === "testnet" ? "testnet" : "mainnet";
+        const kindValue = url.searchParams.get("kind") ?? "auto";
+        const record = await this.inspectGuardianTokenIntelligence(query, {
+          network,
+          kind: isGuardianAssetKind(kindValue) ? kindValue : "auto"
+        });
+        const explanation = url.searchParams.get("ai") === "1"
+          ? await this.explainGuardianIntelligence(record.intelligence).catch(() => undefined)
+          : undefined;
+        return json(response, 200, { ...record, explanation });
+      }
+
       if (url.pathname === "/guardian/inspect" || url.pathname === "/api/guardian/inspect") {
         const address = url.searchParams.get("address") ?? "";
         if (!address) throw new Error("Guardian inspection requires an address query parameter.");
@@ -9959,6 +10073,42 @@ export class HallowRuntime {
             summary: status.connected ? `Connected at block ${status.block_number}.` : status.error ?? "Robinhood Chain unavailable."
           },
           content: JSON.stringify({ ok: status.connected, status })
+        };
+      }
+
+      if (call.name === "guardian_market_brief") {
+        const network = readToolString(call.arguments, "network") === "testnet" ? "testnet" : "mainnet";
+        const result = await this.getGuardianMarketBrief({ network, limit: readToolLimit(call.arguments, 12, 30) });
+        return {
+          toolUse: {
+            tool: "chain.read",
+            target: `market-brief:${network}`,
+            status: "success",
+            summary: `${result.brief.active_quotes}/${result.brief.assets_checked} Stock Token quotes active.`,
+            artifact: result.brief_path
+          },
+          content: JSON.stringify({ ok: true, brief: result.brief })
+        };
+      }
+
+      if (call.name === "guardian_token_intelligence") {
+        const query = readToolString(call.arguments, "query");
+        if (!query) return denied("", "guardian_token_intelligence requires a Stock Token symbol or contract address.");
+        const network = readToolString(call.arguments, "network") === "testnet" ? "testnet" : "mainnet";
+        const requestedKind = readToolString(call.arguments, "kind");
+        const result = await this.inspectGuardianTokenIntelligence(query, {
+          network,
+          kind: isGuardianAssetKind(requestedKind) ? requestedKind : "auto"
+        });
+        return {
+          toolUse: {
+            tool: "chain.read",
+            target: result.intelligence.passport.address,
+            status: result.intelligence.attention === "avoid-until-reviewed" ? "denied" : "success",
+            summary: result.intelligence.human_summary,
+            artifact: result.intelligence_path
+          },
+          content: JSON.stringify({ ok: true, intelligence: result.intelligence })
         };
       }
 
@@ -13999,6 +14149,32 @@ const HALLOW_AGENT_TOOLS: ModelToolDefinition[] = [
     input_schema: {
       type: "object",
       properties: { network: { type: "string", enum: ["mainnet", "testnet"] } },
+      additionalProperties: false
+    }
+  },
+  {
+    name: "guardian_market_brief",
+    description: "Read a live Robinhood Stock Token market brief with multiplier-aware bid/ask data, trading halts, and quote freshness. Use this before discussing the RWA market. It is evidence, not a recommendation.",
+    input_schema: {
+      type: "object",
+      properties: {
+        network: { type: "string", enum: ["mainnet", "testnet"] },
+        limit: { type: "integer", minimum: 1, maximum: 30 }
+      },
+      additionalProperties: false
+    }
+  },
+  {
+    name: "guardian_token_intelligence",
+    description: "Investigate a Robinhood Stock Token symbol or token contract using chain evidence, official RWA registry data, open Blockscout holder data, public DEX liquidity and activity, and verified Uniswap v4 deployments. Explain known facts, risks, and unknowns without recommending a trade.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Official Stock Token symbol or 20-byte EVM contract address." },
+        network: { type: "string", enum: ["mainnet", "testnet"] },
+        kind: { type: "string", enum: ["auto", "rwa", "meme", "stablecoin", "wrapped", "token"] }
+      },
+      required: ["query"],
       additionalProperties: false
     }
   },

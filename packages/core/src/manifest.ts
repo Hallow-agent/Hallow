@@ -353,7 +353,7 @@ export function createDefaultModelProviders(): ModelProvidersConfig {
         type: "openai_compatible",
         base_url: "https://api.deepseek.com",
         api_key_env: "DEEPSEEK_API_KEY",
-        default_model: "deepseek-chat"
+        default_model: "deepseek-v4-pro"
       },
       xai: {
         type: "openai_compatible",
@@ -406,7 +406,7 @@ export function createDefaultModelRoutes(): ModelRoutesConfig {
       },
       cheap: {
         primary: "groq:llama-3.3-70b-versatile",
-        fallback: ["deepseek:deepseek-chat", "mistral:mistral-small-latest", "openrouter:meta-llama/llama-3.3-70b-instruct", "ollama:llama3.1"]
+        fallback: ["deepseek:deepseek-v4-flash", "mistral:mistral-small-latest", "openrouter:meta-llama/llama-3.3-70b-instruct", "ollama:llama3.1"]
       },
       private: {
         primary: "ollama:qwen2.5",

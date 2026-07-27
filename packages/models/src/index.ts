@@ -241,11 +241,11 @@ export class ModelRegistry {
     };
     routes.routes.cheap = {
       primary: "groq:llama-3.3-70b-versatile",
-      fallback: ["deepseek:deepseek-chat", "mistral:mistral-small-latest", "openrouter:meta-llama/llama-3.3-70b-instruct", "ollama:llama3.1"]
+      fallback: ["deepseek:deepseek-v4-flash", "mistral:mistral-small-latest", "openrouter:meta-llama/llama-3.3-70b-instruct", "ollama:llama3.1"]
     };
     routes.routes.reasoning = {
       primary: "openai:o3",
-      fallback: ["google:gemini-2.5-pro", "deepseek:deepseek-reasoner", "openrouter:deepseek/deepseek-r1", "ollama:deepseek-r1"]
+      fallback: ["google:gemini-2.5-pro", "deepseek:deepseek-v4-pro", "openrouter:deepseek/deepseek-r1", "ollama:deepseek-r1"]
     };
     routes.routes.coding = {
       primary: "anthropic:claude-sonnet-4-5",
@@ -1096,7 +1096,7 @@ const MODEL_CATALOG_PROVIDERS: ModelCatalogProvider[] = [
     type: "openai_compatible",
     base_url: "https://api.deepseek.com",
     api_key_env: "DEEPSEEK_API_KEY",
-    default_model: "deepseek-chat",
+    default_model: "deepseek-v4-pro",
     source: "first_party",
     note: "DeepSeek OpenAI-compatible endpoint. Requires DEEPSEEK_API_KEY."
   },
@@ -1195,8 +1195,8 @@ const MODEL_CATALOG_MODELS: ModelCatalogEntry[] = [
   model("groq", "llama-3.3-70b-versatile", "Llama 3.3 70B Versatile", "Llama", "fast"),
   model("groq", "deepseek-r1-distill-llama-70b", "DeepSeek R1 Distill Llama 70B", "DeepSeek", "reasoning"),
   model("groq", "qwen/qwen3-32b", "Qwen3 32B", "Qwen", "fast"),
-  model("deepseek", "deepseek-chat", "DeepSeek Chat", "DeepSeek", "balanced"),
-  model("deepseek", "deepseek-reasoner", "DeepSeek Reasoner", "DeepSeek", "reasoning"),
+  model("deepseek", "deepseek-v4-pro", "DeepSeek V4 Pro", "DeepSeek", "reasoning"),
+  model("deepseek", "deepseek-v4-flash", "DeepSeek V4 Flash", "DeepSeek", "fast"),
   model("xai", "grok-4", "Grok 4", "Grok", "frontier"),
   model("xai", "grok-3", "Grok 3", "Grok", "balanced"),
   model("xai", "grok-3-mini", "Grok 3 Mini", "Grok", "fast"),

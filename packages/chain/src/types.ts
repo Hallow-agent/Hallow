@@ -192,3 +192,93 @@ export type GuardianReceipt = {
   verification_hash: string;
   created_at: string;
 };
+
+export type GuardianDexPair = {
+  dex: string;
+  pair_address: string;
+  url?: string;
+  base_symbol?: string;
+  quote_symbol?: string;
+  price_usd?: number;
+  liquidity_usd: number;
+  volume_h24_usd: number;
+  buys_h24: number;
+  sells_h24: number;
+  price_change_h24_percent?: number;
+  market_cap_usd?: number;
+  fdv_usd?: number;
+  created_at?: string;
+};
+
+export type GuardianHolderAnalysis = {
+  holder_count?: number;
+  holders_observed: number;
+  pool_addresses_excluded: number;
+  largest_non_pool_percent?: number;
+  top_10_non_pool_percent?: number;
+  method: string;
+};
+
+export type GuardianUniswapReadiness = {
+  supported: boolean;
+  active_pairs: number;
+  deepest_pair_liquidity_usd: number;
+  total_observed_liquidity_usd: number;
+  volume_h24_usd: number;
+  v4_contracts: Array<{ name: string; address: string; code_present: boolean }>;
+  trade_url: string;
+  quote_mode: "public-market-observation" | "no-route-observed";
+};
+
+export type GuardianTokenIntelligence = {
+  schema: "hallow.token_intelligence/v1";
+  id: string;
+  passport: GuardianAssetPassport;
+  market: {
+    price_usd?: number;
+    market_cap_usd?: number;
+    fdv_usd?: number;
+    price_change_h24_percent?: number;
+    deepest_liquidity_usd: number;
+    total_observed_liquidity_usd: number;
+    volume_h24_usd: number;
+    buys_h24: number;
+    sells_h24: number;
+    pairs: GuardianDexPair[];
+  };
+  holders: GuardianHolderAnalysis;
+  uniswap: GuardianUniswapReadiness;
+  warnings: string[];
+  unknowns: string[];
+  attention: "normal" | "review" | "avoid-until-reviewed";
+  human_summary: string;
+  observed_at: string;
+};
+
+export type GuardianRwaQuote = {
+  symbol: string;
+  name?: string;
+  address: string;
+  raw_bid?: number;
+  raw_ask?: number;
+  multiplier?: number;
+  token_bid?: number;
+  token_ask?: number;
+  spread_bps?: number;
+  trading_halt: boolean;
+  stale: boolean;
+  generated_at?: string;
+};
+
+export type GuardianMarketBrief = {
+  schema: "hallow.market_brief/v1";
+  network: GuardianNetwork;
+  registered_assets: number;
+  assets_checked: number;
+  active_quotes: number;
+  trading_halts: number;
+  stale_quotes: number;
+  quotes: GuardianRwaQuote[];
+  plain_language: string[];
+  observed_at: string;
+};

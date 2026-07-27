@@ -1,1060 +1,170 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0a0a09">
-  <meta name="description" content="Hallow is a local-first agent OS for private memory, tools, skills, model routing, and self-healing autonomous workflows.">
-  <meta property="og:title" content="Hallow — The Agent Runtime Lives Here">
-  <meta property="og:description" content="A private, local-first runtime for autonomous agents.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://hallow-agent.xyz/">
-  <meta property="og:image" content="https://hallow-agent.xyz/assets/hallow-sanctuary.jpg">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#171512">
+  <meta name="description" content="Hallow is a local-first agent OS for memory, tools, model routing, signed skills, gateways, traces, and autonomous repair.">
+  <meta property="og:title" content="Hallow — The local agent OS">
+  <meta property="og:description" content="Install a private runtime for autonomous AI agents. Keep memory local. Inspect every action.">
+  <meta property="og:image" content="https://hallow-agent.xyz/assets/hallow-portal.jpg">
+  <title>Hallow — The local agent OS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="preload" as="image" href="/assets/hallow-sanctuary.jpg" fetchpriority="high">
-  <title>Hallow — Local-first Agent OS</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --black: #090908;
-      --black-soft: #11110f;
-      --paper: #e8e4d9;
-      --paper-bright: #f4f1e9;
-      --paper-dim: #c5c0b4;
-      --line-dark: rgba(255, 255, 255, 0.19);
-      --line-light: rgba(9, 9, 8, 0.22);
-      --muted-dark: rgba(244, 241, 233, 0.62);
-      --muted-light: rgba(9, 9, 8, 0.58);
-      --ember: #c8a86a;
-      --serif: "Instrument Serif", Georgia, serif;
-      --sans: "Manrope", Arial, sans-serif;
-      --mono: "DM Mono", Consolas, monospace;
-      --page: min(1500px, calc(100vw - 56px));
-      --hero-shift: 0px;
-    }
-
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; background: var(--black); }
-    body {
-      margin: 0;
-      background: var(--black);
-      color: var(--paper-bright);
-      font-family: var(--sans);
-      font-size: 16px;
-      line-height: 1.5;
-      overflow-x: hidden;
-    }
-    body.menu-open { overflow: hidden; }
-    a { color: inherit; text-decoration: none; }
-    button, input { font: inherit; }
-    button { color: inherit; }
-    img { display: block; max-width: 100%; }
-    h1, h2, h3, p, figure { margin: 0; }
-    ::selection { background: var(--ember); color: var(--black); }
-
-    .skip-link {
-      position: fixed;
-      top: 12px;
-      left: 12px;
-      z-index: 1000;
-      transform: translateY(-160%);
-      background: var(--paper-bright);
-      color: var(--black);
-      padding: 10px 14px;
-    }
-    .skip-link:focus { transform: translateY(0); }
-
-    .grain {
-      position: fixed;
-      inset: 0;
-      z-index: 90;
-      pointer-events: none;
-      opacity: 0.075;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
-      mix-blend-mode: soft-light;
-    }
-    .progress {
-      position: fixed;
-      inset: 0 auto auto 0;
-      z-index: 120;
-      width: 100%;
-      height: 2px;
-      background: var(--ember);
-      transform: scaleX(0);
-      transform-origin: left;
-    }
-
-    .loader {
-      position: fixed;
-      inset: 0;
-      z-index: 200;
-      display: grid;
-      place-items: center;
-      background: var(--black);
-      transition: opacity 650ms ease, visibility 650ms ease;
-    }
-    .loader.is-gone { opacity: 0; visibility: hidden; }
-    .loader-mark {
-      display: grid;
-      gap: 14px;
-      justify-items: center;
-      font: 500 11px/1 var(--mono);
-      letter-spacing: .18em;
-      text-transform: uppercase;
-    }
-    .loader-ring {
-      width: 74px;
-      aspect-ratio: 1;
-      border: 1px solid rgba(255,255,255,.25);
-      border-radius: 50%;
-      position: relative;
-      animation: rotate 2.4s linear infinite;
-    }
-    .loader-ring::after {
-      content: "";
-      position: absolute;
-      inset: 12px;
-      border: 1px solid var(--ember);
-      transform: rotate(45deg);
-    }
-
-    .nav {
-      position: fixed;
-      inset: 0 0 auto;
-      z-index: 100;
-      height: 86px;
-      border-bottom: 1px solid transparent;
-      transition: background 240ms ease, border-color 240ms ease, height 240ms ease;
-    }
-    .nav.scrolled {
-      height: 70px;
-      border-color: var(--line-dark);
-      background: rgba(9, 9, 8, .78);
-      backdrop-filter: blur(18px);
-    }
-    .nav-inner {
-      width: var(--page);
-      height: 100%;
-      margin: auto;
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      gap: 24px;
-    }
-    .brand {
-      display: inline-flex;
-      align-items: center;
-      gap: 13px;
-      width: fit-content;
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-    }
-    .brand-mark {
-      width: 20px;
-      height: 20px;
-      border: 1px solid currentColor;
-      border-radius: 50%;
-      position: relative;
-    }
-    .brand-mark::before, .brand-mark::after {
-      content: "";
-      position: absolute;
-      background: currentColor;
-    }
-    .brand-mark::before { width: 1px; height: 30px; left: 9px; top: -6px; }
-    .brand-mark::after { width: 30px; height: 1px; left: -6px; top: 9px; }
-    .nav-links { display: flex; align-items: center; gap: 34px; }
-    .nav-links a, .nav-meta {
-      font: 400 10px/1 var(--mono);
-      letter-spacing: .13em;
-      text-transform: uppercase;
-    }
-    .nav-links a { position: relative; padding: 9px 0; }
-    .nav-links a::after {
-      content: "";
-      position: absolute;
-      left: 0;
-      bottom: 2px;
-      width: 100%;
-      height: 1px;
-      background: currentColor;
-      transform: scaleX(0);
-      transform-origin: right;
-      transition: transform 240ms ease;
-    }
-    .nav-links a:hover::after { transform: scaleX(1); transform-origin: left; }
-    .nav-meta { justify-self: end; display: flex; align-items: center; gap: 10px; }
-    .live-dot {
-      width: 6px;
-      aspect-ratio: 1;
-      border-radius: 50%;
-      background: #d9bd82;
-      box-shadow: 0 0 0 5px rgba(217,189,130,.11);
-      animation: pulse 2s ease-in-out infinite;
-    }
-    .menu-toggle {
-      display: none;
-      justify-self: end;
-      border: 0;
-      background: transparent;
-      padding: 8px 0 8px 12px;
-      font: 400 10px/1 var(--mono);
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      cursor: pointer;
-    }
-    .mobile-cta { display: none; }
-
-    .hero {
-      min-height: 100svh;
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      align-items: end;
-      isolation: isolate;
-    }
-    .hero::before {
-      content: "";
-      position: absolute;
-      inset: -7%;
-      z-index: -3;
-      background: url("/assets/hallow-sanctuary.jpg") center center / cover no-repeat;
-      transform: translate3d(0, var(--hero-shift), 0) scale(1.06);
-      will-change: transform;
-    }
-    .hero::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      z-index: -2;
-      background:
-        linear-gradient(180deg, rgba(5,5,5,.2) 0%, rgba(5,5,5,.02) 32%, rgba(5,5,5,.86) 100%),
-        linear-gradient(90deg, rgba(5,5,5,.92) 0%, rgba(5,5,5,.54) 41%, rgba(5,5,5,.02) 78%);
-    }
-    .hero-grid {
-      position: absolute;
-      inset: 0;
-      z-index: -1;
-      opacity: .16;
-      background-image: linear-gradient(rgba(255,255,255,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.13) 1px, transparent 1px);
-      background-size: 84px 84px;
-      mask-image: linear-gradient(to bottom, black, transparent 82%);
-    }
-    .hero-inner {
-      width: var(--page);
-      margin: 0 auto;
-      padding: 160px 0 52px;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 260px;
-      align-items: end;
-      gap: 48px;
-    }
-    .eyebrow {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 28px;
-      font: 400 10px/1.3 var(--mono);
-      letter-spacing: .16em;
-      text-transform: uppercase;
-      color: var(--paper-dim);
-    }
-    .eyebrow::before { content: ""; width: 42px; height: 1px; background: currentColor; }
-    .hero h1 {
-      max-width: 1020px;
-      font-size: clamp(61px, 9.1vw, 154px);
-      line-height: .79;
-      letter-spacing: -.075em;
-      text-transform: uppercase;
-      font-weight: 500;
-    }
-    .hero h1 .serif {
-      display: block;
-      font-family: var(--serif);
-      font-weight: 400;
-      font-style: italic;
-      letter-spacing: -.055em;
-      color: var(--paper);
-      text-transform: none;
-    }
-    .mobile-break { display: none; }
-    .hero-side { padding-bottom: 6px; }
-    .hero-side p {
-      color: var(--paper-dim);
-      font-size: 13px;
-      max-width: 240px;
-    }
-    .hero-index {
-      margin-top: 34px;
-      padding-top: 15px;
-      border-top: 1px solid var(--line-dark);
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 14px;
-      font: 300 10px/1.5 var(--mono);
-      letter-spacing: .09em;
-      text-transform: uppercase;
-      color: var(--muted-dark);
-    }
-    .scroll-note {
-      position: absolute;
-      right: 26px;
-      bottom: 42%;
-      font: 300 9px/1 var(--mono);
-      letter-spacing: .18em;
-      text-transform: uppercase;
-      writing-mode: vertical-rl;
-      color: rgba(255,255,255,.6);
-    }
-
-    .prologue {
-      background: var(--paper);
-      color: var(--black);
-      padding: 160px 0 140px;
-    }
-    .section-shell { width: var(--page); margin: 0 auto; }
-    .section-label {
-      display: grid;
-      grid-template-columns: 160px 1fr auto;
-      align-items: center;
-      gap: 24px;
-      margin-bottom: 88px;
-      font: 400 10px/1 var(--mono);
-      letter-spacing: .16em;
-      text-transform: uppercase;
-      color: var(--muted-light);
-    }
-    .section-label::after { content: ""; height: 1px; background: var(--line-light); grid-column: 2; grid-row: 1; }
-    .section-label span:last-child { grid-column: 3; }
-    .prologue-quote {
-      width: min(1160px, 94%);
-      font: 400 clamp(46px, 6.2vw, 102px)/.96 var(--serif);
-      letter-spacing: -.035em;
-    }
-    .prologue-quote em { color: #7c705d; }
-    .prologue-foot {
-      margin-top: 88px;
-      margin-left: auto;
-      width: min(440px, 100%);
-      display: grid;
-      grid-template-columns: 34px 1fr;
-      gap: 16px;
-      color: var(--muted-light);
-      font-size: 13px;
-    }
-    .prologue-foot strong { color: var(--black); font: 500 11px/1 var(--mono); }
-
-    .manifesto { padding: 150px 0; background: var(--black); }
-    .manifesto-grid {
-      display: grid;
-      grid-template-columns: minmax(300px, .8fr) minmax(0, 1.35fr);
-      gap: clamp(50px, 9vw, 150px);
-      align-items: start;
-    }
-    .manifesto-sticky { position: sticky; top: 110px; }
-    .manifesto-sticky .kicker {
-      font: 400 10px/1 var(--mono);
-      letter-spacing: .15em;
-      text-transform: uppercase;
-      color: var(--ember);
-    }
-    .manifesto-sticky h2 {
-      margin-top: 24px;
-      font: 400 clamp(58px, 6vw, 100px)/.88 var(--serif);
-      letter-spacing: -.035em;
-    }
-    .manifesto-sticky p {
-      max-width: 390px;
-      margin-top: 36px;
-      color: var(--muted-dark);
-      font-size: 14px;
-    }
-    .manifesto-list { border-top: 1px solid var(--line-dark); }
-    .manifesto-item {
-      display: grid;
-      grid-template-columns: 70px 1fr;
-      gap: 20px;
-      padding: 42px 0 46px;
-      border-bottom: 1px solid var(--line-dark);
-    }
-    .manifesto-item .num { font: 300 10px/1 var(--mono); color: var(--ember); }
-    .manifesto-item h3 { font: 500 clamp(26px, 3vw, 46px)/1 var(--sans); letter-spacing: -.045em; }
-    .manifesto-item p { max-width: 600px; margin-top: 18px; color: var(--muted-dark); font-size: 13px; }
-
-    .sanctuary {
-      min-height: 880px;
-      position: relative;
-      display: grid;
-      align-items: end;
-      overflow: hidden;
-      background: var(--black);
-      isolation: isolate;
-    }
-    .sanctuary::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      z-index: -2;
-      background: url("/assets/hallow-sanctuary.jpg") 72% center / cover no-repeat;
-      filter: saturate(.7) contrast(1.05);
-    }
-    .sanctuary::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      z-index: -1;
-      background: linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.18) 50%, rgba(0,0,0,.92));
-    }
-    .sanctuary-title {
-      width: var(--page);
-      margin: 0 auto;
-      padding-bottom: 55px;
-      display: grid;
-      grid-template-columns: 1fr auto;
-      align-items: end;
-      gap: 30px;
-    }
-    .sanctuary-title h2 {
-      max-width: 1000px;
-      font: 400 clamp(62px, 8.5vw, 145px)/.78 var(--serif);
-      letter-spacing: -.045em;
-    }
-    .sanctuary-title p { width: 230px; color: var(--paper-dim); font-size: 12px; }
-
-    .system { background: var(--paper); color: var(--black); padding: 150px 0 170px; }
-    .system-head {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 410px;
-      align-items: end;
-      gap: 70px;
-      margin-bottom: 90px;
-    }
-    .system-head h2 { font: 400 clamp(64px, 8vw, 128px)/.8 var(--serif); letter-spacing: -.04em; }
-    .system-head p { color: var(--muted-light); font-size: 14px; }
-    .runtime-map {
-      position: relative;
-      min-height: 610px;
-      border: 1px solid var(--line-light);
-      background:
-        radial-gradient(circle at 50% 50%, rgba(200,168,106,.18), transparent 20%),
-        linear-gradient(rgba(0,0,0,.06) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,0,0,.06) 1px, transparent 1px),
-        var(--paper-bright);
-      background-size: auto, 48px 48px, 48px 48px, auto;
-      display: grid;
-      place-items: center;
-      overflow: hidden;
-    }
-    .runtime-map::before, .runtime-map::after {
-      content: "";
-      position: absolute;
-      inset: 50% auto auto 50%;
-      border: 1px solid rgba(9,9,8,.2);
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-    }
-    .runtime-map::before { width: 330px; height: 330px; }
-    .runtime-map::after { width: 500px; height: 500px; border-style: dashed; animation: rotate 45s linear infinite; }
-    .core-node {
-      position: relative;
-      z-index: 3;
-      width: 172px;
-      aspect-ratio: 1;
-      display: grid;
-      place-items: center;
-      border-radius: 50%;
-      background: var(--black);
-      color: var(--paper-bright);
-      box-shadow: 0 25px 70px rgba(0,0,0,.22);
-      font: 500 11px/1 var(--mono);
-      letter-spacing: .16em;
-    }
-    .orbit-node {
-      position: absolute;
-      z-index: 4;
-      min-width: 148px;
-      padding: 18px;
-      border: 1px solid var(--line-light);
-      background: rgba(244,241,233,.86);
-      backdrop-filter: blur(9px);
-      font: 500 10px/1.35 var(--mono);
-      letter-spacing: .1em;
-      text-transform: uppercase;
-    }
-    .orbit-node small { display: block; margin-top: 8px; color: var(--muted-light); font-size: 9px; }
-    .node-memory { top: 11%; left: 13%; }
-    .node-models { top: 14%; right: 12%; }
-    .node-tools { bottom: 13%; left: 11%; }
-    .node-heal { bottom: 10%; right: 13%; }
-    .map-caption {
-      position: absolute;
-      left: 22px;
-      bottom: 20px;
-      font: 300 9px/1.5 var(--mono);
-      color: var(--muted-light);
-      text-transform: uppercase;
-      letter-spacing: .1em;
-    }
-
-    .chapters { background: var(--black); padding: 150px 0; }
-    .chapters-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: end;
-      gap: 60px;
-      margin-bottom: 75px;
-    }
-    .chapters-head h2 { font: 400 clamp(60px, 7vw, 116px)/.83 var(--serif); letter-spacing: -.04em; }
-    .chapters-head p { max-width: 390px; color: var(--muted-dark); font-size: 13px; }
-    .chapter-grid { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line-dark); border-left: 1px solid var(--line-dark); }
-    .chapter {
-      min-height: 470px;
-      position: relative;
-      padding: 30px;
-      border-right: 1px solid var(--line-dark);
-      border-bottom: 1px solid var(--line-dark);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      isolation: isolate;
-    }
-    .chapter::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      z-index: -2;
-      background: url("/assets/hallow-sanctuary.jpg") center / cover no-repeat;
-      opacity: 0;
-      transform: scale(1.08);
-      transition: opacity 550ms ease, transform 800ms cubic-bezier(.2,.7,.2,1);
-    }
-    .chapter:nth-child(2)::before { background-position: 66% center; }
-    .chapter:nth-child(3)::before { background-position: 92% center; }
-    .chapter::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      z-index: -1;
-      background: linear-gradient(180deg, rgba(9,9,8,.3), rgba(9,9,8,.92));
-      opacity: 0;
-      transition: opacity 400ms ease;
-    }
-    .chapter:hover::before, .chapter:hover::after { opacity: 1; }
-    .chapter:hover::before { transform: scale(1); }
-    .chapter-num { font: 300 10px/1 var(--mono); color: var(--ember); }
-    .chapter h3 { font: 400 clamp(38px, 4vw, 65px)/.88 var(--serif); letter-spacing: -.03em; }
-    .chapter p { max-width: 320px; margin-top: 18px; color: var(--muted-dark); font-size: 12px; }
-    .chapter-arrow {
-      width: 40px;
-      height: 40px;
-      border: 1px solid var(--line-dark);
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      align-self: end;
-      transition: background 250ms ease, color 250ms ease, transform 250ms ease;
-    }
-    .chapter:hover .chapter-arrow { background: var(--paper-bright); color: var(--black); transform: rotate(45deg); }
-
-    .proof { background: var(--paper); color: var(--black); padding: 145px 0; }
-    .proof-title { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: end; margin-bottom: 85px; }
-    .proof-title h2 { font: 400 clamp(64px, 8vw, 128px)/.8 var(--serif); letter-spacing: -.045em; }
-    .proof-title p { max-width: 390px; justify-self: end; color: var(--muted-light); font-size: 13px; }
-    .proof-grid { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line-light); border-left: 1px solid var(--line-light); }
-    .proof-item { min-height: 210px; padding: 25px; border-right: 1px solid var(--line-light); border-bottom: 1px solid var(--line-light); display: flex; flex-direction: column; justify-content: space-between; }
-    .proof-item strong { font: 400 clamp(50px, 5vw, 82px)/1 var(--serif); letter-spacing: -.04em; }
-    .proof-item span { max-width: 150px; font: 400 10px/1.5 var(--mono); letter-spacing: .11em; text-transform: uppercase; color: var(--muted-light); }
-
-    .install {
-      position: relative;
-      overflow: hidden;
-      background: #0b0b0a;
-      padding: 150px 0 130px;
-    }
-    .install::before {
-      content: "";
-      position: absolute;
-      width: 780px;
-      height: 780px;
-      right: -240px;
-      top: -260px;
-      border: 1px solid rgba(200,168,106,.22);
-      border-radius: 50%;
-      box-shadow: 0 0 120px rgba(200,168,106,.08) inset;
-    }
-    .install-layout { display: grid; grid-template-columns: .9fr 1.1fr; gap: clamp(60px, 10vw, 170px); align-items: start; }
-    .install-copy .section-mini { font: 400 10px/1 var(--mono); letter-spacing: .15em; text-transform: uppercase; color: var(--ember); }
-    .install-copy h2 { margin-top: 30px; font: 400 clamp(69px, 8vw, 132px)/.78 var(--serif); letter-spacing: -.045em; }
-    .install-copy p { max-width: 410px; margin-top: 34px; color: var(--muted-dark); font-size: 14px; }
-    .command-stack { border-top: 1px solid var(--line-dark); }
-    .command {
-      padding: 25px 0 28px;
-      border-bottom: 1px solid var(--line-dark);
-    }
-    .command-head { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 17px; }
-    .command-label { font: 400 9px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ember); }
-    .copy-btn {
-      border: 1px solid var(--line-dark);
-      border-radius: 99px;
-      background: transparent;
-      padding: 8px 12px;
-      font: 400 9px/1 var(--mono);
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: background 200ms ease, color 200ms ease;
-    }
-    .copy-btn:hover, .copy-btn.copied { background: var(--paper-bright); color: var(--black); }
-    .command code {
-      display: block;
-      color: var(--paper-bright);
-      font: 300 12px/1.75 var(--mono);
-      overflow-wrap: anywhere;
-    }
-    .install-actions { margin-top: 30px; display: flex; gap: 12px; flex-wrap: wrap; }
-    .pill {
-      min-height: 50px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      border: 1px solid var(--line-dark);
-      border-radius: 99px;
-      padding: 10px 20px;
-      font: 500 10px/1 var(--mono);
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      transition: background 220ms ease, color 220ms ease, transform 220ms ease;
-    }
-    .pill:hover { background: var(--paper-bright); color: var(--black); transform: translateY(-2px); }
-    .pill.primary { background: var(--paper-bright); color: var(--black); }
-    .pill.primary:hover { background: var(--ember); }
-
-    .finale {
-      min-height: 82svh;
-      position: relative;
-      display: grid;
-      place-items: center;
-      text-align: center;
-      overflow: hidden;
-      isolation: isolate;
-    }
-    .finale::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      z-index: -2;
-      background: url("/assets/hallow-sanctuary.jpg") center 58% / cover no-repeat;
-      transform: scale(1.03);
-    }
-    .finale::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      z-index: -1;
-      background: rgba(0,0,0,.65);
-      backdrop-filter: grayscale(1);
-    }
-    .finale-inner { width: min(1050px, calc(100vw - 42px)); }
-    .finale small { font: 400 10px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--ember); }
-    .finale h2 { margin-top: 27px; font: 400 clamp(74px, 10vw, 172px)/.75 var(--serif); letter-spacing: -.055em; }
-    .finale p { max-width: 500px; margin: 36px auto 0; color: var(--paper-dim); font-size: 13px; }
-    .finale .pill { margin-top: 36px; }
-
-    footer { background: var(--black); border-top: 1px solid var(--line-dark); }
-    .footer-inner {
-      width: var(--page);
-      min-height: 104px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      gap: 30px;
-      font: 300 9px/1.5 var(--mono);
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: var(--muted-dark);
-    }
-    .footer-inner span:last-child { justify-self: end; }
-    .footer-links { display: flex; gap: 24px; }
-    .footer-links a:hover { color: var(--paper-bright); }
-
-    .js [data-reveal] { opacity: 0; transform: translateY(36px); transition: opacity 850ms ease, transform 850ms cubic-bezier(.16,1,.3,1); }
-    .js [data-reveal].in-view { opacity: 1; transform: translateY(0); }
-    .js [data-reveal-delay="1"] { transition-delay: 100ms; }
-    .js [data-reveal-delay="2"] { transition-delay: 200ms; }
-    .js [data-reveal-delay="3"] { transition-delay: 300ms; }
-
-    @keyframes rotate { to { transform: rotate(360deg); } }
-    @keyframes pulse { 50% { opacity: .4; box-shadow: 0 0 0 9px rgba(217,189,130,0); } }
-
-    @media (max-width: 980px) {
-      :root { --page: min(calc(100% - 34px), 900px); }
-      .nav-inner { grid-template-columns: 1fr 1fr; }
-      .nav-links, .nav-meta { display: none; }
-      .menu-toggle { display: none !important; }
-      .mobile-cta {
-        display: inline-flex !important;
-        align-items: center;
-        justify-content: center;
-        position: fixed;
-        top: 17px;
-        right: 17px;
-        z-index: 105;
-        min-width: 64px;
-        border: 1px solid var(--paper-bright);
-        border-radius: 999px;
-        padding: 10px 12px;
-        background: var(--paper-bright);
-        color: var(--black);
-        backdrop-filter: blur(10px);
-        font: 400 9px/1 var(--mono);
-        letter-spacing: .12em;
-        text-transform: uppercase;
-      }
-      .nav-links.open {
-        position: fixed;
-        inset: 0;
-        z-index: -1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: flex-start;
-        gap: 25px;
-        padding: 90px 30px 40px;
-        background: rgba(9,9,8,.98);
-      }
-      .nav-links.open a { font: 400 48px/.9 var(--serif); letter-spacing: -.03em; text-transform: none; }
-      .hero-inner { grid-template-columns: 1fr; }
-      .hero-side { width: min(360px, 100%); margin-left: auto; }
-      .scroll-note { display: none; }
-      .manifesto-grid, .system-head, .install-layout { grid-template-columns: 1fr; }
-      .manifesto-sticky { position: static; }
-      .sanctuary-title { grid-template-columns: 1fr; }
-      .sanctuary-title p { width: min(400px, 100%); }
-      .chapter-grid { grid-template-columns: 1fr; }
-      .chapter { min-height: 360px; }
-      .proof-grid { grid-template-columns: repeat(2, 1fr); }
-      .footer-inner { grid-template-columns: 1fr auto; padding: 24px 0; }
-      .footer-links { grid-column: 1 / -1; grid-row: 1; }
-      .footer-inner span:nth-child(1) { grid-row: 2; }
-      .footer-inner span:last-child { grid-row: 2; }
-    }
-
-    @media (max-width: 640px) {
-      :root { --page: calc(100vw - 28px); }
-      .nav { height: 68px; }
-      .brand { font-size: 11px; }
-      .hero { min-height: 820px; }
-      .hero::before { background-position: 66% center; }
-      .hero::after { background: linear-gradient(180deg, rgba(5,5,5,.3), rgba(5,5,5,.35) 40%, rgba(5,5,5,.93)); }
-      .hero-inner { padding: 120px 0 30px; gap: 55px; }
-      .hero h1 { font-size: clamp(52px, 16vw, 78px); line-height: .82; }
-      .mobile-break { display: inline; }
-      .hero-side { margin-left: 0; }
-      .prologue, .manifesto, .system, .chapters, .proof, .install { padding: 100px 0; }
-      .section-label { grid-template-columns: auto 1fr auto; margin-bottom: 58px; }
-      .prologue-quote { width: 100%; font-size: clamp(43px, 13vw, 68px); }
-      .prologue-foot { margin-top: 60px; }
-      .manifesto-item { grid-template-columns: 45px 1fr; padding: 32px 0; }
-      .sanctuary { min-height: 700px; }
-      .sanctuary::before { background-position: 72% center; }
-      .system-head { gap: 32px; margin-bottom: 56px; }
-      .runtime-map { min-height: 580px; }
-      .runtime-map::before { width: 220px; height: 220px; }
-      .runtime-map::after { width: 360px; height: 360px; }
-      .core-node { width: 130px; }
-      .orbit-node { min-width: 118px; padding: 12px; font-size: 8px; }
-      .node-memory { left: 4%; }
-      .node-models { right: 4%; }
-      .node-tools { left: 4%; }
-      .node-heal { right: 4%; }
-      .chapters-head, .proof-title { display: grid; grid-template-columns: 1fr; gap: 28px; }
-      .proof-title p { justify-self: start; }
-      .proof-grid { grid-template-columns: 1fr 1fr; }
-      .proof-item { min-height: 160px; padding: 18px; }
-      .command code { font-size: 10px; }
-      .finale { min-height: 720px; }
-      .finale::before { background-position: 72% center; }
-      .footer-inner { grid-template-columns: 1fr; gap: 14px; }
-      .footer-links { flex-wrap: wrap; }
-      .footer-inner span:nth-child(1), .footer-inner span:last-child { grid-row: auto; justify-self: start; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      html { scroll-behavior: auto; }
-      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-      .hero::before { transform: scale(1.06); }
-    }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/vendor/lenis.css">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" as="image" href="/assets/hallow-portal.jpg" fetchpriority="high">
+  <script>document.documentElement.className='js';</script>
 </head>
 <body>
-  <script>document.documentElement.classList.add('js');</script>
   <a class="skip-link" href="#main">Skip to content</a>
   <div class="grain" aria-hidden="true"></div>
-  <div class="progress" aria-hidden="true"></div>
-  <div class="loader" aria-hidden="true">
-    <div class="loader-mark"><span class="loader-ring"></span><span>Initializing Hallow / 001</span></div>
+  <div class="cursor" aria-hidden="true"><span></span></div>
+  <div class="preloader" data-preloader aria-live="polite">
+    <div class="preloader-grid" aria-hidden="true"></div>
+    <div class="preloader-mark"><span class="eyebrow">Local runtime / Initializing</span><strong class="wordmark wordmark-large">HALLOW</strong></div>
+    <div class="preloader-foot"><span>Private by default</span><span data-load-percent>00%</span></div>
   </div>
-
-  <header class="nav" data-nav>
-    <div class="nav-inner">
-      <a class="brand" href="#top" aria-label="Hallow home"><span class="brand-mark" aria-hidden="true"></span><span>Hallow / 001</span></a>
-      <a class="mobile-cta" href="#install">Install ↓</a>
-      <nav class="nav-links" data-menu aria-label="Primary navigation">
-        <a href="#manifesto">Manifesto</a>
-        <a href="#system">System</a>
-        <a href="#capabilities">Capabilities</a>
-        <a href="#install">Install</a>
-        <a href="/docs">Docs</a>
-      </nav>
-      <div class="nav-meta"><span class="live-dot" aria-hidden="true"></span><span>Local runtime ready</span></div>
-      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" data-menu-toggle>Menu</button>
-    </div>
+  <header class="site-header" data-header>
+    <button class="menu-button magnetic" type="button" aria-label="Open menu" aria-expanded="false" data-menu-open><i></i><span>Menu</span></button>
+    <a class="wordmark" href="#top" aria-label="Hallow home">HALLOW</a>
+    <nav class="header-actions" aria-label="Primary"><a href="/docs">Docs</a><a href="https://github.com/Hallow-agent/Hallow" target="_blank" rel="noreferrer">GitHub</a><button class="install-mini magnetic" type="button" data-install-open>Install 001</button></nav>
   </header>
-
+  <div class="menu-overlay" data-menu inert>
+    <div class="menu-backdrop"></div>
+    <div class="menu-panel">
+      <button class="menu-close magnetic" type="button" aria-label="Close menu" data-menu-close>Close <b>×</b></button>
+      <p class="eyebrow">Navigate the system</p>
+      <nav class="menu-links" aria-label="Site sections">
+        <a href="#origin"><sup>01</sup> Origin</a><a href="#architecture"><sup>02</sup> Architecture</a><a href="#capabilities"><sup>03</sup> Capabilities</a><a href="#packages"><sup>04</sup> Surfaces</a><a href="#roadmap"><sup>05</sup> Roadmap</a><a href="#install"><sup>06</sup> Install</a>
+      </nav>
+      <div class="menu-meta"><span>Hallow 001</span><span>Open source / MIT</span><span>Runs on your machine</span></div>
+    </div>
+  </div>
   <main id="main">
-    <section class="hero" id="top" aria-labelledby="hero-title">
-      <div class="hero-grid" aria-hidden="true"></div>
-      <div class="hero-inner">
-        <div>
-          <p class="eyebrow" data-reveal>Private intelligence / on your machine</p>
-          <h1 id="hero-title" data-reveal data-reveal-delay="1">The agent <span class="serif">runtime lives<br class="mobile-break"> here.</span></h1>
-        </div>
-        <div class="hero-side" data-reveal data-reveal-delay="2">
-          <p>Memory, models, tools, skills, and self-healing loops—held inside a runtime you can inspect and own.</p>
-          <div class="hero-index"><span>Hallow Agent OS</span><span>001</span><span>Local-first architecture</span><span>2026</span></div>
-        </div>
-      </div>
-      <span class="scroll-note">Scroll to enter</span>
-    </section>
-
-    <section class="prologue" id="manifesto">
-      <div class="section-shell">
-        <div class="section-label" data-reveal><span>01 / Prologue</span><span>Hallow identity</span></div>
-        <p class="prologue-quote" data-reveal>“Intelligence should not live somewhere you cannot see. It should begin <em>where you are</em>, remember with permission, and evolve without surrendering control.”</p>
-        <div class="prologue-foot" data-reveal>
-          <strong>001</strong>
-          <p>Hallow is a local-first agent operating system: a private foundation for autonomous work, not another cloud dashboard that owns the context.</p>
-        </div>
+    <section class="hero-scroll theme-dark" id="top" data-header-theme="dark">
+      <div class="hero-stage">
+        <div class="webgl-fallback hero-fallback" style="--scene:url('/assets/hallow-portal.jpg')"></div>
+        <canvas class="webgl-scene" data-webgl="/assets/hallow-portal.jpg" data-scene="hero" aria-hidden="true"></canvas>
+        <div class="hero-shade"></div>
+        <div class="hero-kicker eyebrow">Open-source agent infrastructure</div>
+        <h1 class="hero-title"><span>H</span><span>A</span><span>L</span><span>L</span><span>O</span><span>W</span></h1>
+        <div class="hero-meta hero-meta-left"><span>Development</span><strong>By the open web</strong></div>
+        <div class="hero-meta hero-meta-center"><span>Local-first</span><strong>Agent operating system</strong></div>
+        <div class="hero-meta hero-meta-right"><span>Release</span><strong>001 / Public preview</strong></div>
+        <button class="orbit-cta magnetic" type="button" data-install-open><span>Install<br>Hallow</span><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="47"/><path d="M37 50h26M56 43l7 7-7 7"/></svg></button>
+        <div class="hero-progress" aria-hidden="true"><i></i><span>Scroll to enter</span></div>
+        <button class="scene-tour" type="button" data-tour-open><i></i><span>Atmosphere<br>film</span></button>
       </div>
     </section>
-
-    <section class="manifesto">
-      <div class="section-shell manifesto-grid">
-        <div class="manifesto-sticky" data-reveal>
-          <span class="kicker">Designed around trust</span>
-          <h2>Your machine.<br>Your memory.<br>Your agents.</h2>
-          <p>A small surface with a serious runtime underneath. Every action leaves evidence. Every capability has a boundary.</p>
-        </div>
-        <div class="manifesto-list">
-          <article class="manifesto-item" data-reveal><span class="num">01</span><div><h3>Private by architecture</h3><p>State begins locally. Memory, traces, credentials, approvals, and workspace artifacts stay inside the Hallow home you control.</p></div></article>
-          <article class="manifesto-item" data-reveal><span class="num">02</span><div><h3>Built to be inspected</h3><p>Readiness reports, security audits, trace evidence, package signatures, and permission queues turn agent behavior into something visible.</p></div></article>
-          <article class="manifesto-item" data-reveal><span class="num">03</span><div><h3>Free to choose models</h3><p>Route across OpenAI-compatible APIs, specialized providers, Ollama, LM Studio, vLLM, or your own endpoint.</p></div></article>
-          <article class="manifesto-item" data-reveal><span class="num">04</span><div><h3>Made to improve</h3><p>Failed and low-quality runs become scored repair candidates, memory updates, and reusable skills—not forgotten terminal output.</p></div></article>
-        </div>
+    <section class="prologue theme-ivory" id="origin" data-header-theme="light">
+      <div class="section-index"><span>01</span><span>Prologue</span></div>
+      <div class="prologue-orbit" aria-hidden="true"><div></div><span>Private</span><span>Durable</span><span>Inspectable</span></div>
+      <blockquote data-reveal-text>“An agent should not borrow a memory it cannot own, use a tool it cannot explain, or make a decision you cannot inspect.”</blockquote>
+      <div class="prologue-foot"><p>Hallow turns that principle into a runtime on your machine.</p><button class="text-link" type="button" data-install-open>Begin locally <span>↗</span></button></div>
+    </section>
+    <section class="about theme-ivory" id="architecture" data-header-theme="light">
+      <div class="section-index"><span>02</span><span>Hallow / About</span></div>
+      <div class="about-grid">
+        <div class="about-title"><span class="eyebrow">A place for agents to live</span><h2>Not another<br><em>chat window.</em></h2></div>
+        <div class="about-copy"><p>Hallow installs a private operating layer for autonomous agents: memory, permissions, tools, models, gateways, traces, and repair loops—organized as one local system.</p><a class="round-link magnetic" href="/docs"><span>Explore<br>the docs</span><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="30"/><path d="M23 32h18m-6-6 6 6-6 6"/></svg></a></div>
+        <div class="about-visual"><div class="webgl-fallback" style="--scene:url('/assets/operator-room.jpg')"></div><canvas class="webgl-scene" data-webgl="/assets/operator-room.jpg" data-scene="quiet" aria-hidden="true"></canvas><span class="visual-note">Operator room / local machine</span></div>
       </div>
     </section>
-
-    <section class="sanctuary" aria-labelledby="sanctuary-heading">
-      <div class="sanctuary-title">
-        <h2 id="sanctuary-heading" data-reveal>A place for agents to become capable.</h2>
-        <p data-reveal data-reveal-delay="1">Not a destination in the cloud. A durable runtime that travels with its operator.</p>
+    <section class="world-image theme-dark" data-header-theme="dark">
+      <img src="/assets/hallow-sanctuary.jpg" alt="A monumental dark sanctuary representing the Hallow runtime" loading="lazy">
+      <div class="world-caption"><span>The runtime becomes architecture.</span><strong>Memory below.<br>Agency above.</strong></div><div class="scan-rule" aria-hidden="true"></div>
+    </section>
+    <section class="runtime-map theme-dark" data-header-theme="dark">
+      <div class="section-index"><span>03</span><span>Where the agents meet</span></div>
+      <div class="map-heading"><h2>Your machine is<br>the <em>place of power.</em></h2><p>One runtime joins the surfaces that agent projects usually leave scattered.</p></div>
+      <div class="map-canvas" data-map>
+        <svg viewBox="0 0 1200 620" role="img" aria-label="Hallow runtime architecture map">
+          <defs><filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+          <path class="map-line" d="M90 320C250 90 385 535 560 305S910 105 1110 310"/><path class="map-line thin" d="M90 320C325 410 405 55 600 300S915 540 1110 310"/>
+          <circle class="map-core" cx="600" cy="300" r="96"/><circle class="map-pulse" cx="600" cy="300" r="13" filter="url(#glow)"/>
+          <g class="map-node" transform="translate(150 247)"><circle r="8"/><text y="-24">MEMORY</text></g><g class="map-node" transform="translate(370 185)"><circle r="8"/><text y="-24">TOOLS / MCP</text></g><g class="map-node" transform="translate(600 300)"><circle r="8"/><text y="-24">HALLOW CORE</text></g><g class="map-node" transform="translate(824 188)"><circle r="8"/><text y="-24">MODEL ROUTES</text></g><g class="map-node" transform="translate(1030 350)"><circle r="8"/><text y="-24">GATEWAYS</text></g>
+        </svg>
+        <div class="map-readout"><span>Runtime state</span><strong>~/.hallow/</strong><i>Local / encrypted-ready / yours</i></div>
+      </div>
+      <div class="map-stats"><article><strong>01</strong><span>Install to enter</span></article><article><strong>05</strong><span>Runtime surfaces</span></article><article><strong>08+</strong><span>Model route profiles</span></article><article><strong>∞</strong><span>Agents you can define</span></article></div>
+    </section>
+    <section class="modes theme-dark" data-header-theme="dark" data-modes>
+      <div class="modes-sticky">
+        <video class="modes-video" muted loop playsinline preload="metadata" poster="/assets/autonomy-repair.jpg"><source src="/assets/fog-atmosphere.webm" type="video/webm"></video><div class="modes-overlay"></div>
+        <div class="mode-copy is-active" data-mode-copy="0"><span class="eyebrow">Hold and move / 01</span><h2>Keep the private<br><em>things private.</em></h2><p>Memory, traces, package metadata and operator artifacts begin on your machine—not inside somebody else’s account.</p></div>
+        <div class="mode-copy" data-mode-copy="1"><span class="eyebrow">Hold and move / 02</span><h2>Open only<br><em>the lanes you choose.</em></h2><p>Pair gateways, filter MCP tools, route models, and apply approval policy without giving up the local source of truth.</p></div>
+        <div class="mode-switch" aria-hidden="true"><span>Local</span><i><b></b></i><span>Connected</span></div>
       </div>
     </section>
+    <section class="capabilities theme-ivory" id="capabilities" data-header-theme="light">
+      <div class="cap-intro"><div class="section-index"><span>04</span><span>Uniqueness</span></div><h2>Why Hallow<br><em>holds together.</em></h2><p>Drag, scroll, or use the arrows to travel through the runtime.</p></div>
+      <div class="cap-viewport"><div class="cap-track" data-cap-track>
+        <article class="cap-card cap-cover"><span class="cap-no">00</span><h3>The system<br>behind the agent.</h3><p>Five foundational chambers. One inspectable runtime.</p><span class="drag-hint">Hold &amp; move →</span></article>
+        <article class="cap-card"><img src="/assets/memory-vault.jpg" alt="A monumental illuminated memory archive" loading="lazy"><div class="cap-shade"></div><div class="cap-label"><span>01 / Memory vault</span><h3>Remember without<br>leaving home.</h3><p>SQLite, JSONL, Markdown, vector index, memory tree, and Obsidian-style export.</p></div></article>
+        <article class="cap-card"><img src="/assets/tool-gateway.jpg" alt="A secure architectural tool-routing chamber" loading="lazy"><div class="cap-shade"></div><div class="cap-label"><span>02 / Tool gateway</span><h3>Power with<br>boundaries.</h3><p>Register MCP over stdio or HTTP, filter tools, require approvals, and keep an evidence trail.</p></div></article>
+        <article class="cap-card"><img src="/assets/model-orbit.jpg" alt="A circular routing observatory" loading="lazy"><div class="cap-shade"></div><div class="cap-label"><span>03 / Model routing</span><h3>One intent.<br>Many minds.</h3><p>Route across cloud-compatible APIs, local Ollama, LM Studio, vLLM, and fallback profiles.</p></div></article>
+        <article class="cap-card"><img src="/assets/autonomy-repair.jpg" alt="Self-repairing monoliths in a misty landscape" loading="lazy"><div class="cap-shade"></div><div class="cap-label"><span>04 / Autonomy</span><h3>Loops that learn<br>from failure.</h3><p>Runs become traces, quality signals, reflection drafts, repair candidates, and deliberate promotion decisions.</p></div></article>
+        <article class="cap-card"><img src="/assets/operator-room.jpg" alt="A private operator room overlooking mountains" loading="lazy"><div class="cap-shade"></div><div class="cap-label"><span>05 / Operator shell</span><h3>See what it did.<br>Decide what’s next.</h3><p>CLI, desktop shell, local docs, HTTP API, readiness checks, and security audit.</p></div></article>
+      </div><div class="cap-counter"><span data-cap-current>00</span><i></i><span>05</span></div></div>
+    </section>
+    <section class="packages theme-ivory" id="packages" data-header-theme="light">
+      <div class="section-index"><span>05</span><span>Runtime surfaces</span></div>
+      <div class="packages-head"><h2>Choose your<br><em>way inside.</em></h2><p>Every surface talks to the same local runtime state.</p></div>
+      <div class="package-tabs" role="tablist" aria-label="Hallow surfaces"><button type="button" class="is-active" role="tab" aria-selected="true" data-package-tab="cli">CLI</button><button type="button" role="tab" aria-selected="false" data-package-tab="desktop">Desktop</button><button type="button" role="tab" aria-selected="false" data-package-tab="api">HTTP API</button></div>
+      <div class="package-stage">
+        <article class="package-panel is-active" data-package-panel="cli"><div class="package-copy"><span class="eyebrow">Surface / Command line</span><h3>Fast enough for builders.<br>Clear enough for operators.</h3><p>Install, diagnose, create agents, discover MCP, inspect model health, audit security, and run autonomy loops from one launcher.</p><ul><li>Global <code>hallow</code> command</li><li>Doctor + readiness evidence</li><li>Windows, macOS, and Linux scripts</li></ul></div><div class="terminal-window"><div class="terminal-bar"><i></i><i></i><i></i><span>hallow — local</span></div><pre><b>$</b> hallow readiness
 
-    <section class="system" id="system">
-      <div class="section-shell">
-        <div class="section-label" data-reveal><span>02 / System</span><span>Runtime anatomy</span></div>
-        <div class="system-head">
-          <h2 data-reveal>One core.<br>Many lanes.</h2>
-          <p data-reveal data-reveal-delay="1">Hallow brings isolated capabilities into one governed system. The agent can remember, choose a model, discover a tool, execute a skill, and record the result through the same local boundary.</p>
-        </div>
-        <div class="runtime-map" data-reveal role="img" aria-label="Diagram of Hallow runtime capabilities">
-          <div class="core-node">HALLOW</div>
-          <div class="orbit-node node-memory">Memory vault<small>private / indexed</small></div>
-          <div class="orbit-node node-models">Model routes<small>local / cloud</small></div>
-          <div class="orbit-node node-tools">MCP tools<small>filtered / audited</small></div>
-          <div class="orbit-node node-heal">Self repair<small>scored / promoted</small></div>
-          <div class="map-caption">Operator boundary / localhost / port 4767</div>
-        </div>
+<span>✓</span> runtime home ........ ready
+<span>✓</span> memory vault ......... ready
+<span>✓</span> model routes ......... configured
+<span>✓</span> security policy ...... active
+
+<strong>HALLOW 001 IS READY</strong></pre></div></article>
+        <article class="package-panel" data-package-panel="desktop" hidden><div class="package-copy"><span class="eyebrow">Surface / Desktop shell</span><h3>A calm room for<br>the local runtime.</h3><p>Open status, tasks, memory, tools, and docs through the browser UI served from your own machine.</p><ul><li>Local browser shell</li><li>Runtime status at a glance</li><li>No hosted account required</li></ul></div><img src="/assets/operator-room.jpg" alt="Hallow operator room concept" loading="lazy"></article>
+        <article class="package-panel" data-package-panel="api" hidden><div class="package-copy"><span class="eyebrow">Surface / HTTP</span><h3>Automate the runtime<br>without hiding it.</h3><p>A local automation surface for readiness, desktop state, tools, memory, models, gateways, and tasks.</p><ul><li>Machine-readable readiness</li><li>Local orchestration hooks</li><li>Policy-aware operations</li></ul></div><div class="api-orbit"><span>tasks</span><span>memory</span><span>models</span><span>tools</span><strong>HTTP<br>LOCAL</strong></div></article>
       </div>
     </section>
-
-    <section class="chapters" id="capabilities">
-      <div class="section-shell">
-        <div class="section-label" data-reveal><span>03 / Capabilities</span><span>Agent infrastructure</span></div>
-        <div class="chapters-head">
-          <h2 data-reveal>From command<br>to continuity.</h2>
-          <p data-reveal data-reveal-delay="1">Hallow is built for work that survives the session: reusable packages, persistent memory, governed tools, and scheduled autonomy.</p>
-        </div>
-        <div class="chapter-grid">
-          <article class="chapter" data-reveal>
-            <span class="chapter-num">01 / MEMORY</span>
-            <div><h3>Remember with structure.</h3><p>SQLite, Markdown, JSONL, semantic indexing, memory trees, and Obsidian-compatible exports.</p></div>
-            <span class="chapter-arrow" aria-hidden="true">↗</span>
-          </article>
-          <article class="chapter" data-reveal data-reveal-delay="1">
-            <span class="chapter-num">02 / TOOLS</span>
-            <div><h3>Act through boundaries.</h3><p>MCP stdio and HTTP servers, approval policy, audit trails, sandbox profiles, and workspace-only access.</p></div>
-            <span class="chapter-arrow" aria-hidden="true">↗</span>
-          </article>
-          <article class="chapter" data-reveal data-reveal-delay="2">
-            <span class="chapter-num">03 / AUTONOMY</span>
-            <div><h3>Improve with evidence.</h3><p>Tasks, schedules, heartbeats, quality scoring, reactive repair, and promotion decisions.</p></div>
-            <span class="chapter-arrow" aria-hidden="true">↗</span>
-          </article>
-        </div>
-      </div>
+    <section class="roadmap theme-dark" id="roadmap" data-header-theme="dark">
+      <div class="roadmap-image"><img src="/assets/autonomy-repair.jpg" alt="Hallow repair towers" loading="lazy"></div><div class="section-index"><span>06</span><span>Construction</span></div><h2>From first signal<br>to durable system.</h2>
+      <div class="roadmap-line"><article class="is-current"><strong>’26</strong><span>001 public preview</span><p>Local runtime, memory, routing, MCP, gateways, verification, and repair commands.</p></article><article><strong>002</strong><span>Native operator shell</span><p>Deeper desktop UX and provider onboarding.</p></article><article><strong>003</strong><span>Hardened isolation</span><p>Stronger process boundaries for untrusted packages.</p></article><article><strong>∞</strong><span>Open agent standard</span><p>A public registry and an ecosystem that remains inspectable.</p></article></div>
     </section>
-
-    <section class="proof">
-      <div class="section-shell">
-        <div class="section-label" data-reveal><span>04 / Proof</span><span>What ships today</span></div>
-        <div class="proof-title"><h2 data-reveal>Less promise.<br>More proof.</h2><p data-reveal data-reveal-delay="1">Concrete commands expose readiness, security, model health, gateway status, memory, tools, and the artifacts behind every run.</p></div>
-        <div class="proof-grid">
-          <div class="proof-item" data-reveal><strong>33</strong><span>runtime doctor checks</span></div>
-          <div class="proof-item" data-reveal data-reveal-delay="1"><strong>15</strong><span>provider definitions</span></div>
-          <div class="proof-item" data-reveal data-reveal-delay="2"><strong>01</strong><span>private runtime home</span></div>
-          <div class="proof-item" data-reveal data-reveal-delay="3"><strong>∞</strong><span>agent and skill packages</span></div>
-        </div>
-      </div>
+    <section class="proof theme-ivory" data-header-theme="light">
+      <div class="section-index"><span>07</span><span>Proof, not promises</span></div><div class="proof-marquee" aria-hidden="true"><span>READINESS / DOCTOR / AUDIT / TRACES / READINESS / DOCTOR / AUDIT / TRACES /</span></div>
+      <div class="proof-grid"><article><span>Runtime home</span><strong>100<sup>%</sup></strong><p>Your state starts in <code>~/.hallow/</code>.</p></article><article><span>Core packages</span><strong data-count="4">0</strong><p>Core, models, runtime, and CLI.</p></article><article><span>Public preview</span><strong>001</strong><p>A real installable build—not a waitlist.</p></article><article><span>License</span><strong>MIT</strong><p>Inspect it. Fork it. Improve it.</p></article></div>
     </section>
-
-    <section class="install" id="install">
-      <div class="section-shell install-layout">
-        <div class="install-copy" data-reveal>
-          <span class="section-mini">05 / Installation</span>
-          <h2>Enter<br>Hallow.</h2>
-          <p>One command installs the runtime, builds the workspace, initializes your private Hallow home, and prepares the local desktop.</p>
-          <div class="install-actions"><a class="pill primary" href="/docs">Read the docs <span>↗</span></a><a class="pill" href="https://github.com/Hallow-agent/Hallow" rel="noreferrer">View source <span>↗</span></a></div>
-        </div>
-        <div class="command-stack" data-reveal data-reveal-delay="1">
-          <div class="command">
-            <div class="command-head"><span class="command-label">Recommended / detected</span><button class="copy-btn" type="button" data-install-copy>Copy</button></div>
-            <code data-install-command>curl -fsSL https://hallow-agent.xyz/install.sh | bash</code>
-          </div>
-          <div class="command">
-            <div class="command-head"><span class="command-label">Windows PowerShell</span><button class="copy-btn" type="button" data-copy="powershell -nop -ep bypass -c &quot;irm https://hallow-agent.xyz/install.ps1|iex&quot;">Copy</button></div>
-            <code>powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"</code>
-          </div>
-          <div class="command">
-            <div class="command-head"><span class="command-label">Launch</span><button class="copy-btn" type="button" data-copy="hallow">Copy</button></div>
-            <code>hallow</code>
-          </div>
-          <div class="command">
-            <div class="command-head"><span class="command-label">Start the runtime</span><button class="copy-btn" type="button" data-copy="hallow start">Copy</button></div>
-            <code>hallow start</code>
-          </div>
-        </div>
-      </div>
+    <section class="developer theme-dark" data-header-theme="dark">
+      <div class="developer-art"><div class="webgl-fallback" style="--scene:url('/assets/tool-gateway.jpg')"></div><canvas class="webgl-scene" data-webgl="/assets/tool-gateway.jpg" data-scene="pulse" aria-hidden="true"></canvas></div>
+      <div class="developer-copy"><div class="section-index"><span>08</span><span>Developer</span></div><h2>Built in public.<br>Owned by no cloud.</h2><p>Hallow is an attempt to make autonomous agents installable, inspectable, and standard. Humans should decide what runs, what leaves the machine, and what becomes public.</p><a class="outline-button magnetic" href="https://github.com/Hallow-agent/Hallow" target="_blank" rel="noreferrer">View repository <span>↗</span></a></div>
     </section>
-
-    <section class="finale">
-      <div class="finale-inner">
-        <small data-reveal>The runtime is yours</small>
-        <h2 data-reveal data-reveal-delay="1">Begin locally.</h2>
-        <p data-reveal data-reveal-delay="2">Build agents that remember, act, recover, and remain accountable to the person running them.</p>
-        <a class="pill primary" href="#install" data-reveal data-reveal-delay="3">Install Hallow <span>↓</span></a>
-      </div>
+    <section class="factoid theme-dark" data-header-theme="dark"><img src="/assets/memory-vault.jpg" alt="The Hallow memory vault" loading="lazy" data-parallax><div class="factoid-shade"></div><p class="eyebrow">A durable memory changes the kind of work an agent can do.</p><h2>Let the machine<br><em>remember.</em></h2><span class="factoid-side">Memory / local / legible</span></section>
+    <section class="gallery theme-dark" id="gallery" data-header-theme="dark">
+      <div class="section-index"><span>09</span><span>Project gallery</span></div><div class="gallery-head"><h2>The world<br>of <em>Hallow.</em></h2><span>Drag to slide</span></div>
+      <div class="gallery-rail" data-drag-rail tabindex="0" aria-label="Hallow visual gallery"><figure><img src="/assets/hallow-portal.jpg" alt="Hallow portal"><figcaption><span>01</span>Portal / origin</figcaption></figure><figure><img src="/assets/memory-vault.jpg" alt="Memory vault"><figcaption><span>02</span>Memory / archive</figcaption></figure><figure><img src="/assets/tool-gateway.jpg" alt="Tool gateway"><figcaption><span>03</span>MCP / lanes</figcaption></figure><figure><img src="/assets/model-orbit.jpg" alt="Model orbit"><figcaption><span>04</span>Models / routing</figcaption></figure><figure><img src="/assets/autonomy-repair.jpg" alt="Autonomy repair towers"><figcaption><span>05</span>Autonomy / repair</figcaption></figure><figure><img src="/assets/operator-room.jpg" alt="Operator room"><figcaption><span>06</span>Operator / control</figcaption></figure></div>
+    </section>
+    <section class="journal theme-ivory" data-header-theme="light">
+      <div class="section-index"><span>10</span><span>Field notes</span></div><div class="journal-head"><h2>Read the<br><em>system.</em></h2><a href="/docs">All documentation ↗</a></div>
+      <div class="journal-grid"><a href="/docs"><span>Guide / Start here</span><h3>Install Hallow 001 and open your first local runtime.</h3><i>Read guide ↗</i></a><a href="https://github.com/Hallow-agent/Hallow/blob/main/BLUEPRINT.md" target="_blank" rel="noreferrer"><span>Blueprint / Architecture</span><h3>Why memory, tools, models, gateways, and security belong together.</h3><i>Read blueprint ↗</i></a><a href="https://github.com/Hallow-agent/Hallow/blob/main/SECURITY.md" target="_blank" rel="noreferrer"><span>Policy / Security</span><h3>Boundaries for packages, tools, secrets, and operator approval.</h3><i>Read policy ↗</i></a></div>
+    </section>
+    <section class="cta theme-bronze" id="install" data-header-theme="dark"><div class="cta-bg"><img src="/assets/hallow-portal.jpg" alt="" loading="lazy"></div><div class="cta-copy"><span class="eyebrow">Become part of the runtime</span><h2>Bring your agents<br><em>home.</em></h2><button class="cta-button magnetic" type="button" data-install-open><span>Install Hallow 001</span><i>↗</i></button></div><div class="cta-foot"><span>Windows / macOS / Linux</span><span>Open source / MIT</span></div></section>
+    <section class="faq theme-ivory" id="faq" data-header-theme="light">
+      <div class="faq-mark" aria-hidden="true"><span>F</span><span>A</span><span>Q</span></div><div class="faq-head"><div class="section-index"><span>11</span><span>All you need to know</span></div><h2>Answers to<br><em>key questions.</em></h2></div>
+      <div class="faq-list"><article><button type="button" aria-expanded="false"><span>00</span>Does Hallow send my memory to the cloud?<i>+</i></button><div><p>No. Runtime state begins locally under <code>~/.hallow/</code>. You choose which external model or gateway lanes to configure.</p></div></article><article><button type="button" aria-expanded="false"><span>01</span>Is Hallow another agent framework?<i>+</i></button><div><p>It is a local operating layer and standard around agents. It can sit above orchestration frameworks and organize packages, memory, tools, routes, policies, and evidence.</p></div></article><article><button type="button" aria-expanded="false"><span>02</span>Which model providers can it route?<i>+</i></button><div><p>The current catalog supports OpenAI-compatible APIs, Claude-style providers, OpenRouter, Groq, DeepSeek, local Ollama, LM Studio, vLLM, and fallback profiles.</p></div></article><article><button type="button" aria-expanded="false"><span>03</span>Can I inspect what an agent did?<i>+</i></button><div><p>Yes. Readiness checks, doctor output, traces, metrics, approval queues, security audit, and repair candidates are designed to produce concrete evidence.</p></div></article><article><button type="button" aria-expanded="false"><span>04</span>Is 001 production-complete?<i>+</i></button><div><p>001 is the first public preview and ready for local installation and testing. Native installers, harder isolation, a hosted registry, and richer gateway adapters remain on the roadmap.</p></div></article></div>
     </section>
   </main>
-
-  <footer>
-    <div class="footer-inner">
-      <span>Hallow Agent OS / 001</span>
-      <div class="footer-links"><a href="/docs">Docs</a><a href="https://github.com/Hallow-agent/Hallow" rel="noreferrer">GitHub</a><a href="#top">Back to top</a></div>
-      <span>Local-first runtime · <span data-year>2026</span></span>
-    </div>
+  <footer class="site-footer theme-dark" data-header-theme="dark">
+    <div class="footer-main"><strong class="footer-word">HALLOW</strong><p>A local place for autonomous intelligence.</p></div>
+    <div class="footer-links"><div><span>Explore</span><a href="/docs">Documentation</a><a href="#capabilities">Capabilities</a><a href="#roadmap">Roadmap</a></div><div><span>Build</span><a href="https://github.com/Hallow-agent/Hallow" target="_blank" rel="noreferrer">GitHub</a><a href="https://github.com/Hallow-agent/Hallow/issues" target="_blank" rel="noreferrer">Issues</a><a href="/assets/CREDITS.md">Asset credits</a></div><div><span>Install</span><button type="button" data-install-open>Windows</button><button type="button" data-install-open>macOS / Linux</button></div></div>
+    <div class="footer-bottom"><span>© <b data-year></b> Hallow Agent OS</span><span>Version 001 / 0.0.1</span><a href="#top">Back to origin ↑</a></div>
   </footer>
-
-  <script>
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const installCommand = /win/i.test(navigator.platform || navigator.userAgent)
-      ? 'powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"'
-      : 'curl -fsSL https://hallow-agent.xyz/install.sh | bash';
-
-    document.querySelectorAll('[data-install-command]').forEach((node) => { node.textContent = installCommand; });
-    document.querySelectorAll('[data-install-copy]').forEach((node) => { node.dataset.copy = installCommand; });
-    document.querySelectorAll('[data-year]').forEach((node) => { node.textContent = String(new Date().getFullYear()); });
-
-    const copyText = async (value) => {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(value);
-        return;
-      }
-      const input = document.createElement('textarea');
-      input.value = value;
-      input.style.position = 'fixed';
-      input.style.opacity = '0';
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand('copy');
-      input.remove();
-    };
-
-    document.querySelectorAll('[data-copy]').forEach((button) => {
-      button.addEventListener('click', async () => {
-        await copyText(button.dataset.copy || '');
-        const original = button.textContent;
-        button.textContent = 'Copied';
-        button.classList.add('copied');
-        window.setTimeout(() => { button.textContent = original; button.classList.remove('copied'); }, 1200);
-      });
-    });
-
-    const menuButton = document.querySelector('[data-menu-toggle]');
-    const menu = document.querySelector('[data-menu]');
-    const closeMenu = () => {
-      menu?.classList.remove('open');
-      document.body.classList.remove('menu-open');
-      menuButton?.setAttribute('aria-expanded', 'false');
-      if (menuButton) menuButton.textContent = 'Menu';
-    };
-    menuButton?.addEventListener('click', () => {
-      const open = !menu?.classList.contains('open');
-      menu?.classList.toggle('open', open);
-      document.body.classList.toggle('menu-open', open);
-      menuButton.setAttribute('aria-expanded', String(open));
-      menuButton.textContent = open ? 'Close' : 'Menu';
-    });
-    menu?.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
-
-    const revealObserver = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('in-view');
-          revealObserver.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
-    document.querySelectorAll('[data-reveal]').forEach((node) => revealObserver.observe(node));
-
-    let ticking = false;
-    const updateScroll = () => {
-      const y = window.scrollY;
-      const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-      document.querySelector('.progress').style.transform = `scaleX(${Math.min(1, y / max)})`;
-      document.querySelector('[data-nav]').classList.toggle('scrolled', y > 40);
-      if (!reducedMotion && y < window.innerHeight * 1.25) {
-        document.documentElement.style.setProperty('--hero-shift', `${Math.min(90, y * .11)}px`);
-      }
-      ticking = false;
-    };
-    window.addEventListener('scroll', () => {
-      if (!ticking) { requestAnimationFrame(updateScroll); ticking = true; }
-    }, { passive: true });
-    updateScroll();
-
-    window.addEventListener('load', () => {
-      window.setTimeout(() => document.querySelector('.loader')?.classList.add('is-gone'), 240);
-    });
-    window.setTimeout(() => document.querySelector('.loader')?.classList.add('is-gone'), 1800);
-  </script>
+  <dialog class="modal install-modal" data-install-modal>
+    <button class="modal-close" type="button" aria-label="Close installer" data-modal-close>×</button><span class="eyebrow">Install / Hallow 001</span><h2>Open the<br><em>local runtime.</em></h2>
+    <div class="os-tabs" role="tablist"><button type="button" class="is-active" data-os="windows">Windows</button><button type="button" data-os="unix">macOS / Linux</button></div>
+    <div class="command-box"><code data-command>powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"</code><button type="button" data-copy>Copy</button></div><p>Review the script first if you prefer. Hallow creates its runtime under <code>~/.hallow/</code>.</p><div class="modal-actions"><a href="/docs">Read install guide</a><a href="https://github.com/Hallow-agent/Hallow" target="_blank" rel="noreferrer">Inspect source ↗</a></div>
+  </dialog>
+  <dialog class="modal tour-modal" data-tour-modal><button class="modal-close" type="button" aria-label="Close film" data-modal-close>×</button><video controls muted loop playsinline poster="/assets/autonomy-repair.jpg"><source src="/assets/fog-atmosphere.webm" type="video/webm"></video><div><span class="eyebrow">Atmosphere study / CC BY 3.0</span><p>A visual pause for the space between command and consequence.</p></div></dialog>
+  <script src="/assets/vendor/gsap.min.js"></script><script src="/assets/vendor/ScrollTrigger.min.js"></script><script src="/assets/vendor/lenis.min.js"></script><script src="/webgl.js"></script><script src="/app.js"></script>
 </body>
 </html>

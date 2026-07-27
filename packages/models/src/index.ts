@@ -96,6 +96,42 @@ export type GenerateTextResult = {
   content: string;
 };
 
+export type ModelToolDefinition = {
+  name: string;
+  description: string;
+  input_schema: Record<string, unknown>;
+};
+
+export type ModelToolCall = {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+};
+
+export type ModelMessage = {
+  role: "user" | "assistant" | "tool";
+  content: string;
+  tool_calls?: ModelToolCall[];
+  tool_call_id?: string;
+  tool_name?: string;
+};
+
+export type GenerateTurnInput = {
+  route?: string;
+  model?: string;
+  system?: string;
+  messages: ModelMessage[];
+  tools?: ModelToolDefinition[];
+  temperature?: number;
+  signal?: AbortSignal;
+  onTextDelta?: (delta: string) => void | Promise<void>;
+};
+
+export type GenerateTurnResult = GenerateTextResult & {
+  tool_calls: ModelToolCall[];
+  finish_reason?: string;
+};
+
 export class ModelRegistry {
   readonly home: string;
 
@@ -132,6 +168,24 @@ export class ModelRegistry {
     config.providers[providerName] = provider;
     await writeYaml(this.providersPath, config);
     return provider;
+  }
+
+  async setRoutePrimary(routeName: string, modelRef: string): Promise<void> {
+    await this.ensureDefaults();
+    const parsed = parseModelRef(modelRef);
+    const providers = await this.readProviders();
+    if (!providers.providers[parsed.provider]) {
+      throw new Error(`Provider "${parsed.provider}" is not configured.`);
+    }
+    const routes = await this.readRoutes();
+    const existing = routes.routes[routeName];
+    routes.routes[routeName] = {
+      primary: modelRef,
+      fallback: [existing?.primary, ...(existing?.fallback ?? [])]
+        .filter((value): value is string => Boolean(value) && value !== modelRef)
+    };
+    routes.default_route = routeName;
+    await writeYaml(this.routesPath, routes);
   }
 
   listCatalog(options: { provider?: string; query?: string } = {}): ModelCatalogReport {
@@ -250,6 +304,21 @@ export class ModelRegistry {
   }
 
   async generateText(input: GenerateTextInput): Promise<GenerateTextResult> {
+    const result = await this.generateTurn({
+      route: input.route,
+      model: input.model,
+      system: input.system,
+      messages: [{ role: "user", content: input.prompt }],
+      temperature: input.temperature
+    });
+    return {
+      provider: result.provider,
+      model: result.model,
+      content: result.content
+    };
+  }
+
+  async generateTurn(input: GenerateTurnInput): Promise<GenerateTurnResult> {
     await this.ensureDefaults();
     const providers = await this.readProviders();
     const routes = await this.readRoutes();
@@ -283,7 +352,7 @@ export class ModelRegistry {
     throw new Error(`No model route succeeded. ${failures.join(" | ")}`);
   }
 
-  private resolveCandidates(input: GenerateTextInput, routes: ModelRoutesConfig): string[] {
+  private resolveCandidates(input: Pick<GenerateTurnInput, "route" | "model">, routes: ModelRoutesConfig): string[] {
     if (input.model) {
       return [input.model];
     }
@@ -421,8 +490,8 @@ export class ModelRegistry {
     provider: ModelProvider,
     providerName: string,
     model: string,
-    input: GenerateTextInput
-  ): Promise<GenerateTextResult> {
+    input: GenerateTurnInput
+  ): Promise<GenerateTurnResult> {
     const baseUrl = provider.base_url ?? "https://api.openai.com/v1";
     const apiKey = provider.api_key_env ? process.env[provider.api_key_env] : undefined;
 
@@ -436,21 +505,31 @@ export class ModelRegistry {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json"
       },
+      signal: input.signal,
       body: JSON.stringify({
         model,
         temperature: input.temperature ?? 0.2,
+        stream: Boolean(input.onTextDelta),
         messages: [
           {
             role: "system",
-            content:
-              input.system ??
-              "You are a local Hallow agent. Be concise, practical, and trace-friendly."
+            content: input.system ?? "You are a local Hallow agent. Be concise, practical, and trace-friendly."
           },
-          {
-            role: "user",
-            content: input.prompt
-          }
-        ]
+          ...input.messages.map(toOpenAIMessage)
+        ],
+        ...(input.tools?.length
+          ? {
+              tools: input.tools.map((tool) => ({
+                type: "function",
+                function: {
+                  name: tool.name,
+                  description: tool.description,
+                  parameters: tool.input_schema
+                }
+              })),
+              tool_choice: "auto"
+            }
+          : {})
       })
     });
 
@@ -458,19 +537,41 @@ export class ModelRegistry {
       throw new Error(`HTTP ${response.status} from ${providerName}`);
     }
 
-    const data = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const content = data.choices?.[0]?.message?.content;
+    if (input.onTextDelta) {
+      return readOpenAIStream(response, providerName, model, input.onTextDelta);
+    }
 
-    if (!content) {
+    const data = (await response.json()) as {
+      choices?: Array<{
+        finish_reason?: string;
+        message?: {
+          content?: string | null;
+          tool_calls?: Array<{ id?: string; function?: { name?: string; arguments?: string } }>;
+        };
+      }>;
+    };
+    const choice = data.choices?.[0];
+    const content = choice?.message?.content ?? "";
+    const toolCalls = (choice?.message?.tool_calls ?? []).flatMap((call, index) => {
+      const name = call.function?.name;
+      if (!name) return [];
+      return [{
+        id: call.id || `tool_${index + 1}`,
+        name,
+        arguments: parseToolArguments(call.function?.arguments)
+      }];
+    });
+
+    if (!content && toolCalls.length === 0) {
       throw new Error(`empty completion from ${providerName}`);
     }
 
     return {
       provider: providerName,
       model,
-      content
+      content,
+      tool_calls: toolCalls,
+      finish_reason: choice?.finish_reason
     };
   }
 
@@ -478,8 +579,8 @@ export class ModelRegistry {
     provider: ModelProvider,
     providerName: string,
     model: string,
-    input: GenerateTextInput
-  ): Promise<GenerateTextResult> {
+    input: GenerateTurnInput
+  ): Promise<GenerateTurnResult> {
     const baseUrl = provider.base_url ?? "https://api.anthropic.com/v1";
     const apiKey = provider.api_key_env ? process.env[provider.api_key_env] : undefined;
 
@@ -494,19 +595,25 @@ export class ModelRegistry {
         "anthropic-version": "2023-06-01",
         "Content-Type": "application/json"
       },
+      signal: input.signal,
       body: JSON.stringify({
         model,
         max_tokens: 1024,
         temperature: input.temperature ?? 0.2,
+        stream: Boolean(input.onTextDelta),
         system:
           input.system ??
           "You are a local Hallow agent. Be concise, practical, and trace-friendly.",
-        messages: [
-          {
-            role: "user",
-            content: input.prompt
-          }
-        ]
+        messages: toAnthropicMessages(input.messages),
+        ...(input.tools?.length
+          ? {
+              tools: input.tools.map((tool) => ({
+                name: tool.name,
+                description: tool.description,
+                input_schema: tool.input_schema
+              }))
+            }
+          : {})
       })
     });
 
@@ -514,19 +621,34 @@ export class ModelRegistry {
       throw new Error(`HTTP ${response.status} from ${providerName}`);
     }
 
-    const data = (await response.json()) as {
-      content?: Array<{ type?: string; text?: string }>;
-    };
-    const content = data.content?.find((item) => item.type === "text" && item.text)?.text ?? data.content?.[0]?.text;
+    if (input.onTextDelta) {
+      return readAnthropicStream(response, providerName, model, input.onTextDelta);
+    }
 
-    if (!content) {
+    const data = (await response.json()) as {
+      stop_reason?: string;
+      content?: Array<{ type?: string; text?: string; id?: string; name?: string; input?: Record<string, unknown> }>;
+    };
+    const content = (data.content ?? [])
+      .filter((item) => item.type === "text" && item.text)
+      .map((item) => item.text)
+      .join("\n");
+    const toolCalls = (data.content ?? []).flatMap((item, index) =>
+      item.type === "tool_use" && item.name
+        ? [{ id: item.id || `tool_${index + 1}`, name: item.name, arguments: item.input ?? {} }]
+        : []
+    );
+
+    if (!content && toolCalls.length === 0) {
       throw new Error(`empty completion from ${providerName}`);
     }
 
     return {
       provider: providerName,
       model,
-      content
+      content,
+      tool_calls: toolCalls,
+      finish_reason: data.stop_reason
     };
   }
 
@@ -534,29 +656,37 @@ export class ModelRegistry {
     provider: ModelProvider,
     providerName: string,
     model: string,
-    input: GenerateTextInput
-  ): Promise<GenerateTextResult> {
+    input: GenerateTurnInput
+  ): Promise<GenerateTurnResult> {
     const baseUrl = provider.base_url ?? "http://localhost:11434";
     const response = await fetch(`${baseUrl}/api/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
+      signal: input.signal,
       body: JSON.stringify({
         model,
-        stream: false,
+        stream: Boolean(input.onTextDelta),
         messages: [
           {
             role: "system",
-            content:
-              input.system ??
-              "You are a local Hallow agent. Be concise, practical, and trace-friendly."
+            content: input.system ?? "You are a local Hallow agent. Be concise, practical, and trace-friendly."
           },
-          {
-            role: "user",
-            content: input.prompt
-          }
-        ]
+          ...input.messages.map(toOllamaMessage)
+        ],
+        ...(input.tools?.length
+          ? {
+              tools: input.tools.map((tool) => ({
+                type: "function",
+                function: {
+                  name: tool.name,
+                  description: tool.description,
+                  parameters: tool.input_schema
+                }
+              }))
+            }
+          : {})
       })
     });
 
@@ -564,19 +694,284 @@ export class ModelRegistry {
       throw new Error(`HTTP ${response.status} from Ollama`);
     }
 
-    const data = (await response.json()) as { message?: { content?: string } };
-    const content = data.message?.content;
+    if (input.onTextDelta) {
+      return readOllamaStream(response, providerName, model, input.onTextDelta);
+    }
 
-    if (!content) {
+    const data = (await response.json()) as {
+      done_reason?: string;
+      message?: {
+        content?: string;
+        tool_calls?: Array<{ function?: { name?: string; arguments?: Record<string, unknown> | string } }>;
+      };
+    };
+    const content = data.message?.content ?? "";
+    const toolCalls = (data.message?.tool_calls ?? []).flatMap((call, index) => {
+      const name = call.function?.name;
+      if (!name) return [];
+      const raw = call.function?.arguments;
+      return [{
+        id: `tool_${index + 1}`,
+        name,
+        arguments: typeof raw === "string" ? parseToolArguments(raw) : raw ?? {}
+      }];
+    });
+
+    if (!content && toolCalls.length === 0) {
       throw new Error("empty completion from Ollama");
     }
 
     return {
       provider: providerName,
       model,
-      content
+      content,
+      tool_calls: toolCalls,
+      finish_reason: data.done_reason
     };
   }
+}
+
+function parseToolArguments(value: string | undefined): Record<string, unknown> {
+  if (!value?.trim()) return {};
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : {};
+  } catch {
+    return { raw: value };
+  }
+}
+
+async function forEachResponseLine(response: Response, callback: (line: string) => void | Promise<void>): Promise<void> {
+  if (!response.body) throw new Error("streaming response has no body");
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let pending = "";
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      pending += decoder.decode(value, { stream: !done });
+      const lines = pending.split(/\r?\n/g);
+      pending = lines.pop() ?? "";
+      for (const line of lines) await callback(line);
+      if (done) break;
+    }
+    if (pending) await callback(pending);
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+async function readOpenAIStream(
+  response: Response,
+  provider: string,
+  model: string,
+  onTextDelta: (delta: string) => void | Promise<void>
+): Promise<GenerateTurnResult> {
+  let content = "";
+  let finishReason: string | undefined;
+  const calls = new Map<number, { id: string; name: string; arguments: string }>();
+  await forEachResponseLine(response, async (line) => {
+    if (!line.startsWith("data:")) return;
+    const payload = line.slice(5).trim();
+    if (!payload || payload === "[DONE]") return;
+    const event = JSON.parse(payload) as {
+      choices?: Array<{
+        finish_reason?: string | null;
+        delta?: {
+          content?: string | null;
+          tool_calls?: Array<{
+            index?: number;
+            id?: string;
+            function?: { name?: string; arguments?: string };
+          }>;
+        };
+      }>;
+    };
+    const choice = event.choices?.[0];
+    const delta = choice?.delta?.content;
+    if (delta) {
+      content += delta;
+      await onTextDelta(delta);
+    }
+    if (choice?.finish_reason) finishReason = choice.finish_reason;
+    for (const toolDelta of choice?.delta?.tool_calls ?? []) {
+      const index = toolDelta.index ?? 0;
+      const current = calls.get(index) ?? { id: `tool_${index + 1}`, name: "", arguments: "" };
+      if (toolDelta.id) current.id = toolDelta.id;
+      if (toolDelta.function?.name) current.name += toolDelta.function.name;
+      if (toolDelta.function?.arguments) current.arguments += toolDelta.function.arguments;
+      calls.set(index, current);
+    }
+  });
+  const toolCalls = [...calls.entries()].sort(([left], [right]) => left - right).flatMap(([, call]) =>
+    call.name ? [{ id: call.id, name: call.name, arguments: parseToolArguments(call.arguments) }] : []
+  );
+  if (!content && toolCalls.length === 0) throw new Error(`empty streamed completion from ${provider}`);
+  return { provider, model, content, tool_calls: toolCalls, finish_reason: finishReason };
+}
+
+async function readAnthropicStream(
+  response: Response,
+  provider: string,
+  model: string,
+  onTextDelta: (delta: string) => void | Promise<void>
+): Promise<GenerateTurnResult> {
+  let content = "";
+  let finishReason: string | undefined;
+  const calls = new Map<number, { id: string; name: string; arguments: string }>();
+  await forEachResponseLine(response, async (line) => {
+    if (!line.startsWith("data:")) return;
+    const payload = line.slice(5).trim();
+    if (!payload) return;
+    const event = JSON.parse(payload) as {
+      type?: string;
+      index?: number;
+      content_block?: { type?: string; id?: string; name?: string };
+      delta?: { type?: string; text?: string; partial_json?: string; stop_reason?: string };
+    };
+    const index = event.index ?? 0;
+    if (event.type === "content_block_start" && event.content_block?.type === "tool_use") {
+      calls.set(index, {
+        id: event.content_block.id ?? `tool_${index + 1}`,
+        name: event.content_block.name ?? "",
+        arguments: ""
+      });
+    }
+    if (event.delta?.type === "text_delta" && event.delta.text) {
+      content += event.delta.text;
+      await onTextDelta(event.delta.text);
+    }
+    if (event.delta?.type === "input_json_delta" && event.delta.partial_json) {
+      const call = calls.get(index) ?? { id: `tool_${index + 1}`, name: "", arguments: "" };
+      call.arguments += event.delta.partial_json;
+      calls.set(index, call);
+    }
+    if (event.delta?.stop_reason) finishReason = event.delta.stop_reason;
+  });
+  const toolCalls = [...calls.entries()].sort(([left], [right]) => left - right).flatMap(([, call]) =>
+    call.name ? [{ id: call.id, name: call.name, arguments: parseToolArguments(call.arguments) }] : []
+  );
+  if (!content && toolCalls.length === 0) throw new Error(`empty streamed completion from ${provider}`);
+  return { provider, model, content, tool_calls: toolCalls, finish_reason: finishReason };
+}
+
+async function readOllamaStream(
+  response: Response,
+  provider: string,
+  model: string,
+  onTextDelta: (delta: string) => void | Promise<void>
+): Promise<GenerateTurnResult> {
+  let content = "";
+  let finishReason: string | undefined;
+  let toolCalls: ModelToolCall[] = [];
+  await forEachResponseLine(response, async (line) => {
+    if (!line.trim()) return;
+    const event = JSON.parse(line) as {
+      done_reason?: string;
+      message?: {
+        content?: string;
+        tool_calls?: Array<{ function?: { name?: string; arguments?: Record<string, unknown> | string } }>;
+      };
+    };
+    if (event.message?.content) {
+      content += event.message.content;
+      await onTextDelta(event.message.content);
+    }
+    if (event.message?.tool_calls?.length) {
+      toolCalls = event.message.tool_calls.flatMap((call, index) => {
+        const name = call.function?.name;
+        if (!name) return [];
+        const raw = call.function?.arguments;
+        return [{
+          id: `tool_${index + 1}`,
+          name,
+          arguments: typeof raw === "string" ? parseToolArguments(raw) : raw ?? {}
+        }];
+      });
+    }
+    if (event.done_reason) finishReason = event.done_reason;
+  });
+  if (!content && toolCalls.length === 0) throw new Error(`empty streamed completion from ${provider}`);
+  return { provider, model, content, tool_calls: toolCalls, finish_reason: finishReason };
+}
+
+function toOpenAIMessage(message: ModelMessage): Record<string, unknown> {
+  if (message.role === "tool") {
+    return {
+      role: "tool",
+      tool_call_id: message.tool_call_id,
+      content: message.content
+    };
+  }
+  if (message.role === "assistant" && message.tool_calls?.length) {
+    return {
+      role: "assistant",
+      content: message.content || null,
+      tool_calls: message.tool_calls.map((call) => ({
+        id: call.id,
+        type: "function",
+        function: { name: call.name, arguments: JSON.stringify(call.arguments) }
+      }))
+    };
+  }
+  return { role: message.role, content: message.content };
+}
+
+function toOllamaMessage(message: ModelMessage): Record<string, unknown> {
+  if (message.role === "tool") {
+    return { role: "tool", content: message.content, tool_name: message.tool_name };
+  }
+  if (message.role === "assistant" && message.tool_calls?.length) {
+    return {
+      role: "assistant",
+      content: message.content,
+      tool_calls: message.tool_calls.map((call) => ({
+        function: { name: call.name, arguments: call.arguments }
+      }))
+    };
+  }
+  return { role: message.role, content: message.content };
+}
+
+function toAnthropicMessages(messages: ModelMessage[]): Array<Record<string, unknown>> {
+  const output: Array<Record<string, unknown>> = [];
+  for (const message of messages) {
+    if (message.role === "tool") {
+      const previous = output.at(-1);
+      const result = {
+        type: "tool_result",
+        tool_use_id: message.tool_call_id,
+        content: message.content
+      };
+      if (previous?.role === "user" && Array.isArray(previous.content)) {
+        (previous.content as unknown[]).push(result);
+      } else {
+        output.push({ role: "user", content: [result] });
+      }
+      continue;
+    }
+
+    if (message.role === "assistant" && message.tool_calls?.length) {
+      output.push({
+        role: "assistant",
+        content: [
+          ...(message.content ? [{ type: "text", text: message.content }] : []),
+          ...message.tool_calls.map((call) => ({
+            type: "tool_use",
+            id: call.id,
+            name: call.name,
+            input: call.arguments
+          }))
+        ]
+      });
+      continue;
+    }
+
+    output.push({ role: message.role, content: message.content });
+  }
+  return output;
 }
 
 export function parseModelRef(ref: string): { provider: string; model: string } {

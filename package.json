@@ -16,6 +16,7 @@
     "check": "corepack pnpm typecheck && corepack pnpm build",
     "audit:prod": "corepack pnpm audit --prod",
     "installer:check": "node scripts/check-installers.mjs",
+    "test": "corepack pnpm build && node --test tests/*.test.mjs",
     "typecheck": "tsc -b --pretty false packages/core packages/models packages/runtime packages/cli",
     "hallow": "node packages/cli/dist/index.js"
   },

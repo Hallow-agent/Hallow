@@ -2,11 +2,17 @@
 
 ## Verdict
 
+### Gate update: conversational core shipped
+
+The 34/100 baseline below was the pre-remediation audit. The implementation on this branch moves the measured internal estimate to **62/100**. Hallow now has a canonical SQLite conversation store, resume/search/branch operations, bounded context compaction, streaming provider adapters, native iterative tool calls, automatic memory retrieval and explicit memory save, approval-gated workspace writes, bounded child-agent delegation, direct terminal answers with cancellation, provider setup, and sender-stable local-webhook conversations. These claims are covered by the repository regression suite and live OpenRouter smoke tests.
+
+The remaining eight points to the 70/100 gate are intentionally not claimed yet. They require process/container-isolated child agents, an isolated terminal tool, native service recovery, outbound gateway delivery/retry continuity, and substantially broader regression coverage.
+
 Hallow has a credible runtime foundation, but it is not yet a credible Hermes replacement. The current Hallow repository is strongest as a local agent operating-system specification with working storage, policy, manifests, routes, readiness checks, and many command surfaces. Hermes is already a mature daily-use agent with an iterative tool loop, streaming terminal UX, persistent conversations, provider onboarding, real gateway operation, isolation backends, delegation, media, and extensive regression coverage.
 
 The biggest gap is **not the website, installer, number of commands, or provider catalog**. It is the execution core.
 
-Current Hallow execution is:
+Pre-remediation Hallow execution was:
 
 ```text
 parse memory:/file:/URL tags
@@ -15,7 +21,7 @@ parse memory:/file:/URL tags
   -> write result to an artifact
 ```
 
-The target execution architecture is:
+The current branch now implements the central path of the target execution architecture:
 
 ```text
 load session + memory + skills
@@ -47,26 +53,27 @@ Scores are an internal product-readiness assessment, not a universal benchmark.
 | Capability | Hallow | Hermes | Honest gap |
 | --- | ---: | ---: | --- |
 | Installation and update | 7/10 | 9/10 | Hallow now has staged one-command install, logs, update, lifecycle, and dry-run. It still builds from source and lacks signed prebuilt releases/native desktop packages. |
-| Provider onboarding | 3/10 | 9/10 | Hallow has a provider catalog and routing YAML, but not a polished wizard, OAuth path, credential lifecycle, or instant first successful chat. |
-| Conversational agent loop | 2/10 | 9/10 | Hallow uses fixed prompt-tag planning plus one completion. Hermes has a real iterative tool-calling conversation loop. |
-| Terminal experience | 3/10 | 9/10 | Hallow has a styled operator REPL, but no streamed answer body, multiline editor, history, autocomplete, interrupt/redirect, resume, or rich tool stream. |
-| Sessions and context | 1/10 | 9/10 | Hallow stores task traces but has no canonical conversation/session database, resume, FTS history, context compression, or session branching. |
-| Memory | 5/10 | 9/10 | Hallow has SQLite memory, mirrors, indexing, suggestions, tree, and Obsidian export. It does not yet integrate memory continuously into a multi-turn loop or support provider plugins/user modeling at Hermes depth. |
-| Tools and MCP | 4/10 | 9/10 | Hallow has policy-gated file/web/MCP/browser surfaces. The model cannot yet select and iterate over those tools natively during conversation. |
+| Provider onboarding | 6/10 | 9/10 | Hallow now has masked one-step provider setup, route promotion, connection testing, catalog, and local/provider presets. OS credential vaults and OAuth provider auth remain. |
+| Conversational agent loop | 8/10 | 9/10 | Hallow now runs a bounded native model-tool-result loop across OpenAI-compatible, Anthropic, and Ollama adapters. Parallel tool execution and richer recovery remain. |
+| Terminal experience | 7/10 | 9/10 | Hallow streams answer tokens and tool events, prints the actual answer, resumes a live session, and supports cancellation. Multiline editing, completion, and redirect ergonomics remain. |
+| Sessions and context | 7/10 | 9/10 | SQLite stores full messages/tool calls with list, search, resume, archive, branch, gateway continuity, and bounded local compaction. FTS5 and model-written compression summaries remain. |
+| Memory | 7/10 | 9/10 | Preferences/projects and semantic matches enter every turn automatically; the model can save explicitly requested durable memory. Provider plugins and deeper user modeling remain. |
+| Tools and MCP | 7/10 | 9/10 | The model can iteratively search/save memory, list/read/write workspace files, fetch/observe web pages, call MCP, and delegate. Unsafe terminal execution remains intentionally unavailable to the model. |
 | Skills and learning | 5/10 | 8/10 | Hallow has signed manifests, tests, metrics, improve/review/promote/rollback commands. The learning loop is not yet grounded in rich sessions and real repeated agent execution. |
-| Delegation and parallel work | 2/10 | 9/10 | Hallow has fleet/task records, not isolated child-agent execution with scoped contexts and tools. |
-| Scheduler and autonomy | 5/10 | 8/10 | Hallow has tasks, schedules, retry state, heartbeat, quality, and repair loops. The jobs still execute through the limited one-shot agent core. |
-| Messaging gateway | 3/10 | 9/10 | Hallow has channels, pairing, allowlists, queues, and adapter records. Hermes has mature live multi-platform conversation continuity and delivery. |
+| Delegation and parallel work | 4/10 | 9/10 | Hallow can create bounded child sessions with separate traces and no nested delegation. Process/container isolation, parallel fan-out, budgets, and shared cancellation remain. |
+| Scheduler and autonomy | 6/10 | 8/10 | Tasks and schedules now execute through the iterative session-aware core. Strong unattended isolation and delivery escalation remain. |
+| Messaging gateway | 5/10 | 9/10 | Paired local-webhook senders now preserve one conversation and can synchronously run/return an answer. Production outbound retry/delivery continuity remains. |
 | Browser and media | 3/10 | 8/10 | Hallow can fetch pages and capture CDP artifacts. Hermes integrates browser, image generation, TTS, transcription, voice, and media routing into the agent loop. |
 | Security and isolation | 5/10 | 9/10 | Hallow has approvals, API token, package signing, risk levels, and Docker/WSL/Node permission profiles. Hermes has deeper command analysis, file protection, credential filtering, session isolation, and hardened backend execution. |
 | Service operation | 5/10 | 9/10 | Hallow now manages a detached process with PID/logs. Hermes includes native service managers, gateway recovery, shutdown forensics, and broader operational tooling. |
-| Tests and reliability | 1/10 | 10/10 | This is Hallow's most dangerous engineering deficit after the agent loop. Feature count without regression coverage will become unmaintainable. |
+| Tests and reliability | 3/10 | 10/10 | The core now has deterministic coverage for adapters, streaming, sessions, compaction, cancellation, tools, approvals, delegation, memory, and gateway continuity. Coverage is still far below the 100-test gate. |
 | Documentation and ecosystem | 3/10 | 10/10 | Hallow documents its foundation. Hermes has full user/developer/reference docs, migration, plugins, platform guides, skills ecosystem, and community feedback. |
 
 Weighted internal readiness estimate:
 
 ```text
-Hallow today:  34 / 100
+Hallow baseline: 34 / 100
+Hallow current branch: 62 / 100
 Hermes today:  91 / 100
 ```
 

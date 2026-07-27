@@ -97,6 +97,7 @@ type CommandContext = {
   home: string;
   runtime: HallowRuntime;
   models: ModelRegistry;
+  activeSessionId?: string;
 };
 
 type DemoRunResult = {
@@ -352,6 +353,16 @@ async function dispatch(context: CommandContext): Promise<void> {
     return;
   }
 
+  if (command === "chat") {
+    await handleChat(context, context.args.slice(1));
+    return;
+  }
+
+  if (command === "session" || command === "sessions") {
+    await handleSessions(context, subcommand, rest);
+    return;
+  }
+
   if (command === "skill") {
     await handleSkill(context, subcommand, rest);
     return;
@@ -462,6 +473,114 @@ async function dispatch(context: CommandContext): Promise<void> {
   process.exitCode = 1;
 }
 
+async function handleChat(context: CommandContext, args: string[]): Promise<void> {
+  await context.runtime.init();
+  await ensureFirstPartySkillSource(context);
+  let sessionId = readOption(args, "--session");
+  if (!sessionId && args.includes("--continue")) {
+    sessionId = (await context.runtime.listSessions({ limit: 1 }))[0]?.id;
+  }
+  const promptParts: string[] = [];
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] === "--continue") continue;
+    if (args[index] === "--session") {
+      index += 1;
+      continue;
+    }
+    promptParts.push(args[index]);
+  }
+  const prompt = promptParts.join(" ").trim();
+  if (!prompt) throw new Error('Usage: hallow chat "message" [--continue | --session id]');
+  const controller = new AbortController();
+  let streamed = false;
+  const cancel = () => controller.abort(new Error("Cancelled by Ctrl+C"));
+  process.once("SIGINT", cancel);
+  let result: Awaited<ReturnType<HallowRuntime["runAgent"]>>;
+  try {
+    result = await context.runtime.runAgent("hallow", prompt, {
+      sessionId,
+      signal: controller.signal,
+      onEvent: (event) => {
+        if (event.type === "assistant_delta") {
+          streamed = true;
+          process.stdout.write(event.delta);
+        }
+        if (event.type === "tool_start") {
+          if (streamed) process.stdout.write("\n");
+          console.log(`↳ ${event.call.name}`);
+          streamed = false;
+        }
+      }
+    });
+  } finally {
+    process.off("SIGINT", cancel);
+  }
+  if (streamed) console.log("");
+  else console.log(result.content);
+  console.log(`\nSession: ${result.session_id} | Model: ${result.usedModel} | Iterations: ${result.iterations}`);
+  if (result.simulated) console.log("Note: no configured model route was reachable; local fallback answered.");
+}
+
+async function handleSessions(
+  context: CommandContext,
+  subcommand: string | undefined,
+  rest: string[]
+): Promise<void> {
+  await context.runtime.init();
+  if (!subcommand || subcommand === "list") {
+    const sessions = await context.runtime.listSessions({
+      limit: Number(readOption(rest, "--limit") ?? "30")
+    });
+    if (sessions.length === 0) {
+      console.log("No conversations yet. Start one with: hallow chat \"hello\"");
+      return;
+    }
+    for (const session of sessions) {
+      console.log(`${session.id}\t${session.status}\t${session.message_count}\t${session.updated_at}\t${session.title}`);
+    }
+    return;
+  }
+  if (subcommand === "show") {
+    const id = rest[0];
+    if (!id) throw new Error("Usage: hallow sessions show <id>");
+    const session = await context.runtime.getSession(id);
+    console.log(`${session.title} (${session.id})`);
+    for (const message of await context.runtime.listSessionMessages(id)) {
+      if (message.role === "tool") console.log(`[tool:${message.tool_name ?? "unknown"}] ${message.content}`);
+      else console.log(`\n${message.role}> ${message.content}`);
+    }
+    return;
+  }
+  if (subcommand === "search") {
+    const query = rest.join(" ").trim();
+    if (!query) throw new Error('Usage: hallow sessions search "query"');
+    for (const session of await context.runtime.listSessions({ query, limit: 50 })) {
+      console.log(`${session.id}\t${session.message_count}\t${session.updated_at}\t${session.title}`);
+    }
+    return;
+  }
+  if (subcommand === "archive") {
+    const id = rest[0];
+    if (!id) throw new Error("Usage: hallow sessions archive <id>");
+    const session = await context.runtime.archiveSession(id);
+    console.log(`Session archived: ${session.id}`);
+    return;
+  }
+  if (subcommand === "branch") {
+    const id = rest[0];
+    if (!id) throw new Error("Usage: hallow sessions branch <id> [--through sequence] [--title text]");
+    const session = await context.runtime.branchSession(id, {
+      throughSequence: readNumberOption(rest, "--through"),
+      title: readOption(rest, "--title")
+    });
+    console.log(`Session branch created: ${session.id}`);
+    console.log(`Messages copied: ${session.message_count}`);
+    console.log(`Continue: hallow chat --session ${session.id} \"message\"`);
+    return;
+  }
+  throw new Error(`Unknown sessions command: ${subcommand}`);
+}
+
 async function handleAgent(
   context: CommandContext,
   subcommand: string | undefined,
@@ -526,7 +645,11 @@ async function handleAgent(
     }
 
     const result = await context.runtime.runAgent(agentId, prompt);
+    console.log(result.content);
+    console.log("");
     console.log(`Agent run complete: ${result.trace.status}`);
+    console.log(`Session: ${result.session_id}`);
+    console.log(`Iterations: ${result.iterations}`);
     console.log(`Model: ${result.usedModel}`);
     console.log(`Plan: ${result.plan.tools.length > 0 ? result.plan.tools.join(", ") : "no tools"}`);
     if (result.tool_uses.length > 0) {
@@ -2430,6 +2553,17 @@ async function handleGateway(
       text
     });
     printGatewayEvent(event);
+    if (rest.includes("--run") && event.task_id) {
+      const taskResult = await context.runtime.runTask(event.task_id);
+      if (taskResult.run) {
+        console.log("");
+        console.log(taskResult.run.content);
+        console.log(`\nSession: ${taskResult.run.session_id}`);
+      } else {
+        console.log(`Task ${taskResult.task.status}: ${taskResult.task.error ?? "no result"}`);
+        process.exitCode = 1;
+      }
+    }
     return;
   }
 
@@ -2829,6 +2963,40 @@ async function handleModel(
   rest: string[]
 ): Promise<void> {
   await context.runtime.init();
+
+  if (subcommand === "setup") {
+    const name = rest[0] ?? "openrouter";
+    const provider = await context.models.addProvider(name, {
+      type: readOption(rest, "--type") as AddProviderOptions["type"],
+      baseUrl: readOption(rest, "--base-url"),
+      apiKeyEnv: readOption(rest, "--api-key-env"),
+      defaultModel: readOption(rest, "--model") ?? readOption(rest, "--default-model")
+    });
+    if (!provider.default_model) throw new Error(`Provider ${name} needs --model <model-id>.`);
+    if (provider.api_key_env && !process.env[provider.api_key_env]) {
+      if (!terminalInput.isTTY || !terminalOutput.isTTY) {
+        throw new Error(`Set ${provider.api_key_env} in the environment, then rerun hallow model setup ${name}.`);
+      }
+      const secret = await readMaskedSecret(`${provider.api_key_env}  `);
+      if (!secret) throw new Error("Provider setup cancelled: API key was empty.");
+      await writeEnvValue(hallowPath(context.home, ".env"), provider.api_key_env, secret);
+      process.env[provider.api_key_env] = secret;
+    }
+    const modelRef = `${name}:${provider.default_model}`;
+    await context.models.setRoutePrimary("balanced", modelRef);
+    const testResult = rest.includes("--skip-test")
+      ? { ok: true, provider: name, message: "Connection test skipped." }
+      : await context.models.testProvider(name);
+    printRuntimeLifecycleCard(testResult.ok ? "MODEL READY" : "MODEL NEEDS ATTENTION", [
+      formatMetric("provider", name),
+      formatMetric("model", provider.default_model),
+      formatMetric("route", "balanced (default)"),
+      formatMetric("connection", testResult.message),
+      formatMetric("first chat", 'hallow chat "hello"')
+    ]);
+    if (!testResult.ok) process.exitCode = 1;
+    return;
+  }
 
   if (subcommand === "add") {
     const name = rest[0];
@@ -3268,6 +3436,58 @@ function readOption(args: string[], name: string): string | undefined {
   }
 
   return args[index + 1];
+}
+
+async function writeEnvValue(path: string, key: string, value: string): Promise<void> {
+  if (!/^[A-Z_][A-Z0-9_]*$/i.test(key)) throw new Error(`Invalid environment variable name: ${key}`);
+  if (/\r|\n/.test(value)) throw new Error("API key cannot contain a newline.");
+  const existing = await readTextIfExists(path);
+  const lines = (existing ?? "").split(/\r?\n/g).filter((line) => line.length > 0);
+  const prefix = `${key}=`;
+  const replacement = `${prefix}${value}`;
+  const index = lines.findIndex((line) => line.trimStart().startsWith(prefix));
+  if (index >= 0) lines[index] = replacement;
+  else lines.push(replacement);
+  await writeText(path, `${lines.join("\n")}\n`);
+}
+
+function readMaskedSecret(prompt: string): Promise<string> {
+  if (!terminalInput.isTTY || !terminalOutput.isTTY || typeof terminalInput.setRawMode !== "function") {
+    throw new Error("A TTY is required for masked secret entry.");
+  }
+  return new Promise((resolve, reject) => {
+    let value = "";
+    const wasRaw = terminalInput.isRaw;
+    const finish = (error?: Error) => {
+      terminalInput.off("data", onData);
+      terminalInput.setRawMode(Boolean(wasRaw));
+      terminalOutput.write("\n");
+      if (error) reject(error);
+      else resolve(value);
+    };
+    const onData = (chunk: Buffer | string) => {
+      const text = chunk.toString("utf8");
+      for (const character of text) {
+        if (character === "\u0003") return finish(new Error("Provider setup cancelled."));
+        if (character === "\r" || character === "\n") return finish();
+        if (character === "\u007f" || character === "\b") {
+          if (value.length > 0) {
+            value = value.slice(0, -1);
+            terminalOutput.write("\b \b");
+          }
+          continue;
+        }
+        if (character >= " ") {
+          value += character;
+          terminalOutput.write("•");
+        }
+      }
+    };
+    terminalOutput.write(prompt);
+    terminalInput.setRawMode(true);
+    terminalInput.resume();
+    terminalInput.on("data", onData);
+  });
 }
 
 function readNumberOption(args: string[], name: string): number | undefined {
@@ -4178,6 +4398,17 @@ async function runOperatorShellLine(context: CommandContext, line: string): Prom
     return;
   }
 
+  if (lower === "new" || lower === "/new") {
+    context.activeSessionId = undefined;
+    printTerminalText("new conversation ready", "1;92");
+    return;
+  }
+
+  if (lower === "sessions" || lower === "/sessions") {
+    await runDispatchFromShell(context, ["sessions", "list"]);
+    return;
+  }
+
   if (lower === "status" || lower === "dashboard" || lower === "home" || lower === "/status") {
     await printTerminalWelcome(context, { mode: "status" });
     return;
@@ -4254,6 +4485,7 @@ function isLikelyAgentPrompt(command: string, line: string): boolean {
     "approval",
     "autonomy",
     "browser",
+    "chat",
     "demo",
     "desktop",
     "doctor",
@@ -4275,6 +4507,8 @@ function isLikelyAgentPrompt(command: string, line: string): boolean {
     "sandbox",
     "schedule",
     "security",
+    "session",
+    "sessions",
     "setup",
     "skill",
     "status",
@@ -4307,10 +4541,38 @@ async function runDispatchFromShell(context: CommandContext, args: string[]): Pr
 
 async function runDefaultAgentFromShell(context: CommandContext, prompt: string): Promise<void> {
   printTerminalText(`agent:hallow > ${prompt}`, "1;97");
+  const controller = new AbortController();
+  const cancel = () => controller.abort(new Error("Cancelled by Ctrl+C"));
+  process.once("SIGINT", cancel);
+  let streamed = false;
   try {
-    const result = await context.runtime.runAgent("hallow", prompt);
+    const result = await context.runtime.runAgent("hallow", prompt, {
+      sessionId: context.activeSessionId,
+      signal: controller.signal,
+      onEvent: (event) => {
+        if (event.type === "assistant_delta") {
+          streamed = true;
+          process.stdout.write(event.delta);
+        }
+        if (event.type === "tool_start") {
+          if (streamed) process.stdout.write("\n");
+          printTerminalText(`tool       ${event.call.name}`, "36");
+          streamed = false;
+        }
+      }
+    });
+    context.activeSessionId = result.session_id;
+    if (streamed) {
+      process.stdout.write("\n");
+    } else if (result.content) {
+      printTerminalText("", "37");
+      console.log(result.content);
+      printTerminalText("", "37");
+    }
     printTerminalText(`status     ${result.trace.status}`, result.trace.status === "failed" ? "1;91" : "1;92");
     printTerminalText(`model      ${result.usedModel}`, "37");
+    printTerminalText(`session    ${result.session_id}`, "37");
+    printTerminalText(`iterations ${result.iterations}`, "37");
     printTerminalText(`tools      ${result.plan.tools.length > 0 ? result.plan.tools.join(", ") : "none"}`, "37");
     for (const toolUse of result.tool_uses.slice(0, 6)) {
       printTerminalText(`tool       ${toolUse.tool} ${toolUse.status} ${toolUse.target}`, "37");
@@ -4322,6 +4584,8 @@ async function runDefaultAgentFromShell(context: CommandContext, prompt: string)
     }
   } catch (error) {
     printTerminalText(error instanceof Error ? error.message : String(error), "1;91");
+  } finally {
+    process.off("SIGINT", cancel);
   }
 }
 
@@ -4988,6 +5252,12 @@ Usage:
   hallow start [--home path] [--port 4767] [--foreground]
   hallow open [--port 4767] [--print] [--no-start]
   hallow stop
+  hallow chat "message" [--continue | --session id]
+  hallow sessions list [--limit 30]
+  hallow sessions show <id>
+  hallow sessions search "query"
+  hallow sessions archive <id>
+  hallow sessions branch <id> [--through sequence] [--title text]
   hallow agent create <id> [--name "Name"]
   hallow agent verify <path>
   hallow agent install <path> [--force]
@@ -5092,7 +5362,7 @@ Usage:
   hallow gateway enable <channel>
   hallow gateway send-mode <channel> --send auto|ask|deny
   hallow gateway allow <channel> --from sender1,sender2
-  hallow gateway ingest --channel local-webhook --from system [--pairing-token token] --text "message"
+  hallow gateway ingest --channel local-webhook --from system [--pairing-token token] --text "message" [--run]
   hallow gateway inbox [--limit 20]
   hallow gateway send --channel slack --to target --text "message" [--dry-run] [--approval id]
   hallow gateway outbox [--limit 20]
@@ -5121,6 +5391,7 @@ Usage:
   hallow notification list [--status unread|read|all] [--limit 20]
   hallow notification read <id>
   hallow model add <name> [--type openai_compatible] [--base-url url] [--api-key-env ENV] [--default-model model]
+  hallow model setup [openrouter|openai|anthropic|ollama] [--model model-id]
   hallow model list
   hallow model catalog [--provider openai] [--query coding] [--providers]
   hallow model install-catalog [--providers openai,anthropic,google,ollama] [--overwrite]
@@ -5139,7 +5410,7 @@ Examples:
 
 Operator shell:
   status, start, open, doctor, skills, skills hub, models, tools
-  run "task prompt"
+  run "task prompt", new, sessions
   hallow <any normal command>
 `);
 }

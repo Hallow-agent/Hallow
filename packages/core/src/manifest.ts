@@ -247,7 +247,8 @@ export function createDefaultAgentManifest(id: string, name = titleize(id)): Age
       "filesystem.write": { enabled: true, approval: "ask" },
       "terminal.run": { enabled: false, approval: "ask" },
       "memory.read": { enabled: true, approval: "auto" },
-      "memory.write": { enabled: true, approval: "auto" }
+      "memory.write": { enabled: true, approval: "auto" },
+      "agent.delegate": { enabled: true, approval: "auto" }
     },
     autonomy: {
       level: "A2",

@@ -1,101 +1,55 @@
-# Hallow
+<p align="center">
+  <img src="./docs/assets/hallow-github-hero-v2.png" alt="Hallow eclipse mark across an agent runtime field" width="100%">
+</p>
 
-![Hallow Agent OS](./docs/assets/hallow-github-hero.svg)
+<h1 align="center">Hallow</h1>
 
-**Hallow is a local-first agent OS for autonomous AI agents.**
+<p align="center"><strong>The local-first Agent OS for autonomous work.</strong></p>
 
-It is not a chatbot wrapper, not a landing-page demo, and not a cloud account that owns your memory. Hallow installs a private runtime on the user's machine, then gives agents one standard for memory, tools, model routing, signed skills, gateway lanes, traces, readiness checks, and self-healing loops.
+<p align="center">
+  Persistent memory · Model routing · Bounded tools · Tested skills · Long-running tasks · Human approval · Recovery
+</p>
 
-## Hallow Guardian / Robinhood Chain
+<p align="center">
+  <a href="https://hallow-agent.xyz">Website</a> ·
+  <a href="https://hallow-agent.xyz/guardian">Guardian</a> ·
+  <a href="./docs/INSTALL.md">Install guide</a> ·
+  <a href="./docs/PRODUCTION_READINESS.md">Readiness</a> ·
+  <a href="./SECURITY.md">Security</a>
+</p>
 
-Guardian gives Hallow a safer way to reason about RWAs and memecoins: inspect a contract, produce an evidence-backed Asset Passport, enforce hard spending and exposure limits, simulate the intended action, request human approval, and create a tamper-evident receipt. Transaction broadcasting is deliberately disabled in this preview.
+<p align="center">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-d8c6a4?style=flat-square&labelColor=11120f">
+  <img alt="Node" src="https://img.shields.io/badge/node-22%2B-a0f7ab?style=flat-square&labelColor=11120f">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-24%20passing-86e3e9?style=flat-square&labelColor=11120f">
+  <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-eee6d7?style=flat-square&labelColor=11120f"></a>
+</p>
 
-```bash
-hallow guardian status
-hallow guardian brief --limit 8
-hallow guardian analyze AAPL
-hallow guardian analyze 0xCONTRACT --kind meme
-hallow guardian plan buy AAPL --usd 50 --slippage-bps 30 --reserve-percent 20
-```
+---
 
-`analyze` joins the official Robinhood Stock Token registry, multiplier-aware quotes, open DEX liquidity/activity, Blockscout holders, verified Uniswap deployments, and an optional evidence-bound AI explanation. Hallow is model-agnostic: users select their own cloud or local model route. Research never needs a wallet or private key and never moves funds.
+Hallow installs an AI agent runtime on the user's computer. It keeps its workspace, memory, task history, traces, policies, and desktop surfaces local by default while allowing the operator to choose local or cloud intelligence.
 
-Read [the live intelligence design](docs/BLOCKCHAIN_INTELLIGENCE.md) and [Guardian architecture and safety model](docs/GUARDIAN.md). This software provides technical controls and bounded evidence, not financial, legal, or investment advice.
+It is designed for work that should survive a chat session: inspect a repository, reuse project context, run bounded tools, schedule tasks, pause for approval, recover from failure, and return evidence the operator can inspect.
 
-## Install Hallow 001
+> Hallow is an alpha release. It is useful for real local testing, but it is not yet a hardened isolation boundary for arbitrary untrusted code. Read [Current limits](#current-limits) before using it with sensitive systems.
 
-Windows PowerShell:
+## Install in one command
+
+### Windows PowerShell
 
 ```powershell
 iex (irm https://hallow-agent.xyz/install.ps1)
 ```
 
-macOS, Linux, WSL2, or Termux:
+### macOS, Linux, WSL2, or Termux
 
 ```bash
 curl -fsSL https://hallow-agent.xyz/install.sh | bash
 ```
 
-Windows CMD fallback:
+The installer downloads a release snapshot, builds against the lockfile, runs `hallow doctor`, creates the launcher, starts the managed local service, and opens the desktop. Git and Corepack are not required. Existing runtime state under `~/.hallow/` is preserved during updates.
 
-```cmd
-powershell -nop -ep bypass -c "irm https://hallow-agent.xyz/install.ps1|iex"
-```
-
-The installer downloads into a staging directory, builds against the lockfile, runs `hallow doctor`, writes the global launcher, starts the managed local runtime, and opens the desktop. It does not require Git or Corepack. Existing runtime data under `~/.hallow/` is preserved during updates.
-
-## Why Hallow Exists
-
-Most agent projects are powerful in one lane:
-
-- A desktop personal AI with memory.
-- A tool runner with MCP.
-- A multi-agent orchestration framework.
-- A gateway for chat platforms.
-- A model router.
-- A scheduler.
-
-Hallow tries to make those lanes feel like one installable agent OS. The platform website stays simple. The work happens locally.
-
-![Hallow neural runtime](./docs/assets/hallow-neural-runtime.svg)
-
-## First Run
-
-```bash
-hallow
-hallow doctor
-hallow open
-```
-
-`hallow` opens the operator shell. From inside the shell:
-
-```text
-hallow> status
-hallow> start
-hallow> skills hub
-hallow> run "summarize this workspace and suggest the next skill"
-hallow> exit
-```
-
-Open the Hallow workspace with:
-
-```text
-hallow open
-```
-
-Direct commands still work outside the shell:
-
-```bash
-hallow version
-hallow start
-hallow status
-hallow open
-hallow stop
-```
-
-`hallow start` launches a managed background process. Use `hallow start --foreground` when debugging. Installer lifecycle commands are `hallow update` and `hallow uninstall`; uninstall keeps `~/.hallow/` by default.
-
-To inspect the installation without changing the machine:
+Inspect an installer before running it:
 
 ```powershell
 irm https://hallow-agent.xyz/install.ps1 -OutFile install.ps1
@@ -107,33 +61,178 @@ curl -fsSL https://hallow-agent.xyz/install.sh -o install.sh
 bash install.sh --dry-run
 ```
 
-![Hallow terminal preview](./docs/assets/hallow-terminal-preview.svg)
+## The first five minutes
 
-## What Makes Hallow Different
+```bash
+hallow
+hallow doctor
+hallow model setup
+hallow open
+hallow chat "Inspect this workspace, explain its architecture, and propose the next safe task."
+```
 
-| Layer | Hallow approach |
-| --- | --- |
-| Local-first runtime | The agent OS runs on the user's machine. Memory, traces, package metadata, and desktop artifacts begin local. |
-| Agent standard | Agents and skills use manifests, permissions, model needs, package signatures, and verification checks. |
-| MCP surface | MCP stdio and HTTP servers can be registered, filtered, and surfaced to agents through policy. |
-| Model routing | Routes can target OpenAI-compatible APIs, Claude-style providers, OpenRouter, Groq, DeepSeek, local Ollama, LM Studio, vLLM, and fallback profiles. |
-| Memory vault | SQLite, JSONL, Markdown, local vector index, memory tree, and Obsidian-style export live under the Hallow home. |
-| Self-healing loop | Failed or low-quality runs become traces, metrics, reflection drafts, repair candidates, and promotion decisions. |
-| Gateway lanes | Local webhook, browser, chat, device, and future messaging channels use pairing, allowlists, and send-mode policy. |
-| Security posture | Tool registry, approval queue, sandbox profile, API token guard, package signing, and security audit are first-class runtime checks. |
-| Demo proof | `hallow readiness`, `hallow doctor`, `hallow security audit`, and `hallow demo checklist` produce concrete evidence instead of vague claims. |
+`hallow` opens the operator shell. Direct commands remain available in any terminal.
 
-## Compared With Other Agent Projects
+```text
+hallow> status
+hallow> skills hub
+hallow> run "turn my weekly repository review into a reusable workflow"
+hallow> sessions
+hallow> exit
+```
 
-| Inspiration | What they do well | Hallow's angle |
+<p align="center">
+  <img src="./docs/assets/hallow-terminal-preview.svg" alt="Hallow local operator terminal" width="92%">
+</p>
+
+## What makes it an Agent OS
+
+| System layer | What Hallow provides | Why it matters |
 | --- | --- | --- |
-| OpenHuman | Personal AI, local memory, human-centered desktop UX. | Hallow focuses on a broader agent OS standard: packages, runtime checks, gateways, tools, and model routes. |
-| Hermes | Clean installer, terminal identity, skills, web/browser/tool power. | Hallow borrows the spirit of simple install, then adds signed agent/skill metadata, readiness proof, and local product docs. |
-| Aeon | Autonomy, scheduler, skill repair, long-running loops. | Hallow puts autonomy beside memory, MCP, marketplace, gateway, security, and model routing in one local runtime. |
-| OpenClaw | Multi-channel gateways, device pairing, browser/API routing. | Hallow treats gateway lanes as one part of a larger local agent OS, with policy and trace evidence attached. |
-| LangGraph / CrewAI | Durable workflows and multi-agent collaboration. | Hallow can sit above orchestration frameworks as the local shell, package standard, memory surface, and operator runtime. |
+| Local runtime | Managed service, CLI, desktop, docs, and local HTTP API | The agent lives where the work lives instead of inside one browser tab. |
+| Memory vault | SQLite, Markdown, JSONL mirror, local index, tree view, and export | Context can survive sessions while remaining inspectable and user-controlled. |
+| Model router | Multiple local and cloud routes with health checks and fallback profiles | A workflow is not owned by one model provider. |
+| Tool boundary | Registered file, web, browser, shell, MCP, and domain tools | Agents receive explicit capabilities instead of ambient machine access. |
+| Skills and agents | Manifests, permissions, verification, tests, reflection, and promotion | Expertise can be packaged, reused, audited, and improved. |
+| Durable work | Task queue, schedules, checkpoints, retries, cancellation, and branching | Work can continue beyond a single model response. |
+| Approval and traces | Risk lanes, approval queue, tool traces, readiness, and security audit | Sensitive actions remain attributable to a reason and an operator decision. |
+| Recovery | Health checks, reactive repair, supervised heal loops, and readiness proof | Failure becomes evidence for controlled recovery instead of a silent reset. |
+| Gateways | Pairing, allowlists, send modes, inbox/outbox, and local webhooks | External conversations enter through governed lanes. |
 
-## Install From Source
+## Architecture
+
+```mermaid
+flowchart LR
+    O[Operator] --> S[CLI / Desktop]
+    S --> R[Local Runtime]
+
+    R --> M[(Memory Vault)]
+    R --> MR[Model Router]
+    R --> A[Agents + Skills]
+    R --> T[Tool + MCP Registry]
+    R --> Q[Tasks + Scheduler]
+    R --> G[Gateway Lanes]
+
+    A --> P{Policy + Approval}
+    T --> P
+    Q --> P
+    P -->|allowed| X[Bounded Action]
+    P -->|held| H[Human Decision]
+    X --> E[Trace + Evidence]
+    E --> C[Readiness + Recovery]
+    C --> R
+
+    R --> GU[Guardian Specialization]
+    GU --> GE[Onchain Evidence + Receipts]
+```
+
+The model is one component inside this system. Memory, policy, tool permissions, approval, and evidence are runtime responsibilities rather than prompt conventions.
+
+## One mission, end to end
+
+```bash
+hallow chat "Audit my launch repository. Repair the broken release, write the notes, and ask before publishing."
+```
+
+Hallow can:
+
+1. recall relevant project memory;
+2. scope the workspace and available tools;
+3. create a durable task and checkpoint;
+4. inspect, repair, and test inside the configured boundary;
+5. stop an external publish at the approval queue;
+6. resume with the approved identifier; and
+7. preserve the result as a trace and conversation history.
+
+The exact behavior depends on the selected agent, tools, model route, sandbox backend, and local policy.
+
+## Guardian: proof before action
+
+<p align="center">
+  <img src="./docs/assets/hallow-logo.png" alt="Hallow official eclipse mark" width="260">
+</p>
+
+[Hallow Guardian](https://hallow-agent.xyz/guardian) is the first domain specialization built on the runtime. It gives an agent a disciplined, non-custodial way to reason about RWAs and memecoins on Robinhood Chain.
+
+| Gate | Responsibility |
+| --- | --- |
+| Observe | Resolve official identity when available and capture current onchain and market evidence. |
+| Explain | Separate sourced facts, model inference, uncertainty, and unknowns. |
+| Simulate | Apply deterministic spend, reserve, slippage, exposure, freshness, and allowlist policy. |
+| Approve | Bind human consent to one immutable plan. |
+| Prove | Create a hash-derived receipt without publishing prompts, memory, or wallet secrets. |
+
+```bash
+hallow guardian status
+hallow guardian brief --limit 8
+hallow guardian analyze AAPL
+hallow guardian analyze 0xCONTRACT --kind meme
+hallow guardian plan buy AAPL --usd 50 --slippage-bps 30 --reserve-percent 20
+```
+
+Transaction broadcasting is deliberately disabled in the public preview. Registry identity does not prove legal rights, eligibility, redemption, future liquidity, safety, or profit. Guardian is a technical control and evidence layer, not financial, legal, or investment advice.
+
+Read the [Guardian architecture and safety model](./docs/GUARDIAN.md) and [blockchain intelligence design](./docs/BLOCKCHAIN_INTELLIGENCE.md).
+
+## Core commands
+
+```bash
+# runtime
+hallow status
+hallow readiness
+hallow doctor
+hallow start
+hallow open
+hallow stop
+
+# work
+hallow chat "message"
+hallow sessions list
+hallow task list
+hallow schedule list
+
+# capability
+hallow agent list
+hallow skill hub
+hallow tool list
+hallow mcp discover
+hallow model health
+
+# control
+hallow approval list
+hallow security audit
+hallow sandbox status
+hallow autonomy heartbeat --dry-run
+hallow gateway status
+```
+
+Run `hallow --help` for the complete command surface.
+
+## Local state and privacy
+
+Hallow writes runtime state to `~/.hallow/` by default.
+
+```text
+~/.hallow/
+├── .env                       # local secrets; never commit
+├── config.yaml
+├── memory/                    # SQLite, Markdown, index, tree
+├── models/                    # providers and routing
+├── mcp/                       # registered MCP servers
+├── gateway/                   # channels, pairings, inbox/outbox
+├── tasks/                     # durable work queue
+├── cron/                      # schedules
+├── traces/                    # inspectable execution evidence
+├── policies/                  # security and sandbox configuration
+├── marketplace/               # installed package metadata
+└── desktop/                   # local operator UI and docs
+```
+
+Credentials stay in the local environment. Public receipts and site demonstrations must never contain API keys, prompts, private memory, seed phrases, wallet secrets, local runtime addresses, or developer infrastructure details.
+
+## Build from source
+
+Requirements: Node.js 22+ and Corepack.
 
 ```bash
 git clone https://github.com/Hallow-agent/Hallow.git
@@ -145,135 +244,57 @@ corepack pnpm hallow --home .hallow-dev setup
 corepack pnpm hallow --home .hallow-dev start
 ```
 
-## Core Commands
+Validate the repository:
 
 ```bash
-hallow
-hallow doctor
-hallow readiness
-hallow start
-hallow open
-hallow stop
-hallow terminal
-hallow agent create research
-hallow skill hub
-hallow mcp discover
-hallow model health
-hallow gateway status
-hallow security audit
-hallow autonomy heartbeat --dry-run
+corepack pnpm test
+corepack pnpm installer:check
+corepack pnpm audit:prod
 ```
 
-## Runtime Surfaces
+## Current limits
 
-| Surface | Purpose |
-| --- | --- |
-| CLI | Builder/operator surface for install, agents, memory, tools, models, autonomy, security, and gateway commands. |
-| Desktop shell | Local browser UI served by the runtime at `/desktop`. |
-| Docs shell | Local docs served by the runtime at `/docs`. |
-| HTTP API | Local automation surface for readiness, desktop status, tools, memory, models, gateways, and tasks. |
-| Static site | Public face at `https://hallow-agent.xyz`. |
+Hallow `0.1.0` is an alpha release.
 
-## Runtime State
+- The installed runtime is local-first, but cloud models and remote tools send the data required for their calls to the provider selected by the operator.
+- Sandbox strength depends on the configured backend and host operating system. Do not treat the default runtime as a hardened boundary for hostile code.
+- The public marketplace is package metadata and local sources, not yet a hosted trustless registry.
+- Messaging and OAuth adapters require operator-owned credentials and configuration.
+- Guardian broadcasting is disabled. Its public experience is read-only inspection and dry-run planning.
+- Native desktop packaging and stronger process isolation remain roadmap items.
 
-By default Hallow writes private runtime state to:
+See [Production Readiness](./docs/PRODUCTION_READINESS.md), [Security](./SECURITY.md), and the [0.1.0 upgrade notes](./docs/RELEASE_0.1.0.md).
+
+## Repository map
 
 ```text
-~/.hallow/
+packages/core       shared paths, manifests, filesystem, and policy primitives
+packages/models     provider catalog, routing, health, and generation adapters
+packages/chain      Guardian evidence, policy, plan, and receipt primitives
+packages/runtime    local server, memory, tools, tasks, desktop, and gateways
+packages/cli        installer-facing and operator command surface
+site                hallow-agent.xyz static website and product media
+docs                architecture, install, audits, releases, and product design
+examples            example agents and reusable skills
+scripts             public installers, checks, and media renderers
 ```
-
-Useful local files include:
-
-```text
-config.yaml
-memory/global.sqlite
-memory/MEMORY.md
-memory/index.yaml
-memory/tree.yaml
-models/providers.yaml
-models/routing.yaml
-mcp/servers.yaml
-gateway/channels.yaml
-tasks/queue.yaml
-cron/jobs.yaml
-traces/*.yaml
-policies/security-audit.yaml
-policies/sandbox.yaml
-marketplace/index.yaml
-usage/ledger.jsonl
-desktop/index.html
-desktop/docs/index.html
-```
-
-Secrets stay in the user's local runtime home:
-
-```text
-~/.hallow/.env
-```
-
-Example variable names:
-
-```bash
-OPENROUTER_API_KEY=
-OPENAI_API_KEY=
-ANTHROPIC_API_KEY=
-```
-
-## Current Status
-
-Hallow `001` (`0.0.1`) is the first public preview. It is ready for local-first installation and real testing, with future releases planned for native installer, hosted registry, deeper sandboxing, richer gateway adapters, stronger desktop UX, and more autonomous loops.
-
-The current build includes:
-
-- CLI installer flow.
-- Local runtime server.
-- Desktop and docs shell.
-- Readiness and doctor checks.
-- Memory vault and local index.
-- MCP registry and tool filtering foundation.
-- Agent and skill package verification.
-- Signed marketplace metadata.
-- Model catalog and routing.
-- Gateway registry with pairing/allowlist policy.
-- OAuth and web-auth profile definitions.
-- Autonomy tick, loop, heartbeat, quality, reactive repair, and heal commands.
-- Security audit, sandbox profile, approval queue, and API token guard.
-
-See [CHANGELOG.md](./CHANGELOG.md) for release notes.
-
-Next production jumps:
-
-- Native desktop installer.
-- Harder process isolation for untrusted packages.
-- Hosted public package registry.
-- Richer gateway adapters.
-- Live provider onboarding.
-- More visual desktop UX.
 
 ## Documentation
 
 - [Install guide](./docs/INSTALL.md)
-- [Demo mode](./docs/DEMO_MODE.md)
-- [Comparison](./docs/COMPARISON.md)
-- [Gap closure](./docs/GAP_CLOSURE.md)
-- [Perfect build checklist](./docs/PERFECT_BUILD.md)
+- [Guardian safety model](./docs/GUARDIAN.md)
+- [Blockchain intelligence](./docs/BLOCKCHAIN_INTELLIGENCE.md)
 - [Production readiness](./docs/PRODUCTION_READINESS.md)
 - [Security policy](./SECURITY.md)
+- [Comparison and design context](./docs/COMPARISON.md)
 - [Blueprint](./BLUEPRINT.md)
+- [Changelog](./CHANGELOG.md)
+- [Contributing](./CONTRIBUTING.md)
 
-## Project Shape
+## License
 
-```text
-packages/core      shared filesystem, YAML, paths, manifests
-packages/models    model catalog, provider registry, routing
-packages/runtime   local agent OS runtime and HTTP shell
-packages/cli       hallow command line
-site               static public website for hallow-agent.xyz
-docs               launch docs, audits, comparison, and roadmap
-examples           example agents and signed skills
-scripts            public install scripts
-```
+Hallow is released under the [MIT License](./LICENSE).
 
-## The Short Pitch
+---
 
-Hallow is an attempt to make autonomous agents feel installable, inspectable, and standard. Humans should not have to manually babysit every agent loop. They should be able to run a local agent OS, inspect what it did, trust its boundaries, and decide what becomes public.
+<p align="center"><strong>Your machine. Your memory. Your agent.</strong></p>

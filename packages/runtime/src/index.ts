@@ -9501,7 +9501,7 @@ export class HallowRuntime {
             },
             serverInfo: {
               name: "hallow",
-              version: "0.0.1"
+              version: "0.1.0"
             }
           }
         };
@@ -11628,7 +11628,7 @@ function runMcpStdioExchange(
           capabilities: {},
           clientInfo: {
             name: "hallow",
-            version: "0.0.1"
+            version: "0.1.0"
           }
         }
       });
@@ -11678,7 +11678,7 @@ async function runMcpHttpExchange(
       capabilities: {},
       clientInfo: {
         name: "hallow",
-        version: "0.0.1"
+        version: "0.1.0"
       }
     }
   });
@@ -18142,7 +18142,7 @@ function renderDesktopShellHtmlOfficial(manifest: DesktopShellManifest): string 
     </details>
 
     <footer class="footer">
-      <div>Hallow Runtime 001 / v0.0.1</div>
+      <div>Hallow Runtime 001 / v0.1.0</div>
       <div>Local-first · ${readinessPercent}% ready</div>
       <div>Port ${manifest.port} · 2026</div>
     </footer>

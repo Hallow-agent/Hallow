@@ -65,7 +65,7 @@ import {
   WebAuthStatusReport
 } from "@hallow/runtime";
 
-const HALLOW_CLI_VERSION = "0.0.1";
+const HALLOW_CLI_VERSION = "0.1.0";
 const HALLOW_RELEASE_LABEL = "001";
 
 const HALLOW_WINDOWS_INSTALL_COMMAND = "iex (irm https://hallow-agent.xyz/install.ps1)";
@@ -1558,7 +1558,7 @@ async function handleHallowMcpMessage(context: CommandContext, message: CliJsonR
         },
         serverInfo: {
           name: "hallow",
-          version: "0.0.1"
+          version: "0.1.0"
         }
       });
       return;

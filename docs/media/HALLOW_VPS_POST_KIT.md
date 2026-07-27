@@ -2,11 +2,11 @@
 
 ## Primary caption (Bahasa Indonesia)
 
-Website-nya tetap di Vercel. Mesinnya tidak.
+Satu command. Lalu agent Anda hidup.
 
-Hallow sekarang berjalan sebagai private agent runtime di Ubuntu VPS: state persisten, native tool loop, OpenRouter, approval-gated writes, sandbox, dan automatic recovery lewat systemd.
+Hallow adalah private autonomous runtime dengan persistent memory, native tool loop, guarded write approvals, model routing, dan automatic recovery.
 
-Satu command untuk install. Satu runtime yang terus hidup.
+Install, verify, launch. Setelah itu Hallow siap menerima instruksi dan melanjutkan sesi kapan pun dibutuhkan.
 
 - 17/17 regression tests
 - 33/33 doctor checks
@@ -20,16 +20,15 @@ Satu command untuk install. Satu runtime yang terus hidup.
 
 ## Short caption
 
-One website. One private engine.
+From command to autonomous.
 
-Vercel serves the experience. An Ubuntu VPS keeps Hallow alive: persistent sessions, native tools, hardened sandbox, and automatic recovery.
+Install Hallow in one command, then work with a persistent private agent: native tools, guarded writes, resumable sessions, and automatic recovery.
 
 ## Video sequence
 
-1. Public one-command installer and the eight verified phases.
-2. `systemd` service online with 33/33 checks.
-3. Live OpenRouter answer from the VPS.
-4. Permission sandbox and persistent session proof.
+1. One-command install with verified system, core, workspace, policy, and launch stages.
+2. Hallow Control Plane online with readiness checks and guarded tools.
+3. Agent task execution with a clear, resumable execution receipt.
 
 ## Files
 

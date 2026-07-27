@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Hallow VPS Deployment</title>
+  <title>Hallow Launch Sequence</title>
   <style>
     :root {
       --paper: #d9caac;
@@ -64,7 +64,7 @@
       align-items: center;
       border: 1px solid rgba(16,16,15,.55);
       margin: 20px 0 26px;
-      background: rgba(240,231,210,.46);
+      background: rgba(240,231,210,.58);
     }
     .architecture .node { padding: 0 24px; }
     .architecture .node:last-child { text-align: right; }
@@ -119,10 +119,27 @@
     .cyan { color: var(--cyan); }
     .green { color: var(--green); }
     .amber { color: var(--amber); }
-    .big-mark { margin: 6px 0 18px; color: var(--white); font-weight: 800; line-height: 1.2; }
+    .big-mark { margin: 6px 0 18px; color: var(--white); font-weight: 800; line-height: 1.2; letter-spacing: .04em; }
     .divider { color: #5f6158; }
-    .status-box { border: 1px solid #44463e; margin: 16px 0; padding: 14px 18px; }
-    .status-grid { display: grid; grid-template-columns: 180px 1fr; row-gap: 6px; }
+    .status-box {
+      border: 1px solid #44463e;
+      border-left: 3px solid var(--green);
+      margin: 16px 0;
+      padding: 16px 18px;
+      background: rgba(255,255,255,.018);
+    }
+    .status-head {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 13px;
+      color: var(--white);
+      font-weight: 700;
+      letter-spacing: .08em;
+    }
+    .status-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 34px; row-gap: 10px; }
+    .status-item { border-top: 1px solid #30322c; padding-top: 8px; }
+    .status-item span { display: block; }
+    .status-item .dim { margin-bottom: 3px; font-size: 12px; letter-spacing: .07em; text-transform: uppercase; }
     .cursor { display: inline-block; width: 9px; height: 19px; vertical-align: -4px; background: var(--white); animation: blink .9s steps(2) infinite; }
     @keyframes blink { 50% { opacity: 0; } }
 
@@ -143,123 +160,109 @@
     .video .scene.active .line { animation: lineIn .28s forwards; }
     @keyframes lineIn { to { opacity: 1; transform: translateY(0); } }
     .video .architecture { animation: architecturePulse 12.6s ease-in-out both; }
-    @keyframes architecturePulse { 0%,100% { background: rgba(240,231,210,.46); } 44%,58% { background: rgba(121,219,226,.18); } }
+    @keyframes architecturePulse { 0%,100% { background: rgba(240,231,210,.58); } 44%,58% { background: rgba(121,219,226,.18); } }
   </style>
 </head>
 <body>
   <main class="poster" id="poster">
     <header>
       <div>
-        <div class="kicker">DEPLOYMENT RECORD / 001</div>
-        <h1>One website.<br><em>One private engine.</em></h1>
+        <div class="kicker">HALLOW / LAUNCH SEQUENCE 001</div>
+        <h1>From command.<br><em>To autonomous.</em></h1>
       </div>
-      <div class="index">HALLOW<br>AGENT OS<br>27.07.2026</div>
+      <div class="index">HALLOW 001<br>AGENT RUNTIME<br>LIVE</div>
     </header>
 
     <section class="architecture">
-      <div class="node"><strong>VERCEL / WEBSITE</strong><small>public interface · global edge</small></div>
-      <div class="arrow">⟶</div>
-      <div class="node"><strong>UBUNTU / VPS ENGINE</strong><small>private runtime · persistent state</small></div>
+      <div class="node"><strong>ONE COMMAND</strong><small>install &middot; verify &middot; launch</small></div>
+      <div class="arrow">&rarr;</div>
+      <div class="node"><strong>PRIVATE AGENT ONLINE</strong><small>persistent &middot; protected &middot; always ready</small></div>
     </section>
 
     <section class="terminal-shell">
       <div class="terminal-bar">
         <span class="lights"><i></i><i></i><i></i></span>
-        <span class="terminal-title">ubuntu@vps — /opt/hallow</span>
+        <span class="terminal-title">hallow &mdash; launch sequence</span>
       </div>
       <div class="terminal">
         <div class="scene install" data-scene="install">
           <div class="line prompt">curl -fsSL https://hallow-agent.xyz/install.sh | bash</div>
           <div class="line"> </div>
           <div class="line big-mark">H   H   AAAAA   L       L        OOOOO   W       W</div>
-          <div class="line cyan">AGENT OS 001  <span class="dim">/ PRIVATE RUNTIME INSTALLER</span></div>
+          <div class="line cyan">AGENT OS 001  <span class="dim">/ AUTONOMOUS RUNTIME INSTALLER</span></div>
           <div class="line divider">--------------------------------------------------------</div>
           <div class="line"> </div>
-          <div class="line"><span class="dim">[01/08]</span> <span class="cyan">PREFLIGHT</span></div>
-          <div class="line green">        OK  Install root verified</div>
-          <div class="line"><span class="dim">[02/08]</span> <span class="cyan">RUNTIME</span>      <span class="dim">Node.js 22+ / pnpm 10.11</span></div>
-          <div class="line green">        OK  Runtime plan validated</div>
-          <div class="line"><span class="dim">[03/08]</span> <span class="cyan">SOURCE</span>       <span class="dim">Staged source promotion</span></div>
-          <div class="line green">        OK  Source downloaded and inspected</div>
-          <div class="line"><span class="dim">[04/08]</span> <span class="cyan">DEPENDENCIES</span> <span class="dim">Locked workspace install</span></div>
-          <div class="line green">        OK  Dependencies ready</div>
-          <div class="line"><span class="dim">[05/08]</span> <span class="cyan">BUILD</span>        <span class="dim">Core · models · runtime · CLI</span></div>
-          <div class="line green">        OK  Build verified</div>
-          <div class="line"><span class="dim">[06/08]</span> <span class="cyan">WORKSPACE</span>    <span class="dim">Private state initialized</span></div>
-          <div class="line green">        OK  Runtime home checked</div>
-          <div class="line"><span class="dim">[07/08]</span> <span class="cyan">COMMAND</span>      <span class="dim">Global launcher</span></div>
-          <div class="line green">        OK  hallow command ready</div>
-          <div class="line"><span class="dim">[08/08]</span> <span class="cyan">LAUNCH</span>       <span class="dim">Managed background runtime</span></div>
-          <div class="line green">        OK  Runtime online</div>
+          <div class="line"><span class="dim">01</span>  <span class="cyan">SYSTEM</span>       Checking host compatibility...</div>
+          <div class="line green">    PASS  Secure prerequisites verified</div>
+          <div class="line"><span class="dim">02</span>  <span class="cyan">CORE</span>         Installing signed Hallow release...</div>
+          <div class="line green">    PASS  Release integrity verified</div>
+          <div class="line"><span class="dim">03</span>  <span class="cyan">WORKSPACE</span>    Creating private agent workspace...</div>
+          <div class="line green">    PASS  Persistent memory initialized</div>
+          <div class="line"><span class="dim">04</span>  <span class="cyan">POLICY</span>       Loading tool and approval guards...</div>
+          <div class="line green">    PASS  Execution policy active</div>
+          <div class="line"><span class="dim">05</span>  <span class="cyan">LAUNCH</span>       Starting managed runtime...</div>
+          <div class="line green">    PASS  Hallow is online and supervised</div>
           <div class="line"> </div>
           <div class="line green">+------------------------------------------------------+</div>
-          <div class="line green">|  HALLOW IS READY                                     |</div>
+          <div class="line green">|  HALLOW IS READY  /  RUN: hallow                     |</div>
           <div class="line green">+------------------------------------------------------+</div>
         </div>
 
         <div class="scene runtime" data-scene="runtime">
-          <div class="line prompt">systemctl status hallow --no-pager</div>
-          <div class="line">● hallow.service — Hallow Agent Runtime</div>
-          <div class="line green">     Active: active (running)</div>
-          <div class="line dim">     Loaded: enabled · starts automatically after reboot</div>
-          <div class="line">   Main PID: 3702519 (node)</div>
+          <div class="line prompt">hallow</div>
           <div class="line"> </div>
-          <div class="line prompt">hallow status --strict</div>
+          <div class="line big-mark">H A L L O W  /  CONTROL PLANE</div>
+          <div class="line green">&#9679; ONLINE  <span class="dim">YOUR AGENT IS READY</span></div>
           <div class="status-box">
+            <div class="status-head"><span>PRIMARY AGENT</span><span class="green">HALLOW / READY</span></div>
             <div class="status-grid">
-              <span class="dim">runtime</span><span class="green">online</span>
-              <span class="dim">doctor</span><span>33 / 33 passing</span>
-              <span class="dim">security</span><span class="green">hardened</span>
-              <span class="dim">sandbox</span><span>node-permission / isolated</span>
-              <span class="dim">provider</span><span>OpenRouter reachable</span>
-              <span class="dim">listener</span><span>127.0.0.1:4767 / private</span>
+              <div class="status-item"><span class="dim">Memory</span><span>Persistent &amp; indexed</span></div>
+              <div class="status-item"><span class="dim">Models</span><span>Connected &amp; routed</span></div>
+              <div class="status-item"><span class="dim">Tools</span><span>Approval gates active</span></div>
+              <div class="status-item"><span class="dim">Recovery</span><span>Supervised &amp; armed</span></div>
             </div>
           </div>
-          <div class="line prompt">curl -s http://127.0.0.1:4767/api/health</div>
-          <div class="line green">{ "ok": true, "home": "/home/ubuntu/.hallow" }</div>
+          <div class="line cyan">READINESS</div>
+          <div class="line green">  &#10003; 33 checks passed</div>
+          <div class="line green">  &#10003; security policy loaded</div>
+          <div class="line green">  &#10003; session memory mounted</div>
+          <div class="line green">  &#10003; automatic recovery verified</div>
           <div class="line"> </div>
-          <div class="line prompt">sudo kill -TERM 3702185</div>
-          <div class="line amber">systemd: recovering runtime…</div>
-          <div class="line green">OLD_PID=3702185  NEW_PID=3702519  RECOVERY_OK</div>
-          <div class="line"> </div>
-          <div class="line dim">persistent engine ready <span class="cursor"></span></div>
+          <div class="line dim">Awaiting your instruction <span class="cursor"></span></div>
         </div>
 
         <div class="scene chat" data-scene="chat">
-          <div class="line prompt">hallow chat "Reply with exactly: VPS HALLOW ONLINE"</div>
+          <div class="line prompt">hallow chat "Audit this workspace. Propose the safest next move."</div>
           <div class="line"> </div>
-          <div class="line green">VPS HALLOW ONLINE</div>
+          <div class="line cyan">&#9671; Restored project context</div>
+          <div class="line cyan">&#9671; Inspected runtime, policies, and recent sessions</div>
+          <div class="line cyan">&#9671; Built a guarded execution plan</div>
           <div class="line"> </div>
-          <div class="line dim">Session: session_2026…74c0e24a</div>
-          <div class="line dim">Model: openrouter:openai/gpt-5-mini</div>
-          <div class="line dim">Iterations: 1</div>
+          <div class="line">I found three priority gaps. The safest first move is to</div>
+          <div class="line">tighten the tool boundary before expanding autonomy.</div>
           <div class="line"> </div>
-          <div class="line prompt">hallow sessions list --limit 3</div>
-          <div class="line cyan">session_2026…  active  2  VPS HALLOW ONLINE</div>
-          <div class="line"> </div>
-          <div class="line prompt">hallow sandbox smoke</div>
-          <div class="line green">Sandbox success: node --permission</div>
-          <div class="line dim">outside_fs=ERR_ACCESS_DENIED</div>
-          <div class="line dim">child_process=ERR_ACCESS_DENIED</div>
+          <div class="line amber">A patch plan is ready. No files were changed.</div>
+          <div class="line dim">Review required before write actions can run.</div>
           <div class="line"> </div>
           <div class="status-box">
+            <div class="status-head"><span>EXECUTION RECEIPT</span><span class="green">COMPLETE</span></div>
             <div class="status-grid">
-              <span class="dim">frontend</span><span>Vercel</span>
-              <span class="dim">engine</span><span>Ubuntu VPS</span>
-              <span class="dim">state</span><span>SQLite / persistent</span>
-              <span class="dim">recovery</span><span class="green">automatic</span>
+              <div class="status-item"><span class="dim">Session</span><span>Checkpoint saved</span></div>
+              <div class="status-item"><span class="dim">Context</span><span>Ready to continue</span></div>
+              <div class="status-item"><span class="dim">Writes</span><span>0 / approval guarded</span></div>
+              <div class="status-item"><span class="dim">Result</span><span class="green">Safe handoff</span></div>
             </div>
           </div>
-          <div class="line prompt">hallow <span class="cursor"></span></div>
+          <div class="line prompt">hallow chat --continue "Prepare the patch" <span class="cursor"></span></div>
         </div>
       </div>
     </section>
 
     <footer>
-      <span><b>17 / 17</b>regression tests</span>
-      <span><b>33 / 33</b>doctor checks</span>
-      <span><b>HARDENED</b>security audit</span>
-      <span><b>ALWAYS ON</b>systemd recovery</span>
+      <span><b>PRIVATE</b>by default</span>
+      <span><b>PERSISTENT</b>session memory</span>
+      <span><b>GUARDED</b>write approvals</span>
+      <span><b>RESILIENT</b>automatic recovery</span>
     </footer>
   </main>
 

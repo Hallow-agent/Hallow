@@ -332,7 +332,7 @@ try {
   Write-Host "  |  hallow update   upgrade safely                    |"
   Write-Host "  +----------------------------------------------------+" -ForegroundColor Green
   Write-Host ""
-  Write-Host "  Desktop  http://127.0.0.1:4767/desktop" -ForegroundColor White
+  Write-Host "  Workspace  Run: hallow open" -ForegroundColor White
   Write-Host "  Home     $HallowHome" -ForegroundColor DarkGray
   if ($script:LogPath) { Write-Host "  Log      $script:LogPath" -ForegroundColor DarkGray }
   Write-Host "  Done in  ${elapsed}s" -ForegroundColor DarkGray

@@ -260,7 +260,7 @@ printf '  |  hallow open     start + open desktop              |\n'
 printf '  |  hallow doctor   verify the local runtime          |\n'
 printf '  |  hallow update   upgrade safely                    |\n'
 printf '\033[32m  +----------------------------------------------------+\033[0m\n\n'
-printf '  Desktop  http://127.0.0.1:4767/desktop\n'
+printf '  Workspace  Run: hallow open\n'
 printf '\033[90m  Home     %s\033[0m\n' "$HALLOW_HOME_DIR"
 [ -z "$LOG_PATH" ] || printf '\033[90m  Log      %s\033[0m\n' "$LOG_PATH"
 printf '\033[90m  Done in  %ss\033[0m\n\n' "$((SECONDS - START_SECONDS))"

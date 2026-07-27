@@ -61,10 +61,10 @@ hallow> run "summarize this workspace and suggest the next skill"
 hallow> exit
 ```
 
-The runtime desktop is served at:
+Open the Hallow workspace with:
 
 ```text
-http://127.0.0.1:4767/desktop
+hallow open
 ```
 
 Direct commands still work outside the shell:

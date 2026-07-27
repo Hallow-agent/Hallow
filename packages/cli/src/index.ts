@@ -4875,12 +4875,11 @@ async function printTerminalWelcome(context: CommandContext, options: TerminalWe
   const installedSkills = snapshot.skillHub?.entries.filter((entry) => entry.installed).length ?? 0;
   const skillEntries = snapshot.skillHub?.entries.length ?? 0;
   const agentCount = snapshot.agents?.length ?? 0;
-  const startUrl = options.startUrl ?? snapshot.desktop?.start_url ?? "/desktop";
   const port = options.port ?? snapshot.desktop?.port ?? 4767;
 
   prepareTerminalSurface();
   printTerminalText("");
-  printTerminalFrame(`HALLOW AGENT OS ${HALLOW_RELEASE_LABEL}`, "LOCAL-FIRST AUTONOMOUS RUNTIME", width);
+  printTerminalFrame(`HALLOW AGENT OS ${HALLOW_RELEASE_LABEL}`, "PRIVATE AI AGENT / READY TO WORK", width);
   for (const line of HALLOW_WORDMARK) {
     printTerminalText(`  ${line}`, "1;97");
   }
@@ -4888,8 +4887,8 @@ async function printTerminalWelcome(context: CommandContext, options: TerminalWe
 
   const rightBlock = [
     `Hallow Agent OS ${HALLOW_RELEASE_LABEL} / v${HALLOW_CLI_VERSION}  ::  ${terminalModeLabel(options.mode)}`,
-    options.notice ? `state ${options.notice}` : `runtime http://127.0.0.1:${port}/desktop`,
-    `session ${session}  ::  local-first / private runtime`,
+    options.notice ? `state ${options.notice}` : "workspace ready  ::  run hallow open",
+    `session ${session}  ::  your context stays with you`,
     `foundation ${readiness ? `${readiness.score}% ${readiness.status}` : "collecting"}  ::  checks ${checkCount > 0 ? `${passingChecks}/${checkCount}` : "pending"}`,
     `memory ${snapshot.memory ? `${snapshot.memory.sqlite_items} item(s), ${snapshot.memory.index_items} indexed` : "vault pending"}`,
     `mcp ${mcpServers} server(s), ${mcpTools} registered tool(s)`,
@@ -4920,7 +4919,7 @@ async function printTerminalWelcome(context: CommandContext, options: TerminalWe
   printTerminalSection("AVAILABLE SKILLS", terminalSkillRows(snapshot), width);
   printTerminalSection("MODEL ROUTES", terminalModelRows(snapshot), width);
   printTerminalSection("MCP SURFACE", terminalMcpRows(snapshot), width);
-  printTerminalSection("NEXT COMMANDS", terminalNextRows(context, options, startUrl, port), width);
+  printTerminalSection("NEXT COMMANDS", terminalNextRows(context, options, port), width);
 
   const nextActions = readiness?.next_actions.slice(0, 2) ?? [];
   if (nextActions.length > 0 && readiness?.status !== "strong") {
@@ -4928,7 +4927,7 @@ async function printTerminalWelcome(context: CommandContext, options: TerminalWe
   }
 
   printTerminalText(repeatChar("-", width), "90");
-  printTerminalText(`Type "hallow help" for commands. Open runtime: ${startUrl}`, "90");
+  printTerminalText('Type "hallow help" for commands. Open your workspace: hallow open', "90");
 }
 
 async function collectTerminalSnapshot(context: CommandContext, desktop?: DesktopShellStatus): Promise<TerminalSnapshot> {
@@ -5056,12 +5055,12 @@ function terminalMcpRows(snapshot: TerminalSnapshot): string[] {
   return rows.length > 0 ? rows : ["No MCP server registered yet. Try hallow mcp add filesystem --command npx --args ..."];
 }
 
-function terminalNextRows(context: CommandContext, options: TerminalWelcomeOptions, startUrl: string, port: number): string[] {
+function terminalNextRows(context: CommandContext, options: TerminalWelcomeOptions, port: number): string[] {
   const startCommand = formatStartCommand(context.home, port);
   if (options.mode === "setup") {
     return [
       formatMetric("start", startCommand),
-      formatMetric("open", startUrl),
+      formatMetric("open", "hallow open"),
       formatMetric("doctor", "hallow doctor"),
       formatMetric("agent", "hallow agent create research")
     ];
@@ -5069,7 +5068,7 @@ function terminalNextRows(context: CommandContext, options: TerminalWelcomeOptio
 
   if (options.mode === "start") {
     return [
-      formatMetric("open", startUrl),
+      formatMetric("open", "hallow open"),
       formatMetric("create", "hallow agent create research"),
       formatMetric("run", 'hallow agent run hallow "summarize this workspace"'),
       formatMetric("heartbeat", "hallow autonomy heartbeat --dry-run")

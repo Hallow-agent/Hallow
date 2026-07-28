@@ -11,13 +11,16 @@ import {
   createArcJobIntent,
   createDefaultArcJobPolicy,
   type ArcAgentPassport,
+  type ArcCommerceIntent,
   type ArcJobIntent,
+  type ArcServiceInspection,
   type ArcStatus
 } from "@hallow/chain";
 import { AddProviderOptions, ModelCatalogEntry, ModelCatalogProvider, ModelRegistry } from "@hallow/models";
 import {
   AgentInstallResult,
   AgentPackageVerification,
+  ArcEconomyStatus,
   AutonomyHealReport,
   AutonomyLoopLock,
   AutonomyLoopResult,
@@ -74,8 +77,8 @@ import {
   WebAuthStatusReport
 } from "@hallow/runtime";
 
-const HALLOW_CLI_VERSION = "0.2.0";
-const HALLOW_RELEASE_LABEL = "ARC PREVIEW";
+const HALLOW_CLI_VERSION = "0.3.0";
+const HALLOW_RELEASE_LABEL = "AUTONOMIC COMMERCE";
 
 const HALLOW_WINDOWS_INSTALL_COMMAND = "iex (irm https://hallow-agent.xyz/install.ps1)";
 
@@ -194,7 +197,12 @@ async function dispatch(context: CommandContext): Promise<void> {
   }
 
   if (command === "arc") {
-    await handleArc(subcommand, rest);
+    await handleArc(context, subcommand, rest);
+    return;
+  }
+
+  if (command === "economy") {
+    await handleEconomy(context, subcommand, rest);
     return;
   }
 
@@ -2971,7 +2979,63 @@ async function handleNotification(
   throw new Error(`Unknown notification command: ${subcommand}`);
 }
 
-async function handleArc(subcommand: string | undefined, rest: string[]): Promise<void> {
+async function handleEconomy(
+  context: CommandContext,
+  subcommand: string | undefined,
+  rest: string[]
+): Promise<void> {
+  await context.runtime.init();
+
+  if (!subcommand || subcommand === "status") {
+    printArcEconomyStatus(await context.runtime.getArcEconomyStatus());
+    return;
+  }
+
+  if (subcommand === "inspect" || subcommand === "discover") {
+    const url = rest[0];
+    if (!url) throw new Error("Usage: hallow economy inspect <public-service-url>");
+    const record = await context.runtime.inspectArcPaidService(url);
+    printArcServiceInspection(record.inspection, record.inspection_path);
+    return;
+  }
+
+  if (subcommand === "plan" || subcommand === "autopilot") {
+    const url = rest[0];
+    const purpose = readOption(rest, "--purpose");
+    if (!url || !purpose) {
+      throw new Error(`Usage: hallow economy ${subcommand} <public-service-url> --purpose "why this service is needed"`);
+    }
+    const record = await context.runtime.planArcServicePayment(url, {
+      purpose,
+      offer_index: Math.max(0, Math.floor(readNumberOption(rest, "--offer") ?? 0))
+    });
+    printArcServiceInspection(record.inspection, record.inspection_path);
+    printArcCommerceIntent(record.intent, record.intent_path, record.approval?.id);
+    if (subcommand === "autopilot") {
+      console.log("\n  AUTOPILOT     Discovery and policy completed automatically.");
+      console.log("  SIGNER        Locked. Configure the isolated signer in a later audited release.");
+    }
+    return;
+  }
+
+  if (subcommand === "help" || subcommand === "--help" || subcommand === "-h") {
+    console.log(`
+HALLOW / AUTONOMIC COMMERCE
+
+  hallow economy status
+  hallow economy inspect <public-service-url>
+  hallow economy plan <public-service-url> --purpose "Buy verified data"
+  hallow economy autopilot <public-service-url> --purpose "Buy verified data"
+
+Hallow discovers x402 offers, applies Arc USDC policy, persists evidence, and creates
+exact approvals. The model never receives wallet secrets and execution is disabled.`);
+    return;
+  }
+
+  throw new Error(`Unknown economy command: ${subcommand}`);
+}
+
+async function handleArc(context: CommandContext, subcommand: string | undefined, rest: string[]): Promise<void> {
   const client = new ArcChainClient({ rpc_url: readOption(rest, "--rpc") });
 
   if (!subcommand || subcommand === "status") {
@@ -3077,6 +3141,60 @@ function printArcJobIntent(intent: ArcJobIntent): void {
   console.log(`  DESCRIPTION   ${intent.description}`);
   console.log("\n  POLICY CHECKS");
   for (const check of intent.checks) console.log(`  ${check.status === "pass" ? "✓" : check.status === "approval" ? "!" : "✕"} ${check.label.padEnd(24)} ${check.detail}`);
+  console.log("\n  No transaction was signed. No funds moved.");
+}
+
+function printArcEconomyStatus(status: ArcEconomyStatus): void {
+  printTerminalFrame("HALLOW / ECONOMY", "AUTONOMIC COMMERCE", 76);
+  console.log(`\n  NETWORK       ${status.network}`);
+  console.log(`  POLICY        ${status.policy.name} / v${status.policy.version}`);
+  console.log(`  PER PAYMENT   ${status.policy.max_payment_usdc} USDC`);
+  console.log(`  DAILY LIMIT   ${status.policy.max_daily_usdc} USDC`);
+  console.log(`  AUTO LIMIT    ${status.policy.require_human_approval_above_usdc} USDC`);
+  console.log(`  INSPECTIONS   ${status.services_inspected}`);
+  console.log(`  INTENTS       ${status.payment_intents}`);
+  console.log(`  RECEIPTS      ${status.receipts}`);
+  console.log(`  SETTLED TODAY ${status.daily_settled_usdc} USDC`);
+  console.log(`  PLANNED TODAY ${status.daily_planned_usdc} USDC`);
+  console.log(`  APPROVALS     ${status.pending_approvals} pending`);
+  console.log("\n  SAFETY STATE");
+  console.log("  PASS  x402 discovery and Arc USDC validation");
+  console.log("  PASS  per-payment and daily budget enforcement");
+  console.log("  PASS  private-network and credential URL blocking");
+  console.log("  LOCK  isolated signer is not configured");
+}
+
+function printArcServiceInspection(inspection: ArcServiceInspection, artifactPath?: string): void {
+  const state = !inspection.reachable ? "UNREACHABLE" : inspection.payment_required ? "PAYMENT REQUIRED" : "PUBLIC";
+  printTerminalFrame("ARC / SERVICE", state, 76);
+  console.log(`\n  SERVICE       ${inspection.origin}`);
+  console.log(`  HTTP          ${inspection.http_status || "failed"}`);
+  console.log(`  X402 OFFERS   ${inspection.offers.length}`);
+  if (inspection.resource?.description) console.log(`  RESOURCE      ${inspection.resource.description}`);
+  for (const [index, offer] of inspection.offers.entries()) {
+    console.log(`\n  OFFER ${String(index).padStart(2, "0")}      ${offer.amount_usdc} USDC / ${offer.scheme}`);
+    console.log(`  NETWORK       ${offer.network}`);
+    console.log(`  RECIPIENT     ${shortArcAddress(offer.pay_to)}`);
+    console.log(`  ASSET         ${shortArcAddress(offer.asset)}`);
+  }
+  for (const warning of inspection.warnings) console.log(`\n  WARN          ${warning}`);
+  if (artifactPath) console.log(`\n  EVIDENCE      ${artifactPath}`);
+}
+
+function printArcCommerceIntent(intent: ArcCommerceIntent, artifactPath?: string, approvalId?: string): void {
+  printTerminalFrame("ARC / PAYMENT INTENT", intent.state.replaceAll("_", " ").toUpperCase(), 76);
+  console.log(`\n  INTENT        ${intent.id}`);
+  console.log(`  PURPOSE       ${intent.purpose}`);
+  console.log(`  AMOUNT        ${intent.offer.amount_usdc} USDC`);
+  console.log(`  PROJECTED     ${intent.projected_daily_spend_usdc} USDC today`);
+  console.log(`  RECIPIENT     ${shortArcAddress(intent.offer.pay_to)}`);
+  console.log("\n  POLICY CHECKS");
+  for (const check of intent.checks) {
+    const marker = check.status === "pass" ? "PASS" : check.status === "approval" ? "HOLD" : "BLOCK";
+    console.log(`  ${marker.padEnd(5)} ${check.label.padEnd(22)} ${check.detail}`);
+  }
+  if (approvalId) console.log(`\n  APPROVAL      ${approvalId}`);
+  if (artifactPath) console.log(`  INTENT FILE   ${artifactPath}`);
   console.log("\n  No transaction was signed. No funds moved.");
 }
 
@@ -5728,6 +5846,10 @@ Usage:
   hallow arc contracts
   hallow arc agent <agent-id>
   hallow arc plan-job --provider 0x... --evaluator 0x... --budget USDC --description text
+  hallow economy status
+  hallow economy inspect <public-service-url>
+  hallow economy plan <public-service-url> --purpose text
+  hallow economy autopilot <public-service-url> --purpose text
   hallow demo setup [--skip-live-mcp] [--skip-browser]
   hallow demo run [--skip-live-mcp] [--skip-browser]
   hallow demo checklist

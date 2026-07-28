@@ -34,6 +34,11 @@ hallow arc plan-job \
   --description "Analyze 500 public transactions" \
   --evidence 0xabababababababababababababababababababababababababababababababab \
   --provider-registered
+
+hallow economy status
+hallow economy inspect https://service.example/report
+hallow economy autopilot https://service.example/report \
+  --purpose "Buy one independently verified report"
 ```
 
 Implemented now:
@@ -43,7 +48,11 @@ Implemented now:
 3. ERC-8004 Agent Passport reads using `ownerOf` and `tokenURI`.
 4. Deterministic job policy covering budget, daily spend, provider registration, evaluator independence, evidence commitment, and allowlists.
 5. Stable-hash job intents and Work Receipts.
-6. Tests for network, identity, blocked jobs, approval thresholds, and receipt tampering.
+6. Defensive x402 discovery and PAYMENT-REQUIRED decoding.
+7. Commerce policy for Arc network, USDC asset, payment scheme, recipient, origin, per-payment spend, and combined settled-plus-reserved daily exposure.
+8. Persistent service inspections, payment intents, exact approvals, and append-only local economic ledger.
+9. An isolated signer interface and tamper-evident commerce receipts that never persist payment signatures.
+10. Tests for network, identity, blocked jobs, x402 parsing, approval thresholds, runtime persistence, signer isolation, and receipt tampering.
 
 Not enabled:
 
@@ -72,6 +81,17 @@ Independent evaluator ----> Work Receipt
         |
         v
 Scoped signer (future) ----> ERC-8183 settlement
+
+Public x402 service ----> Service Inspection
+        |
+        v
+Commerce Policy ----> block / exact approval / ready
+        |
+        v
+Isolated signer boundary ----> paid response
+        |
+        v
+Response + authorization hashes ----> Commerce Receipt + local ledger
 ```
 
 ## Trust boundaries
@@ -100,11 +120,11 @@ Addresses are testnet references and must be re-verified against Arc documentati
 
 ## Next engineering milestones
 
-1. Persist Arc policies, job intents, Agent Passports, and Work Receipts under the Hallow home directory.
-2. Add event indexing for agent registrations, feedback, validations, and job lifecycle transitions.
-3. Add deterministic evaluator plugins for code, structured data, signed reports, and API results.
-4. Add a scoped ERC-4337 signer with dry-run simulation and explicit approval.
-5. Add x402 service purchasing with per-call caps and metering receipts.
+1. Add event indexing for agent registrations, feedback, validations, and ERC-8183 job lifecycle transitions.
+2. Add deterministic evaluator plugins for code, structured data, signed reports, and API results.
+3. Connect the isolated signer interface to an audited Circle Wallet or ERC-4337 adapter with simulation, revocation, and emergency stop.
+4. Add webhook reconciliation and idempotent settlement accounting.
+5. Add ERC-8004 registration and outcome-based reputation writes.
 6. Add CCTP/Gateway funding only after signing and reconciliation controls are audited.
 
 ## Official references
@@ -116,3 +136,5 @@ Addresses are testnet references and must be re-verified against Arc documentati
 - [ERC-8183](https://eips.ethereum.org/EIPS/eip-8183)
 - [Arc contract addresses](https://docs.arc.io/arc/references/contract-addresses)
 - [Arc account abstraction](https://docs.arc.io/arc/tools/account-abstraction)
+- [Circle Gateway Nanopayments](https://developers.circle.com/gateway/nanopayments)
+- [Circle Agent Nanopayments](https://developers.circle.com/agent-stack/agent-nanopayments)

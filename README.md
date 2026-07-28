@@ -19,9 +19,9 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.2.0-d8c6a4?style=flat-square&labelColor=11120f">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.3.0-d8c6a4?style=flat-square&labelColor=11120f">
   <img alt="Node" src="https://img.shields.io/badge/node-22%2B-a0f7ab?style=flat-square&labelColor=11120f">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-22%20passing-86e3e9?style=flat-square&labelColor=11120f">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-34%20passing-86e3e9?style=flat-square&labelColor=11120f">
   <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-eee6d7?style=flat-square&labelColor=11120f"></a>
 </p>
 
@@ -168,9 +168,14 @@ hallow arc contracts
 hallow arc agent 42
 hallow arc plan-job --provider 0x... --evaluator 0x... --budget 20 \
   --description "Analyze public transactions" --evidence 0x... --provider-registered
+
+hallow economy status
+hallow economy inspect https://service.example/report
+hallow economy autopilot https://service.example/report \
+  --purpose "Buy one independently verified report"
 ```
 
-The current Arc integration is testnet-only. Network and contract verification, Agent Passport reads, deterministic job policy, and local receipts are implemented. Transaction signing and production settlement are deliberately not enabled.
+The current Arc integration is testnet-only. Network and contract verification, Agent Passport reads, deterministic job policy, x402 discovery, bounded payment intents, append-only local commerce ledger, exact approvals, and tamper-evident receipts are implemented. Transaction signing and production settlement are deliberately not enabled.
 
 Read the [Arc Agent Economy architecture](./docs/ARC_AGENT_ECONOMY.md).
 
@@ -254,7 +259,7 @@ corepack pnpm audit:prod
 
 ## Current limits
 
-Hallow `0.2.0` is an alpha release.
+Hallow `0.3.0` is an alpha release.
 
 - The installed runtime begins on the operator's machine, but cloud models and remote tools send the data required for their calls to the provider selected by the operator.
 - Sandbox strength depends on the configured backend and host operating system. Do not treat the default runtime as a hardened boundary for hostile code.
@@ -263,7 +268,7 @@ Hallow `0.2.0` is an alpha release.
 - Arc transaction signing is disabled. Its public experience verifies the network, registries, agent identity, and dry-run job policy.
 - Native desktop packaging and stronger process isolation remain roadmap items.
 
-See [Production Readiness](./docs/PRODUCTION_READINESS.md), [Security](./SECURITY.md), and the [0.2.0 release notes](./docs/RELEASE_0.2.0.md).
+See [Production Readiness](./docs/PRODUCTION_READINESS.md), [Security](./SECURITY.md), and the [0.3.0 release notes](./docs/RELEASE_0.3.0.md).
 
 ## Repository map
 

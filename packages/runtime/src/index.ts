@@ -35,14 +35,22 @@ import {
   type ModelToolDefinition
 } from "@hallow/models";
 import {
+  type ArcCommerceIntent,
+  type ArcCommercePolicy,
+  type ArcServiceInspection,
   ArcChainClient,
+  arcStableHash,
+  createArcCommerceIntent,
   createArcJobIntent,
+  createDefaultArcCommercePolicy,
   createDefaultArcJobPolicy,
   createDefaultGuardianPolicy,
   createGuardianPlan as buildGuardianPlan,
   createGuardianReceipt,
   normalizeGuardianPolicy,
   GuardianChainClient,
+  inspectArcX402Service,
+  normalizeArcCommercePolicy,
   verifyGuardianReceipt,
   type ChainStatus,
   type GuardianAction,
@@ -699,6 +707,45 @@ export type CreateApprovalInput = {
   target: string;
   risk?: RiskLevel;
   reason?: string;
+};
+
+export type ArcEconomyLedgerEntry = {
+  schema: "hallow.arc_economy_event/v1";
+  id: string;
+  kind: "inspection" | "intent" | "receipt" | "reconciliation";
+  artifact_id: string;
+  service_url?: string;
+  amount_usdc: number;
+  state: string;
+  created_at: string;
+  previous_hash: string;
+  event_hash: string;
+};
+
+export type ArcEconomyStatus = {
+  schema: "hallow.arc_economy_status/v1";
+  network: "Arc Testnet";
+  policy: ArcCommercePolicy;
+  services_inspected: number;
+  payment_intents: number;
+  receipts: number;
+  daily_settled_usdc: number;
+  daily_planned_usdc: number;
+  pending_approvals: number;
+  execution_enabled: false;
+  signer_state: "isolated-signer-not-configured";
+  checked_at: string;
+};
+
+export type ArcCommerceInspectionRecord = {
+  inspection: ArcServiceInspection;
+  inspection_path: string;
+};
+
+export type ArcCommercePlanRecord = ArcCommerceInspectionRecord & {
+  intent: ArcCommerceIntent;
+  intent_path: string;
+  approval?: ApprovalRequest;
 };
 
 export type ToolApprovalMode = "auto" | "ask" | "deny";
@@ -1732,10 +1779,16 @@ export type AutonomyHealReport = {
 export class HallowRuntime {
   readonly home: string;
   readonly models: ModelRegistry;
+  readonly arcCommerceFetch?: (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
-  constructor(home = getHallowHome(), models?: ModelRegistry) {
+  constructor(
+    home = getHallowHome(),
+    models?: ModelRegistry,
+    options: { arcCommerceFetch?: (input: string | URL | Request, init?: RequestInit) => Promise<Response> } = {}
+  ) {
     this.home = home;
     this.models = models ?? new ModelRegistry(home);
+    this.arcCommerceFetch = options.arcCommerceFetch;
   }
 
   get configPath(): string {
@@ -1872,6 +1925,30 @@ export class HallowRuntime {
 
   get guardianBriefsDir(): string {
     return hallowPath(this.guardianDir, "briefs");
+  }
+
+  get arcEconomyDir(): string {
+    return hallowPath(this.home, "arc-economy");
+  }
+
+  get arcEconomyPolicyPath(): string {
+    return hallowPath(this.arcEconomyDir, "commerce-policy.yaml");
+  }
+
+  get arcEconomyLedgerPath(): string {
+    return hallowPath(this.arcEconomyDir, "ledger.jsonl");
+  }
+
+  get arcEconomyInspectionsDir(): string {
+    return hallowPath(this.arcEconomyDir, "inspections");
+  }
+
+  get arcEconomyIntentsDir(): string {
+    return hallowPath(this.arcEconomyDir, "intents");
+  }
+
+  get arcEconomyReceiptsDir(): string {
+    return hallowPath(this.arcEconomyDir, "receipts");
   }
 
   get integrationsDir(): string {
@@ -2060,6 +2137,10 @@ export class HallowRuntime {
       this.guardianReceiptsDir,
       this.guardianIntelligenceDir,
       this.guardianBriefsDir,
+      this.arcEconomyDir,
+      this.arcEconomyInspectionsDir,
+      this.arcEconomyIntentsDir,
+      this.arcEconomyReceiptsDir,
       this.sandboxRunsDir,
       hallowPath(this.home, "approvals"),
       hallowPath(this.home, "notifications"),
@@ -2132,6 +2213,8 @@ export class HallowRuntime {
     await this.writeMissingYaml(this.sandboxProfilePath, createDefaultSandboxProfile(), created, skipped);
     await this.writeMissingYaml(this.securityAuditPath, createDefaultSecurityAuditReport(), created, skipped);
     await this.writeMissingYaml(this.guardianPolicyPath, createDefaultGuardianPolicy(), created, skipped);
+    await this.writeMissingYaml(this.arcEconomyPolicyPath, createDefaultArcCommercePolicy(), created, skipped);
+    await this.writeMissingText(this.arcEconomyLedgerPath, "", created, skipped);
     await this.writeMissingText(this.apiTokenPath, `${createApiToken()}\n`, created, skipped);
     await this.writeMissingYaml(this.fleetPath, createDefaultFleetState(), created, skipped);
     await this.writeMissingYaml(
@@ -6595,6 +6678,148 @@ export class HallowRuntime {
     };
   }
 
+  async getArcCommercePolicy(): Promise<ArcCommercePolicy> {
+    const raw = await readYaml<Partial<ArcCommercePolicy>>(
+      this.arcEconomyPolicyPath,
+      createDefaultArcCommercePolicy()
+    );
+    return normalizeArcCommercePolicy(raw);
+  }
+
+  async getArcEconomyStatus(now = new Date()): Promise<ArcEconomyStatus> {
+    const [policy, ledger, approvals] = await Promise.all([
+      this.getArcCommercePolicy(),
+      this.readArcEconomyLedger(),
+      this.listApprovals("pending")
+    ]);
+    const day = now.toISOString().slice(0, 10);
+    const today = ledger.filter((entry) => entry.created_at.startsWith(day));
+    return {
+      schema: "hallow.arc_economy_status/v1",
+      network: "Arc Testnet",
+      policy,
+      services_inspected: ledger.filter((entry) => entry.kind === "inspection").length,
+      payment_intents: ledger.filter((entry) => entry.kind === "intent").length,
+      receipts: ledger.filter((entry) => entry.kind === "receipt").length,
+      daily_settled_usdc: today
+        .filter((entry) => entry.kind === "receipt")
+        .reduce((total, entry) => total + entry.amount_usdc, 0),
+      daily_planned_usdc: today
+        .filter((entry) => entry.kind === "intent" && (entry.state === "ready" || entry.state === "approval_required"))
+        .reduce((total, entry) => total + entry.amount_usdc, 0),
+      pending_approvals: approvals.filter((entry) => entry.action === "arc.commerce.payment").length,
+      execution_enabled: false,
+      signer_state: "isolated-signer-not-configured",
+      checked_at: now.toISOString()
+    };
+  }
+
+  async inspectArcPaidService(url: string): Promise<ArcCommerceInspectionRecord> {
+    const decision = await this.checkTool("arc.commerce.inspect", url);
+    if (!decision.allowed) throw new Error(decision.reason);
+    const inspection = await inspectArcX402Service(url, { fetch: this.arcCommerceFetch });
+    const inspectionPath = hallowPath(this.arcEconomyInspectionsDir, `${inspection.id}.yaml`);
+    await writeYaml(inspectionPath, inspection);
+    await this.appendArcEconomyEvent({
+      kind: "inspection",
+      artifact_id: inspection.id,
+      service_url: inspection.url,
+      amount_usdc: 0,
+      state: inspection.payment_required ? "payment_required" : inspection.reachable ? "public" : "unreachable",
+      created_at: inspection.inspected_at
+    });
+    await this.recordToolEvent("arc.commerce.inspect", inspection.url, inspection.payment_required ? "x402 challenge observed" : `HTTP ${inspection.http_status}`);
+    return { inspection, inspection_path: inspectionPath };
+  }
+
+  async planArcServicePayment(
+    url: string,
+    input: { purpose: string; offer_index?: number }
+  ): Promise<ArcCommercePlanRecord> {
+    const decision = await this.checkTool("arc.commerce.plan", url);
+    if (!decision.allowed) throw new Error(decision.reason);
+    const record = await this.inspectArcPaidService(url);
+    const status = await this.getArcEconomyStatus();
+    const intent = createArcCommerceIntent(record.inspection, {
+      purpose: input.purpose,
+      offer_index: input.offer_index,
+      daily_spend_before_usdc: status.daily_settled_usdc + status.daily_planned_usdc
+    }, status.policy);
+    const intentPath = hallowPath(this.arcEconomyIntentsDir, `${intent.id}.yaml`);
+    await writeYaml(intentPath, intent);
+    let approval: ApprovalRequest | undefined;
+    if (intent.state === "approval_required") {
+      approval = await this.createApproval({
+        agent: "hallow-economy",
+        action: "arc.commerce.payment",
+        target: intent.id,
+        risk: "R4",
+        reason: `${intent.purpose} costs ${intent.offer.amount_usdc} USDC. Approval applies only to intent ${intent.id} and its immutable policy hash.`
+      });
+    }
+    await this.appendArcEconomyEvent({
+      kind: "intent",
+      artifact_id: intent.id,
+      service_url: intent.service_url,
+      amount_usdc: intent.offer.amount_usdc,
+      state: intent.state,
+      created_at: intent.created_at
+    });
+    await this.recordToolEvent("arc.commerce.plan", intent.id, intent.state);
+    return { ...record, intent, intent_path: intentPath, approval };
+  }
+
+  private async readArcEconomyLedger(): Promise<ArcEconomyLedgerEntry[]> {
+    const content = await readTextIfExists(this.arcEconomyLedgerPath);
+    if (!content?.trim()) return [];
+    const entries: ArcEconomyLedgerEntry[] = [];
+    let previousHash = `0x${"0".repeat(64)}`;
+    for (const [index, line] of content.split(/\r?\n/).entries()) {
+      if (!line.trim()) continue;
+      try {
+        const value = JSON.parse(line) as Partial<ArcEconomyLedgerEntry>;
+        if (
+          value.schema !== "hallow.arc_economy_event/v1"
+          || typeof value.id !== "string"
+          || !["inspection", "intent", "receipt", "reconciliation"].includes(String(value.kind))
+          || typeof value.artifact_id !== "string"
+          || !Number.isFinite(value.amount_usdc)
+          || Number(value.amount_usdc) < 0
+          || typeof value.state !== "string"
+          || typeof value.created_at !== "string"
+          || !Number.isFinite(Date.parse(value.created_at))
+          || value.previous_hash !== previousHash
+          || !/^0x[a-f0-9]{64}$/i.test(String(value.event_hash))
+        ) {
+          throw new Error("invalid event fields or chain link");
+        }
+        const { event_hash: eventHash, ...base } = value as ArcEconomyLedgerEntry;
+        if (arcStableHash(base) !== eventHash) throw new Error("event hash mismatch");
+        entries.push(value as ArcEconomyLedgerEntry);
+        previousHash = eventHash;
+      } catch (error) {
+        throw new Error(`Arc economy ledger integrity failure at line ${index + 1}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    return entries;
+  }
+
+  private async appendArcEconomyEvent(
+    input: Omit<ArcEconomyLedgerEntry, "schema" | "id" | "previous_hash" | "event_hash">
+  ): Promise<ArcEconomyLedgerEntry> {
+    const current = await this.readArcEconomyLedger();
+    const base = {
+      schema: "hallow.arc_economy_event/v1" as const,
+      id: createId("economy"),
+      ...input,
+      previous_hash: current.at(-1)?.event_hash ?? `0x${"0".repeat(64)}`
+    };
+    const event: ArcEconomyLedgerEntry = { ...base, event_hash: arcStableHash(base) };
+    await ensureDir(this.arcEconomyDir);
+    await appendFile(this.arcEconomyLedgerPath, `${JSON.stringify(event)}\n`, "utf8");
+    return event;
+  }
+
   async getGuardianChainStatus(network: GuardianNetwork = "mainnet"): Promise<ChainStatus> {
     return this.createGuardianClient(network).status();
   }
@@ -10123,6 +10348,46 @@ export class HallowRuntime {
         };
       }
 
+      if (call.name === "arc_inspect_service") {
+        const url = readToolString(call.arguments, "url");
+        if (!url) return denied("", "arc_inspect_service requires an absolute public service URL.");
+        const record = await this.inspectArcPaidService(url);
+        return {
+          toolUse: {
+            tool: "arc.commerce.inspect",
+            target: record.inspection.url,
+            status: record.inspection.reachable ? "success" : "denied",
+            summary: record.inspection.payment_required
+              ? `${record.inspection.offers.length} x402 offer(s) observed; no payment was signed.`
+              : `Service returned HTTP ${record.inspection.http_status}; no payment was signed.`,
+            artifact: record.inspection_path
+          },
+          content: JSON.stringify({ ok: record.inspection.reachable, ...record })
+        };
+      }
+
+      if (call.name === "arc_plan_payment") {
+        const url = readToolString(call.arguments, "url");
+        const purpose = readToolString(call.arguments, "purpose");
+        if (!url || !purpose) return denied(url, "arc_plan_payment requires url and purpose.");
+        const record = await this.planArcServicePayment(url, {
+          purpose,
+          offer_index: Math.max(0, Math.floor(readToolNumber(call.arguments, "offer_index", 0)))
+        });
+        return {
+          toolUse: {
+            tool: "arc.commerce.plan",
+            target: record.intent.id,
+            status: record.intent.state === "blocked" ? "denied" : "success",
+            summary: record.approval
+              ? `Payment intent requires exact approval ${record.approval.id}; nothing was signed.`
+              : `Payment intent is ${record.intent.state}; isolated signer execution remains disabled.`,
+            artifact: record.intent_path
+          },
+          content: JSON.stringify({ ok: record.intent.state !== "blocked", ...record })
+        };
+      }
+
       if (call.name === "guardian_chain_status") {
         const network = readToolString(call.arguments, "network") === "testnet" ? "testnet" : "mainnet";
         const status = await this.getGuardianChainStatus(network);
@@ -11288,6 +11553,9 @@ function createDefaultToolRegistry(): ToolRegistry {
       "memory.write": { enabled: true, risk: "R1", approval: "auto" },
       "arc.read": { enabled: true, risk: "R1", approval: "auto" },
       "arc.plan": { enabled: true, risk: "R2", approval: "auto" },
+      "arc.commerce.inspect": { enabled: true, risk: "R1", approval: "auto" },
+      "arc.commerce.plan": { enabled: true, risk: "R2", approval: "auto" },
+      "arc.commerce.execute": { enabled: false, risk: "R4", approval: "deny" },
       "chain.read": { enabled: true, risk: "R1", approval: "auto" },
       "guardian.plan": { enabled: false, risk: "R2", approval: "deny" },
       "guardian.receipt": { enabled: false, risk: "R1", approval: "deny" },
@@ -14244,6 +14512,32 @@ const HALLOW_AGENT_TOOLS: ModelToolDefinition[] = [
         provider_registered: { type: "boolean", description: "True only when registration was independently verified." }
       },
       required: ["provider", "evaluator", "budget_usdc", "description", "evidence_commitment", "provider_registered"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "arc_inspect_service",
+    description: "Inspect a public HTTP service for an x402 PAYMENT-REQUIRED challenge, decode Arc USDC offers, and save a local evidence artifact. Blocks private-network targets and never signs or pays.",
+    input_schema: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "Absolute public HTTP(S) service URL." }
+      },
+      required: ["url"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "arc_plan_payment",
+    description: "Create a policy-checked x402 payment intent for an Arc USDC service. Enforces network, asset, scheme, recipient, per-payment and daily budgets, and creates exact human approval when required. Never signs or moves funds.",
+    input_schema: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "Absolute public x402 service URL." },
+        purpose: { type: "string", description: "Why this paid service is needed for the current task." },
+        offer_index: { type: "integer", minimum: 0, maximum: 19 }
+      },
+      required: ["url", "purpose"],
       additionalProperties: false
     }
   },

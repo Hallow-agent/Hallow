@@ -139,3 +139,102 @@ export type ArcWorkReceipt = {
   verification_hash: string;
   created_at: string;
 };
+
+export type ArcX402Offer = {
+  scheme: string;
+  network: string;
+  asset: string;
+  amount_atomic: string;
+  amount_usdc: number;
+  pay_to: string;
+  max_timeout_seconds?: number;
+  facilitator_url?: string;
+  requirement_hash: string;
+};
+
+export type ArcServiceInspection = {
+  schema: "hallow.arc_service_inspection/v1";
+  id: string;
+  url: string;
+  origin: string;
+  http_status: number;
+  reachable: boolean;
+  payment_required: boolean;
+  resource?: {
+    url?: string;
+    description?: string;
+    mime_type?: string;
+  };
+  offers: ArcX402Offer[];
+  warnings: string[];
+  header_hash?: string;
+  inspected_at: string;
+};
+
+export type ArcCommercePolicy = {
+  schema: "hallow.arc_commerce_policy/v1";
+  version: number;
+  name: string;
+  max_payment_usdc: number;
+  max_daily_usdc: number;
+  require_human_approval_above_usdc: number;
+  require_https: boolean;
+  allowed_networks: string[];
+  allowed_schemes: string[];
+  allowed_assets: string[];
+  allowed_recipients: string[];
+  blocked_origins: string[];
+  updated_at: string;
+};
+
+export type ArcCommerceIntent = {
+  schema: "hallow.arc_commerce_intent/v1";
+  id: string;
+  inspection_id: string;
+  service_url: string;
+  service_origin: string;
+  purpose: string;
+  offer: ArcX402Offer;
+  daily_spend_before_usdc: number;
+  projected_daily_spend_usdc: number;
+  policy_hash: string;
+  checks: ArcPolicyCheck[];
+  state: "blocked" | "approval_required" | "ready";
+  funds_moved: false;
+  created_at: string;
+};
+
+export type ArcPaymentAuthorization = {
+  signer_id: string;
+  payment_signature: string;
+  authorization_hash?: string;
+};
+
+export type ArcCommerceReceipt = {
+  schema: "hallow.arc_commerce_receipt/v1";
+  id: string;
+  intent_id: string;
+  intent_hash: string;
+  service_url: string;
+  provider: string;
+  amount_usdc: number;
+  response_status: number;
+  response_hash: string;
+  authorization_hash: string;
+  settlement_reference?: string;
+  signer_id: string;
+  payment_signature_stored: false;
+  private_content_onchain: false;
+  verification_hash: string;
+  created_at: string;
+};
+
+export type ArcCommerceAutopilotResult = {
+  schema: "hallow.arc_commerce_autopilot/v1";
+  inspection: ArcServiceInspection;
+  intent?: ArcCommerceIntent;
+  receipt?: ArcCommerceReceipt;
+  state: "public" | "blocked" | "approval_required" | "signer_required" | "completed";
+  next_action: string;
+  completed_at: string;
+};

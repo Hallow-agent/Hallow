@@ -1,5 +1,20 @@
 # Changelog
 
+## Hallow 0.3.0 - Autonomic Commerce
+
+This release gives Hallow a guarded machine-commerce loop for paid agent services on Arc.
+
+- added defensive x402 discovery and PAYMENT-REQUIRED decoding;
+- added Arc USDC network, asset, scheme, recipient, per-payment, and daily-budget enforcement;
+- added exact approval generation for payments above the autonomous threshold;
+- added an isolated signer interface that executes ready intents without exposing or storing payment signatures;
+- added tamper-evident commerce receipts with response and authorization hashes;
+- added a persistent local commerce policy, evidence artifacts, and append-only economic ledger;
+- added `hallow economy status|inspect|plan|autopilot` and governed model tools;
+- blocked private-network targets, credential-bearing URLs, redirects, oversized headers, and oversized paid responses by default.
+
+Read the [full 0.3.0 release notes](./docs/RELEASE_0.3.0.md).
+
 ## Hallow 0.2.0 - Arc Agent Economy Preview
 
 This release focuses Hallow on trustworthy agent work and settlement on Arc.

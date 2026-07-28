@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-d8c6a4?style=flat-square&labelColor=11120f">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.2.0-d8c6a4?style=flat-square&labelColor=11120f">
   <img alt="Node" src="https://img.shields.io/badge/node-22%2B-a0f7ab?style=flat-square&labelColor=11120f">
   <img alt="Tests" src="https://img.shields.io/badge/tests-22%20passing-86e3e9?style=flat-square&labelColor=11120f">
   <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-eee6d7?style=flat-square&labelColor=11120f"></a>
@@ -123,7 +123,7 @@ flowchart LR
     C --> R
 
     R --> ARC[Arc Agent Economy]
-    GU --> GE[Onchain Evidence + Receipts]
+    ARC --> GE[Onchain Evidence + Receipts]
 ```
 
 The model is one component inside this system. Memory, policy, tool permissions, approval, and evidence are runtime responsibilities rather than prompt conventions.
@@ -254,7 +254,7 @@ corepack pnpm audit:prod
 
 ## Current limits
 
-Hallow `0.1.0` is an alpha release.
+Hallow `0.2.0` is an alpha release.
 
 - The installed runtime begins on the operator's machine, but cloud models and remote tools send the data required for their calls to the provider selected by the operator.
 - Sandbox strength depends on the configured backend and host operating system. Do not treat the default runtime as a hardened boundary for hostile code.
@@ -263,7 +263,7 @@ Hallow `0.1.0` is an alpha release.
 - Arc transaction signing is disabled. Its public experience verifies the network, registries, agent identity, and dry-run job policy.
 - Native desktop packaging and stronger process isolation remain roadmap items.
 
-See [Production Readiness](./docs/PRODUCTION_READINESS.md), [Security](./SECURITY.md), and the [0.1.0 upgrade notes](./docs/RELEASE_0.1.0.md).
+See [Production Readiness](./docs/PRODUCTION_READINESS.md), [Security](./SECURITY.md), and the [0.2.0 release notes](./docs/RELEASE_0.2.0.md).
 
 ## Repository map
 
@@ -283,7 +283,6 @@ scripts             public installers, checks, and media renderers
 
 - [Install guide](./docs/INSTALL.md)
 - [Arc Agent Economy](./docs/ARC_AGENT_ECONOMY.md)
-- [Blockchain intelligence](./docs/BLOCKCHAIN_INTELLIGENCE.md)
 - [Production readiness](./docs/PRODUCTION_READINESS.md)
 - [Security policy](./SECURITY.md)
 - [Comparison and design context](./docs/COMPARISON.md)

@@ -1,5 +1,19 @@
 # Changelog
 
+## Hallow 0.2.0 - Arc Agent Economy Preview
+
+This release focuses Hallow on trustworthy agent work and settlement on Arc.
+
+- added live Arc Testnet status and reference-contract verification with official RPC failover;
+- added ERC-8004 Agent Passport inspection for identity, ownership, and reputation context;
+- added ERC-8183-compatible job planning with budgets, expiry, provider registration, independent evaluation, and human approval gates;
+- added privacy-preserving Work Receipts that commit to job intent, deliverables, and evidence without publishing private content;
+- exposed Arc capabilities through the CLI and model tool surface;
+- replaced the previous chain-specific market experience with a dedicated Arc Agent Economy site, documentation, and example skill;
+- kept transaction signing and broadcasting disabled while the integration remains testnet-only.
+
+Read the [full 0.2.0 release notes](./docs/RELEASE_0.2.0.md).
+
 ## Hallow 0.1.0 - Operator Preview Upgrade
 
 This release turns the first prototype into a clearer installable Agent OS preview.

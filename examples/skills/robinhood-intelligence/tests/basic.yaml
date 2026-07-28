@@ -1,5 +1,0 @@
-input:
-  prompt: Explain how to analyze a Robinhood Stock Token without recommending a trade.
-  agent: hallow
-expect:
-  status: succeeded

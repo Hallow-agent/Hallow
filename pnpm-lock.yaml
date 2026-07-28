@@ -22,6 +22,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@hallow/chain':
+        specifier: workspace:*
+        version: link:../chain
       '@hallow/core':
         specifier: workspace:*
         version: link:../core

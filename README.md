@@ -12,16 +12,16 @@
 
 <p align="center">
   <a href="https://hallow-agent.xyz">Website</a> ·
-  <a href="https://hallow-agent.xyz/guardian">Guardian</a> ·
+  <a href="https://hallow-agent.xyz/arc">Arc Agent Economy</a> ·
   <a href="./docs/INSTALL.md">Install guide</a> ·
   <a href="./docs/PRODUCTION_READINESS.md">Readiness</a> ·
   <a href="./SECURITY.md">Security</a>
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-d8c6a4?style=flat-square&labelColor=11120f">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.2.0-d8c6a4?style=flat-square&labelColor=11120f">
   <img alt="Node" src="https://img.shields.io/badge/node-22%2B-a0f7ab?style=flat-square&labelColor=11120f">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-24%20passing-86e3e9?style=flat-square&labelColor=11120f">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-22%20passing-86e3e9?style=flat-square&labelColor=11120f">
   <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-eee6d7?style=flat-square&labelColor=11120f"></a>
 </p>
 
@@ -122,8 +122,8 @@ flowchart LR
     E --> C[Readiness + Recovery]
     C --> R
 
-    R --> GU[Guardian Specialization]
-    GU --> GE[Onchain Evidence + Receipts]
+    R --> ARC[Arc Agent Economy]
+    ARC --> GE[Onchain Evidence + Receipts]
 ```
 
 The model is one component inside this system. Memory, policy, tool permissions, approval, and evidence are runtime responsibilities rather than prompt conventions.
@@ -150,33 +150,29 @@ Hallow can:
 
 The exact behavior depends on the selected agent, tools, model route, sandbox backend, and local policy.
 
-## Guardian: proof before action
+## Hallow for Arc: work, prove, settle
 
-<p align="center">
-  <img src="./docs/assets/hallow-guardian-product.png" alt="Hallow Guardian product interface for evidence-led onchain analysis" width="100%">
-</p>
+[Hallow for Arc](https://hallow-agent.xyz/arc) turns a local agent runtime into a policy-governed economic participant. Arc provides agent identity, job contracts, deterministic finality, and USDC settlement; Hallow keeps execution, private memory, tools, evidence, and approval under the operator's control.
 
-[Hallow Guardian](https://hallow-agent.xyz/guardian) is a blockchain intelligence specialization built on the runtime. It gives an agent a disciplined, non-custodial way to reason about RWAs and memecoins on Robinhood Chain.
-
-| Gate | Responsibility |
+| Layer | Responsibility |
 | --- | --- |
-| Observe | Resolve official identity when available and capture current onchain and market evidence. |
-| Explain | Separate sourced facts, model inference, uncertainty, and unknowns. |
-| Simulate | Apply deterministic spend, reserve, slippage, exposure, freshness, and allowlist policy. |
-| Approve | Bind human consent to one immutable plan. |
-| Prove | Create a hash-derived receipt without publishing prompts, memory, or wallet secrets. |
+| Identify | Inspect ERC-8004 agent ownership and metadata without treating registration as trust. |
+| Contract | Bind provider, evaluator, budget, expiry, and scope into an ERC-8183-compatible job intent. |
+| Execute | Perform the work locally with bounded tools and private memory. |
+| Verify | Require evidence commitments and an evaluator independent from the provider and client. |
+| Settle | Produce a tamper-evident Work Receipt suitable for USDC settlement verification. |
 
 ```bash
-hallow guardian status
-hallow guardian brief --limit 8
-hallow guardian analyze AAPL
-hallow guardian analyze 0xCONTRACT --kind meme
-hallow guardian plan buy AAPL --usd 50 --slippage-bps 30 --reserve-percent 20
+hallow arc status
+hallow arc contracts
+hallow arc agent 42
+hallow arc plan-job --provider 0x... --evaluator 0x... --budget 20 \
+  --description "Analyze public transactions" --evidence 0x... --provider-registered
 ```
 
-Transaction broadcasting is deliberately disabled in the public preview. Registry identity does not prove legal rights, eligibility, redemption, future liquidity, safety, or profit. Guardian is a technical control and evidence layer, not financial, legal, or investment advice.
+The current Arc integration is testnet-only. Network and contract verification, Agent Passport reads, deterministic job policy, and local receipts are implemented. Transaction signing and production settlement are deliberately not enabled.
 
-Read the [Guardian architecture and safety model](./docs/GUARDIAN.md) and [blockchain intelligence design](./docs/BLOCKCHAIN_INTELLIGENCE.md).
+Read the [Arc Agent Economy architecture](./docs/ARC_AGENT_ECONOMY.md).
 
 ## Core commands
 
@@ -258,23 +254,23 @@ corepack pnpm audit:prod
 
 ## Current limits
 
-Hallow `0.1.0` is an alpha release.
+Hallow `0.2.0` is an alpha release.
 
 - The installed runtime begins on the operator's machine, but cloud models and remote tools send the data required for their calls to the provider selected by the operator.
 - Sandbox strength depends on the configured backend and host operating system. Do not treat the default runtime as a hardened boundary for hostile code.
 - The public marketplace is package metadata and local sources, not yet a hosted trustless registry.
 - Messaging and OAuth adapters require operator-owned credentials and configuration.
-- Guardian broadcasting is disabled. Its public experience is read-only inspection and dry-run planning.
+- Arc transaction signing is disabled. Its public experience verifies the network, registries, agent identity, and dry-run job policy.
 - Native desktop packaging and stronger process isolation remain roadmap items.
 
-See [Production Readiness](./docs/PRODUCTION_READINESS.md), [Security](./SECURITY.md), and the [0.1.0 upgrade notes](./docs/RELEASE_0.1.0.md).
+See [Production Readiness](./docs/PRODUCTION_READINESS.md), [Security](./SECURITY.md), and the [0.2.0 release notes](./docs/RELEASE_0.2.0.md).
 
 ## Repository map
 
 ```text
 packages/core       shared paths, manifests, filesystem, and policy primitives
 packages/models     provider catalog, routing, health, and generation adapters
-packages/chain      Guardian evidence, policy, plan, and receipt primitives
+packages/chain      Arc identity, job policy, evidence, and receipt primitives
 packages/runtime    local server, memory, tools, tasks, desktop, and gateways
 packages/cli        installer-facing and operator command surface
 site                hallow-agent.xyz static website and product media
@@ -286,8 +282,7 @@ scripts             public installers, checks, and media renderers
 ## Documentation
 
 - [Install guide](./docs/INSTALL.md)
-- [Guardian safety model](./docs/GUARDIAN.md)
-- [Blockchain intelligence](./docs/BLOCKCHAIN_INTELLIGENCE.md)
+- [Arc Agent Economy](./docs/ARC_AGENT_ECONOMY.md)
 - [Production readiness](./docs/PRODUCTION_READINESS.md)
 - [Security policy](./SECURITY.md)
 - [Comparison and design context](./docs/COMPARISON.md)

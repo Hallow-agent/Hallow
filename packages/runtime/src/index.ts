@@ -35,11 +35,14 @@ import {
   type ModelToolDefinition
 } from "@hallow/models";
 import {
+  ArcChainClient,
+  createArcJobIntent,
+  createDefaultArcJobPolicy,
   createDefaultGuardianPolicy,
   createGuardianPlan as buildGuardianPlan,
   createGuardianReceipt,
   normalizeGuardianPolicy,
-  RobinhoodChainClient,
+  GuardianChainClient,
   verifyGuardianReceipt,
   type ChainStatus,
   type GuardianAction,
@@ -6789,12 +6792,12 @@ export class HallowRuntime {
     return { receipt, receipt_path: receiptPath, verified: verifyGuardianReceipt(receipt) };
   }
 
-  private createGuardianClient(network: GuardianNetwork): RobinhoodChainClient {
-    const prefix = network === "mainnet" ? "ROBINHOOD_CHAIN" : "ROBINHOOD_CHAIN_TESTNET";
-    return new RobinhoodChainClient({
+  private createGuardianClient(network: GuardianNetwork): GuardianChainClient {
+    const prefix = network === "mainnet" ? "ARC" : "ARC_TESTNET";
+    return new GuardianChainClient({
       network,
       rpc_url: process.env[`${prefix}_RPC_URL`],
-      stock_api_url: process.env.ROBINHOOD_STOCK_TOKEN_API_URL
+      stock_api_url: process.env.HALLOW_LEGACY_ASSET_API_URL
     });
   }
 
@@ -10063,6 +10066,63 @@ export class HallowRuntime {
       content: JSON.stringify({ ok: false, error: summary })
     });
     try {
+      if (call.name === "arc_network_status") {
+        const status = await new ArcChainClient({ rpc_url: process.env.ARC_TESTNET_RPC_URL }).status();
+        return {
+          toolUse: {
+            tool: "arc.read",
+            target: status.network.name,
+            status: status.connected ? "success" : "denied",
+            summary: status.connected
+              ? `Arc Testnet connected at block ${status.block_number}; ${status.contracts.filter((item) => item.code_present).length}/${status.contracts.length} reference contracts observed.`
+              : status.error ?? "Arc Testnet unavailable."
+          },
+          content: JSON.stringify({ ok: status.connected, status })
+        };
+      }
+
+      if (call.name === "arc_agent_passport") {
+        const agentId = readToolString(call.arguments, "agent_id");
+        if (!/^\d+$/.test(agentId)) return denied(agentId, "arc_agent_passport requires a numeric ERC-8004 agent_id.");
+        const passport = await new ArcChainClient({ rpc_url: process.env.ARC_TESTNET_RPC_URL }).inspectAgent(agentId);
+        return {
+          toolUse: {
+            tool: "arc.read",
+            target: agentId,
+            status: "success",
+            summary: passport.registered ? `Agent ${agentId} is registered; identity does not prove capability or safety.` : `Agent ${agentId} was not found in the registry.`
+          },
+          content: JSON.stringify({ ok: true, passport })
+        };
+      }
+
+      if (call.name === "arc_plan_job") {
+        const provider = readToolString(call.arguments, "provider");
+        const evaluator = readToolString(call.arguments, "evaluator");
+        const description = readToolString(call.arguments, "description");
+        const evidence = readToolString(call.arguments, "evidence_commitment");
+        const intent = createArcJobIntent({
+          provider,
+          evaluator,
+          client: readToolString(call.arguments, "client") || undefined,
+          budget_usdc: readToolNumber(call.arguments, "budget_usdc", 0),
+          daily_spend_before_usdc: readToolNumber(call.arguments, "daily_spend_before_usdc", 0),
+          expires_at: readToolString(call.arguments, "expires_at") || new Date(Date.now() + 86_400_000).toISOString(),
+          description,
+          evidence_commitment: evidence || undefined,
+          provider_registered: call.arguments.provider_registered === true
+        }, createDefaultArcJobPolicy());
+        return {
+          toolUse: {
+            tool: "arc.plan",
+            target: intent.id,
+            status: intent.state === "blocked" ? "denied" : "success",
+            summary: `Arc job intent is ${intent.state.replaceAll("_", " ")}; no transaction was signed and no funds moved.`
+          },
+          content: JSON.stringify({ ok: intent.state !== "blocked", intent })
+        };
+      }
+
       if (call.name === "guardian_chain_status") {
         const network = readToolString(call.arguments, "network") === "testnet" ? "testnet" : "mainnet";
         const status = await this.getGuardianChainStatus(network);
@@ -10071,7 +10131,7 @@ export class HallowRuntime {
             tool: "chain.read",
             target: status.network.name,
             status: status.connected ? "success" : "denied",
-            summary: status.connected ? `Connected at block ${status.block_number}.` : status.error ?? "Robinhood Chain unavailable."
+            summary: status.connected ? `Connected at block ${status.block_number}.` : status.error ?? "Arc Testnet unavailable."
           },
           content: JSON.stringify({ ok: status.connected, status })
         };
@@ -11226,9 +11286,11 @@ function createDefaultToolRegistry(): ToolRegistry {
       "web.fetch": { enabled: true, risk: "R1", approval: "auto" },
       "memory.read": { enabled: true, risk: "R0", approval: "auto" },
       "memory.write": { enabled: true, risk: "R1", approval: "auto" },
+      "arc.read": { enabled: true, risk: "R1", approval: "auto" },
+      "arc.plan": { enabled: true, risk: "R2", approval: "auto" },
       "chain.read": { enabled: true, risk: "R1", approval: "auto" },
-      "guardian.plan": { enabled: true, risk: "R2", approval: "auto" },
-      "guardian.receipt": { enabled: true, risk: "R1", approval: "auto" },
+      "guardian.plan": { enabled: false, risk: "R2", approval: "deny" },
+      "guardian.receipt": { enabled: false, risk: "R1", approval: "deny" },
       "guardian.execute": { enabled: false, risk: "R4", approval: "deny" },
       "mcp.call": { enabled: true, risk: "R2", approval: "auto" },
       "agent.delegate": { enabled: true, risk: "R2", approval: "auto" },
@@ -14145,74 +14207,43 @@ function createPlanGoals(prompt: string, tools: string[]): string[] {
 
 const HALLOW_AGENT_TOOLS: ModelToolDefinition[] = [
   {
-    name: "guardian_chain_status",
-    description: "Check Robinhood Chain connectivity and the latest observed block without requesting wallet access.",
+    name: "arc_network_status",
+    description: "Verify the live Arc Testnet chain ID, block height, and bytecode presence for Hallow's reference identity, job, USDC, CCTP, and Gateway contracts. This is read-only and never requests wallet access.",
     input_schema: {
       type: "object",
-      properties: { network: { type: "string", enum: ["mainnet", "testnet"] } },
+      properties: {},
       additionalProperties: false
     }
   },
   {
-    name: "guardian_market_brief",
-    description: "Read a live Robinhood Stock Token market brief with multiplier-aware bid/ask data, trading halts, and quote freshness. Use this before discussing the RWA market. It is evidence, not a recommendation.",
+    name: "arc_agent_passport",
+    description: "Inspect an ERC-8004 agent identity on Arc Testnet. Return registry ownership, metadata URI, evidence, and explicit trust limitations. Registration must never be described as proof of capability or safety.",
     input_schema: {
       type: "object",
       properties: {
-        network: { type: "string", enum: ["mainnet", "testnet"] },
-        limit: { type: "integer", minimum: 1, maximum: 30 }
+        agent_id: { type: "string", description: "Numeric ERC-8004 agent token ID." }
       },
+      required: ["agent_id"],
       additionalProperties: false
     }
   },
   {
-    name: "guardian_token_intelligence",
-    description: "Investigate a Robinhood Stock Token symbol or token contract using chain evidence, official RWA registry data, open Blockscout holder data, public DEX liquidity and activity, and verified Uniswap v4 deployments. Explain known facts, risks, and unknowns without recommending a trade.",
+    name: "arc_plan_job",
+    description: "Create a no-funds-moved Arc agent job intent with deterministic USDC budget limits, registered-provider evidence, independent evaluator policy, expiry, scope, evidence commitment, and exact approval. This tool never signs or broadcasts.",
     input_schema: {
       type: "object",
       properties: {
-        query: { type: "string", description: "Official Stock Token symbol or 20-byte EVM contract address." },
-        network: { type: "string", enum: ["mainnet", "testnet"] },
-        kind: { type: "string", enum: ["auto", "rwa", "meme", "stablecoin", "wrapped", "token"] }
+        provider: { type: "string", description: "Non-zero EVM provider address." },
+        evaluator: { type: "string", description: "Independent non-zero EVM evaluator address." },
+        client: { type: "string", description: "Optional client address." },
+        budget_usdc: { type: "number", minimum: 0 },
+        daily_spend_before_usdc: { type: "number", minimum: 0 },
+        expires_at: { type: "string", description: "Future ISO-8601 timestamp; defaults to 24 hours." },
+        description: { type: "string", description: "Human-readable job scope." },
+        evidence_commitment: { type: "string", description: "Bytes32 commitment to the private evidence plan." },
+        provider_registered: { type: "boolean", description: "True only when registration was independently verified." }
       },
-      required: ["query"],
-      additionalProperties: false
-    }
-  },
-  {
-    name: "guardian_asset_inspect",
-    description: "Create a bounded Hallow Asset Passport from Robinhood Chain contract evidence and the official Stock Token registry. The result is evidence, not financial advice or a promise of safety.",
-    input_schema: {
-      type: "object",
-      properties: {
-        address: { type: "string", description: "EVM token contract address." },
-        network: { type: "string", enum: ["mainnet", "testnet"] },
-        kind: { type: "string", enum: ["auto", "rwa", "meme", "stablecoin", "wrapped", "token"] },
-        symbol: { type: "string" }
-      },
-      required: ["address"],
-      additionalProperties: false
-    }
-  },
-  {
-    name: "guardian_plan_action",
-    description: "Inspect an asset and create a non-custodial, no-funds-moved transaction simulation checked against the user's Guardian policy. Financial actions always require explicit human approval and broadcasting is disabled by default.",
-    input_schema: {
-      type: "object",
-      properties: {
-        action: { type: "string", enum: ["buy", "sell", "swap", "lend", "withdraw", "inspect"] },
-        address: { type: "string" },
-        network: { type: "string", enum: ["mainnet", "testnet"] },
-        kind: { type: "string", enum: ["auto", "rwa", "meme", "stablecoin", "wrapped", "token"] },
-        symbol: { type: "string" },
-        amount_usd: { type: "number", minimum: 0 },
-        slippage_bps: { type: "number", minimum: 0, maximum: 10000 },
-        protocol: { type: "string" },
-        projected_memecoin_allocation_percent: { type: "number", minimum: 0, maximum: 100 },
-        projected_reserve_percent: { type: "number", minimum: 0, maximum: 100 },
-        daily_spend_before_usd: { type: "number", minimum: 0 }
-      },
-      required: ["action", "address", "amount_usd"],
+      required: ["provider", "evaluator", "budget_usdc", "description", "evidence_commitment", "provider_registered"],
       additionalProperties: false
     }
   },

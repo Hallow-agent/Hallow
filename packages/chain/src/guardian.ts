@@ -109,7 +109,7 @@ export function createGuardianPlan(input: GuardianPlanInput, policyInput?: Parti
       "canonical-rwa",
       "Canonical RWA contract",
       input.asset.canonical,
-      input.asset.canonical ? "Contract matches the Robinhood Stock Token registry." : "Contract does not match the canonical registry."
+      input.asset.canonical ? "Contract matches the legacy tokenized asset registry." : "Contract does not match the canonical registry."
     ));
   }
 

@@ -5,6 +5,15 @@ import { dirname, resolve } from "node:path";
 import { stdin as terminalInput, stdout as terminalOutput } from "node:process";
 import { createInterface } from "node:readline/promises";
 import { ensureDir, getHallowHome, hallowPath, loadEnvFile, pathExists, readTextIfExists, RiskLevel, writeText } from "@hallow/core";
+import {
+  ARC_TESTNET_CONTRACTS,
+  ArcChainClient,
+  createArcJobIntent,
+  createDefaultArcJobPolicy,
+  type ArcAgentPassport,
+  type ArcJobIntent,
+  type ArcStatus
+} from "@hallow/chain";
 import { AddProviderOptions, ModelCatalogEntry, ModelCatalogProvider, ModelRegistry } from "@hallow/models";
 import {
   AgentInstallResult,
@@ -65,8 +74,8 @@ import {
   WebAuthStatusReport
 } from "@hallow/runtime";
 
-const HALLOW_CLI_VERSION = "0.1.0";
-const HALLOW_RELEASE_LABEL = "001";
+const HALLOW_CLI_VERSION = "0.2.0";
+const HALLOW_RELEASE_LABEL = "ARC PREVIEW";
 
 const HALLOW_WINDOWS_INSTALL_COMMAND = "iex (irm https://hallow-agent.xyz/install.ps1)";
 
@@ -184,8 +193,8 @@ async function dispatch(context: CommandContext): Promise<void> {
     return;
   }
 
-  if (command === "guardian" || command === "chain") {
-    await handleGuardian(context, subcommand, rest);
+  if (command === "arc") {
+    await handleArc(subcommand, rest);
     return;
   }
 
@@ -1558,7 +1567,7 @@ async function handleHallowMcpMessage(context: CommandContext, message: CliJsonR
         },
         serverInfo: {
           name: "hallow",
-          version: "0.1.0"
+          version: HALLOW_CLI_VERSION
         }
       });
       return;
@@ -2960,6 +2969,119 @@ async function handleNotification(
   }
 
   throw new Error(`Unknown notification command: ${subcommand}`);
+}
+
+async function handleArc(subcommand: string | undefined, rest: string[]): Promise<void> {
+  const client = new ArcChainClient({ rpc_url: readOption(rest, "--rpc") });
+
+  if (!subcommand || subcommand === "status") {
+    printArcStatus(await client.status());
+    return;
+  }
+
+  if (subcommand === "contracts") {
+    const status = await client.status();
+    printTerminalFrame("HALLOW / ARC", "ECONOMIC RAIL", 76);
+    for (const item of status.contracts) {
+      const state = item.code_present ? "LIVE" : "MISSING";
+      console.log(`${state.padEnd(8)} ${item.name.padEnd(30)} ${shortArcAddress(item.address)}`);
+      console.log(`         ${item.purpose}`);
+    }
+    console.log("\nReference contracts are verified from bytecode presence, not trusted by name alone.");
+    return;
+  }
+
+  if (subcommand === "agent" || subcommand === "identity") {
+    const agentId = rest[0];
+    if (!agentId || !/^\d+$/.test(agentId)) throw new Error("Usage: hallow arc agent <agent-id> [--rpc URL]");
+    printArcAgent(await client.inspectAgent(agentId));
+    return;
+  }
+
+  if (subcommand === "plan-job" || subcommand === "job-plan") {
+    const provider = readOption(rest, "--provider");
+    const evaluator = readOption(rest, "--evaluator");
+    const budget = readNumberOption(rest, "--budget");
+    const description = readOption(rest, "--description");
+    if (!provider || !evaluator || budget === undefined || !description) {
+      throw new Error("Usage: hallow arc plan-job --provider 0x... --evaluator 0x... --budget USDC --description \"work\" --evidence 0x...");
+    }
+    const intent = createArcJobIntent({
+      provider,
+      evaluator,
+      client: readOption(rest, "--client"),
+      budget_usdc: budget,
+      daily_spend_before_usdc: readNumberOption(rest, "--daily-spend") ?? 0,
+      expires_at: readOption(rest, "--expires") ?? new Date(Date.now() + 86_400_000).toISOString(),
+      description,
+      evidence_commitment: readOption(rest, "--evidence"),
+      provider_registered: rest.includes("--provider-registered")
+    }, createDefaultArcJobPolicy());
+    printArcJobIntent(intent);
+    return;
+  }
+
+  if (subcommand === "help" || subcommand === "--help" || subcommand === "-h") {
+    console.log(`
+HALLOW / ARC
+
+  hallow arc status
+  hallow arc contracts
+  hallow arc agent <agent-id>
+  hallow arc plan-job --provider 0x... --evaluator 0x... --budget 20 \\
+    --description "Analyze public transactions" --evidence 0x... --provider-registered
+
+Arc support is testnet-only. Planning never signs a transaction or moves funds.`);
+    return;
+  }
+
+  throw new Error(`Unknown Arc command: ${subcommand}`);
+}
+
+function printArcStatus(status: ArcStatus): void {
+  printTerminalFrame("HALLOW / ARC", status.connected ? "SETTLEMENT READY" : "NETWORK UNAVAILABLE", 76);
+  console.log(`\n  NETWORK       ${status.network.name}`);
+  console.log(`  CHAIN ID      ${status.reported_chain_id ?? "-"}`);
+  console.log(`  BLOCK         ${status.block_number?.toLocaleString("en-US") ?? "-"}`);
+  console.log(`  FINALITY      deterministic / sub-second design`);
+  console.log(`  GAS           USDC`);
+  console.log(`  CONTRACTS     ${status.contracts.filter((item) => item.code_present).length}/${status.contracts.length} observed`);
+  console.log(`  LATENCY       ${status.latency_ms} ms`);
+  if (status.error) console.log(`\n  ERROR         ${status.error}`);
+  console.log("\n  READY FOR");
+  console.log("  ✓ ERC-8004 agent identity and reputation discovery");
+  console.log("  ✓ ERC-8183 USDC job planning and settlement verification");
+  console.log("  ✓ CCTP and Gateway contract awareness");
+  console.log("  ✓ Local evidence commitments and deterministic policy");
+  console.log("\n  TESTNET ONLY  No signer loaded. No funds moved.");
+}
+
+function printArcAgent(passport: ArcAgentPassport): void {
+  printTerminalFrame("ARC / AGENT PASSPORT", passport.registered ? "REGISTERED" : "NOT FOUND", 76);
+  console.log(`\n  AGENT ID      ${passport.agent_id}`);
+  console.log(`  OWNER         ${passport.owner ?? "not observed"}`);
+  console.log(`  METADATA      ${passport.metadata_uri ?? "not observed"}`);
+  console.log(`  REGISTRY      ${shortArcAddress(passport.registry)}`);
+  console.log(`  EVIDENCE      ${passport.evidence.length} claims`);
+  console.log("\n  TRUST BOUNDARY");
+  for (const limitation of passport.limitations) console.log(`  ! ${limitation}`);
+}
+
+function printArcJobIntent(intent: ArcJobIntent): void {
+  printTerminalFrame("ARC / JOB INTENT", intent.state.replaceAll("_", " ").toUpperCase(), 76);
+  console.log(`\n  JOB           ${intent.id}`);
+  console.log(`  PROVIDER      ${shortArcAddress(intent.provider)}`);
+  console.log(`  EVALUATOR     ${shortArcAddress(intent.evaluator)}`);
+  console.log(`  BUDGET        ${intent.budget_usdc} USDC`);
+  console.log(`  EXPIRES       ${intent.expires_at}`);
+  console.log(`  DESCRIPTION   ${intent.description}`);
+  console.log("\n  POLICY CHECKS");
+  for (const check of intent.checks) console.log(`  ${check.status === "pass" ? "✓" : check.status === "approval" ? "!" : "✕"} ${check.label.padEnd(24)} ${check.detail}`);
+  console.log("\n  No transaction was signed. No funds moved.");
+}
+
+function shortArcAddress(value: string): string {
+  return value.length > 18 ? `${value.slice(0, 10)}…${value.slice(-6)}` : value;
 }
 
 async function handleGuardian(
@@ -5602,15 +5724,10 @@ Usage:
   hallow doctor [--home path]
   hallow status [--home path] [--strict]
   hallow readiness [--strict]
-  hallow guardian status [--testnet]
-  hallow guardian brief [--limit 12]
-  hallow guardian analyze <stock-symbol|contract> [--kind rwa|meme|auto]
-  hallow guardian demo [stock-symbol]
-  hallow guardian inspect <contract> [--kind rwa|meme|auto] [--testnet]
-  hallow guardian policy show|reset|set [policy options]
-  hallow guardian plan <action> <symbol|contract> --usd amount [--kind type] [--testnet]
-  hallow guardian receipt <plan-id> [--approval approval-id]
-  hallow guardian verify <receipt-id>
+  hallow arc status
+  hallow arc contracts
+  hallow arc agent <agent-id>
+  hallow arc plan-job --provider 0x... --evaluator 0x... --budget USDC --description text
   hallow demo setup [--skip-live-mcp] [--skip-browser]
   hallow demo run [--skip-live-mcp] [--skip-browser]
   hallow demo checklist

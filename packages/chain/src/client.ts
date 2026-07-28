@@ -10,32 +10,32 @@ import type {
   GuardianRiskSignal,
   GuardianTokenIntelligence,
   GuardianUniswapReadiness,
-  RobinhoodNetworkConfig,
+  GuardianNetworkConfig,
   StockTokenAsset,
   StockTokenDeployment,
   StockTokenQuote
 } from "./types.js";
 
-export const ROBINHOOD_NETWORKS: Record<GuardianNetwork, RobinhoodNetworkConfig> = {
+export const GUARDIAN_NETWORKS: Record<GuardianNetwork, GuardianNetworkConfig> = {
   mainnet: {
-    name: "Robinhood Chain",
+    name: "Arc Testnet (legacy Guardian adapter)",
     network: "mainnet",
-    chain_id: 4663,
-    rpc_url: "https://rpc.mainnet.chain.robinhood.com",
-    explorer_url: "https://robinhoodchain.blockscout.com",
-    native_currency: "ETH"
+    chain_id: 5_042_002,
+    rpc_url: "https://rpc.testnet.arc.network",
+    explorer_url: "https://testnet.arcscan.app",
+    native_currency: "USDC"
   },
   testnet: {
-    name: "Robinhood Chain Testnet",
+    name: "Arc Testnet (legacy Guardian adapter)",
     network: "testnet",
-    chain_id: 46630,
-    rpc_url: "https://rpc.testnet.chain.robinhood.com",
-    explorer_url: "https://explorer.testnet.chain.robinhood.com",
-    native_currency: "ETH"
+    chain_id: 5_042_002,
+    rpc_url: "https://rpc.testnet.arc.network",
+    explorer_url: "https://testnet.arcscan.app",
+    native_currency: "USDC"
   }
 };
 
-export type RobinhoodChainClientOptions = {
+export type GuardianChainClientOptions = {
   network?: GuardianNetwork;
   rpc_url?: string;
   stock_api_url?: string;
@@ -49,16 +49,16 @@ export type InspectAssetOptions = {
   now?: Date;
 };
 
-export class RobinhoodChainClient {
-  readonly network: RobinhoodNetworkConfig;
+export class GuardianChainClient {
+  readonly network: GuardianNetworkConfig;
   readonly stockApiUrl: string;
   readonly timeoutMs: number;
   private readonly fetchImpl: typeof fetch;
 
-  constructor(options: RobinhoodChainClientOptions = {}) {
+  constructor(options: GuardianChainClientOptions = {}) {
     const selected = options.network ?? "mainnet";
-    this.network = { ...ROBINHOOD_NETWORKS[selected], rpc_url: options.rpc_url ?? ROBINHOOD_NETWORKS[selected].rpc_url };
-    this.stockApiUrl = (options.stock_api_url ?? "https://api.robinhood.com/rhj").replace(/\/$/, "");
+    this.network = { ...GUARDIAN_NETWORKS[selected], rpc_url: options.rpc_url ?? GUARDIAN_NETWORKS[selected].rpc_url };
+    this.stockApiUrl = (options.stock_api_url ?? "https://api.example.invalid/hallow-legacy-assets").replace(/\/$/, "");
     this.fetchImpl = options.fetch ?? fetch;
     this.timeoutMs = options.timeout_ms ?? 8_000;
   }
@@ -113,8 +113,8 @@ export class RobinhoodChainClient {
     const blockNumber = parseHexNumber(blockHex);
     const codeBytes = Math.max(0, (stripHex(code).length / 2));
     const codePresent = codeBytes > 0;
-    evidence.push({ source: "Robinhood Chain RPC", claim: "Contract code present", value: codePresent, observed_at: observedAt });
-    evidence.push({ source: "Robinhood Chain RPC", claim: "Observation block", value: blockNumber, observed_at: observedAt });
+    evidence.push({ source: "Arc Testnet RPC", claim: "Contract code present", value: codePresent, observed_at: observedAt });
+    evidence.push({ source: "Arc Testnet RPC", claim: "Observation block", value: blockNumber, observed_at: observedAt });
 
     if (!codePresent) {
       signals.push({ id: "no-code", severity: "critical", title: "No contract code", detail: "The selected address had no contract bytecode at the observed block." });
@@ -125,8 +125,8 @@ export class RobinhoodChainClient {
     ));
     const canonicalSystemSymbol = address === USDG_ADDRESS ? "USDG" : address === WETH_ADDRESS ? "WETH" : undefined;
     const canonical = Boolean(canonicalAsset || canonicalSystemSymbol);
-    if (canonicalAsset) evidence.push({ source: "Robinhood Stock Token API", claim: "Canonical Stock Token", value: canonicalAsset.symbol, observed_at: observedAt });
-    if (canonicalSystemSymbol) evidence.push({ source: "Robinhood Chain canonical contracts", claim: "Canonical system contract", value: canonicalSystemSymbol, observed_at: observedAt });
+    if (canonicalAsset) evidence.push({ source: "Legacy asset API", claim: "Canonical Stock Token", value: canonicalAsset.symbol, observed_at: observedAt });
+    if (canonicalSystemSymbol) evidence.push({ source: "Arc reference contracts", claim: "Canonical system contract", value: canonicalSystemSymbol, observed_at: observedAt });
 
     const detectedCapabilities = detectBytecodeCapabilities(code);
     if (detectedCapabilities.includes("mint")) {
@@ -146,7 +146,7 @@ export class RobinhoodChainClient {
     if (canonicalAsset?.symbol) {
       quote = await this.fetchStockTokenQuote(canonicalAsset.symbol).catch(() => undefined);
       if (quote) {
-        evidence.push({ source: "Robinhood Stock Token API", claim: "Trading halt", value: quote.is_trading_halt, observed_at: observedAt });
+        evidence.push({ source: "Legacy asset API", claim: "Trading halt", value: quote.is_trading_halt, observed_at: observedAt });
         if (quote.is_trading_halt) signals.push({ id: "trading-halt", severity: "critical", title: "Trading halt active", detail: "The official Stock Token API reports an active halt." });
         if (quote.generated_at && Date.parse(quote.generated_at) < now.getTime() - 120_000) {
           signals.push({ id: "stale-quote", severity: "high", title: "Quote is stale", detail: "The latest official quote is older than two minutes." });
@@ -156,7 +156,7 @@ export class RobinhoodChainClient {
 
     const kind = classifyKind(options.kind, canonicalAsset, address);
     if (options.kind === "rwa" && !canonical) {
-      signals.push({ id: "noncanonical-rwa", severity: "critical", title: "RWA contract is not canonical", detail: "The address did not match the official Robinhood Stock Token deployments returned during inspection." });
+      signals.push({ id: "noncanonical-rwa", severity: "critical", title: "RWA contract is not canonical", detail: "The address did not match the official legacy tokenized asset deployments returned during inspection." });
     }
     if (kind === "meme" && signals.length === 0) {
       signals.push({ id: "limited-meme-evidence", severity: "warning", title: "Evidence is incomplete", detail: "Contract selectors alone cannot prove liquidity quality, holder distribution, or sellability." });
@@ -187,7 +187,7 @@ export class RobinhoodChainClient {
         uid: canonicalAsset.uid,
         current_multiplier: canonicalAsset.current_multiplier,
         quote,
-        holder_rights_notice: "Robinhood Stock Tokens provide economic exposure through a tokenized debt security and do not grant legal or beneficial ownership of the underlying security. Eligibility varies by jurisdiction."
+        holder_rights_notice: "Legacy tokenized assets provide economic exposure through a tokenized debt security and do not grant legal or beneficial ownership of the underlying security. Eligibility varies by jurisdiction."
       } : undefined,
       risk,
       summary: createPassportSummary(kind, canonical, risk.band, symbol ?? canonicalAsset?.symbol ?? options.symbol),
@@ -354,7 +354,7 @@ export class RobinhoodChainClient {
 
   async fetchDexPairs(address: string): Promise<GuardianDexPair[]> {
     if (this.network.network !== "mainnet") return [];
-    const payload = await this.getJson(`https://api.dexscreener.com/token-pairs/v1/robinhood/${normalizeAddress(address)}`);
+    const payload = await this.getJson(`https://api.dexscreener.com/token-pairs/v1/arc/${normalizeAddress(address)}`);
     if (!Array.isArray(payload)) return [];
     return payload.filter(isRecord).map(normalizeDexPair).filter((entry): entry is GuardianDexPair => Boolean(entry))
       .sort((left, right) => right.liquidity_usd - left.liquidity_usd);
@@ -372,7 +372,7 @@ export class RobinhoodChainClient {
       total_observed_liquidity_usd: 0,
       volume_h24_usd: 0,
       v4_contracts: contracts,
-      trade_url: `https://app.uniswap.org/explore/tokens/robinhood/${normalizeAddress(tokenAddress)}`,
+      trade_url: `https://app.uniswap.org/explore/tokens/arc/${normalizeAddress(tokenAddress)}`,
       quote_mode: "no-route-observed"
     };
   }
@@ -397,10 +397,10 @@ export class RobinhoodChainClient {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
     });
-    if (!response.ok) throw new Error(`Robinhood Chain RPC returned HTTP ${response.status}.`);
+    if (!response.ok) throw new Error(`Arc Testnet RPC returned HTTP ${response.status}.`);
     const payload = await response.json() as { result?: T; error?: { message?: string } };
-    if (payload.error) throw new Error(payload.error.message ?? `Robinhood Chain RPC ${method} failed.`);
-    if (payload.result === undefined) throw new Error(`Robinhood Chain RPC ${method} returned no result.`);
+    if (payload.error) throw new Error(payload.error.message ?? `Arc Testnet RPC ${method} failed.`);
+    if (payload.result === undefined) throw new Error(`Arc Testnet RPC ${method} returned no result.`);
     return payload.result;
   }
 
@@ -422,7 +422,7 @@ export class RobinhoodChainClient {
 
   private async getJson(url: string): Promise<unknown> {
     const response = await this.fetchWithTimeout(url, { headers: { accept: "application/json" } });
-    if (!response.ok) throw new Error(`Robinhood Stock Token API returned HTTP ${response.status}.`);
+    if (!response.ok) throw new Error(`Legacy asset API returned HTTP ${response.status}.`);
     return response.json();
   }
 
@@ -509,9 +509,9 @@ function calculateRisk(signals: GuardianRiskSignal[], codePresent: boolean, kind
 
 function createPassportSummary(kind: GuardianAssetKind, canonical: boolean, band: string, symbol?: string): string {
   const name = symbol || "This contract";
-  if (kind === "rwa" && canonical) return `${name} matches the official Robinhood Stock Token registry. Hallow found a ${band} signal band; review legal rights, quote freshness, and eligibility before any action.`;
+  if (kind === "rwa" && canonical) return `${name} matches the official legacy tokenized asset registry. Hallow found a ${band} signal band; review legal rights, quote freshness, and eligibility before any action.`;
   if (kind === "meme") return `${name} was inspected as a memecoin. Hallow found a ${band} signal band, but contract inspection cannot prove liquidity, holder behavior, or future sellability.`;
-  return `${name} was inspected on Robinhood Chain with a ${band} signal band. This passport records bounded evidence, not a promise of safety.`;
+  return `${name} was inspected on Arc Testnet with a ${band} signal band. This passport records bounded evidence, not a promise of safety.`;
 }
 
 function normalizeStockTokenAsset(value: Record<string, unknown>): StockTokenAsset | undefined {
@@ -618,7 +618,7 @@ function createEmptyUniswapReadiness(tokenAddress: string): GuardianUniswapReadi
     total_observed_liquidity_usd: 0,
     volume_h24_usd: 0,
     v4_contracts: [],
-    trade_url: `https://app.uniswap.org/explore/tokens/robinhood/${tokenAddress.toLowerCase()}`,
+    trade_url: `https://app.uniswap.org/explore/tokens/arc/${tokenAddress.toLowerCase()}`,
     quote_mode: "no-route-observed"
   };
 }
@@ -635,7 +635,7 @@ function createIntelligenceWarnings(input: {
 }): string[] {
   const warnings: string[] = [];
   if (!input.passport.contract.code_present) warnings.push("CRITICAL: no contract code was observed.");
-  if (input.passport.kind === "rwa" && !input.passport.canonical) warnings.push("CRITICAL: this RWA address is not in the official Robinhood registry.");
+  if (input.passport.kind === "rwa" && !input.passport.canonical) warnings.push("CRITICAL: this RWA address is not in the official legacy registry.");
   if (input.totalLiquidity <= 0) warnings.push("No observed liquidity route was found; do not assume the token can be sold.");
   else if (input.totalLiquidity < 50_000) warnings.push("CRITICAL: observed liquidity is below $50,000 and price impact may be extreme.");
   else if (input.totalLiquidity < 250_000) warnings.push("Observed liquidity is thin; small trades may move the price materially.");

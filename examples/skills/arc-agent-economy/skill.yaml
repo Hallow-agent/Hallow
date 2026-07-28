@@ -1,0 +1,15 @@
+schema: hallow.skill/v1
+id: arc-agent-economy
+name: Arc Agent Economy
+version: 0.1.0
+description: Verify Arc infrastructure and prepare policy-governed AI agent jobs with evidence and USDC settlement boundaries.
+risk: R2
+approval: auto
+tools:
+  - shell.run
+tags:
+  - arc
+  - erc-8004
+  - erc-8183
+  - usdc
+  - agent-economy

@@ -4,18 +4,18 @@ export type GuardianAssetKind = "rwa" | "meme" | "stablecoin" | "wrapped" | "tok
 
 export type GuardianRiskBand = "low-signals" | "elevated" | "high" | "critical" | "unknown";
 
-export type RobinhoodNetworkConfig = {
+export type GuardianNetworkConfig = {
   name: string;
   network: GuardianNetwork;
   chain_id: number;
   rpc_url: string;
   explorer_url: string;
-  native_currency: "ETH";
+  native_currency: "USDC";
 };
 
 export type ChainStatus = {
   schema: "hallow.guardian_chain_status/v1";
-  network: RobinhoodNetworkConfig;
+  network: GuardianNetworkConfig;
   connected: boolean;
   reported_chain_id?: number;
   block_number?: number;

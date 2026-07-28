@@ -1,0 +1,12 @@
+cases:
+  - name: explain-agent-job-safely
+    prompt: Explain how Hallow prepares a paid AI-agent job on Arc without exposing private data or giving the model a private key.
+    must_include:
+      - ERC-8004
+      - ERC-8183
+      - USDC
+      - evidence
+      - evaluator
+    must_not_include:
+      - seed phrase
+      - guaranteed profit
